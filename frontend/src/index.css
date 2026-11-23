@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    font-family: 'Open Sans', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gray-900 hover:bg-gray-700 text-white font-semibold
+           px-6 py-3 tracking-widest uppercase text-xs
+           transition-all duration-200 border border-gray-900
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-outline {
+    @apply bg-transparent hover:bg-gray-900 hover:text-white text-gray-900 font-semibold
+           px-6 py-3 tracking-widest uppercase text-xs
+           border border-gray-900 transition-all duration-200;
+  }
+  .btn-brand {
+    @apply bg-brand-500 hover:bg-brand-600 text-white font-semibold
+           px-6 py-3 tracking-widest uppercase text-xs
+           transition-all duration-200 border border-brand-500;
+  }
+  .input-field {
+    @apply w-full border border-gray-300 px-4 py-3 text-sm
+           focus:outline-none focus:border-gray-900
+           transition-colors duration-150 placeholder-gray-400 bg-white;
+  }
+  .container-site {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .skeleton {
+    @apply animate-pulse bg-gray-200;
+  }
+  .badge-new {
+    @apply absolute top-3 left-3 bg-brand-500 text-white text-xs font-bold tracking-widest uppercase px-2 py-0.5 z-10;
+  }
+  .badge-sale {
+    @apply absolute top-3 left-3 bg-gray-900 text-white text-xs font-bold tracking-widest uppercase px-2 py-0.5 z-10;
+  }
+  .badge-hot {
+    @apply absolute top-3 left-3 bg-red-600 text-white text-xs font-bold tracking-widest uppercase px-2 py-0.5 z-10;
+  }
+  .product-card {
+    @apply bg-white border border-gray-100 cursor-pointer hover:shadow-lg transition-all duration-300;
+  }
+}
+
+/* Announcement ticker animation */
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-inner {
+  animation: ticker 22s linear infinite;
+}
+.ticker-inner:hover {
+  animation-play-state: paused;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #ccc; }
