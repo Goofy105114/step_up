@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube, Linkedin, Truck, RotateCcw, Headphones, Shield } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Youtube, Linkedin, Truck, Headphones, Shield } from 'lucide-react';
 
 const footerLinks = {
   Account: [

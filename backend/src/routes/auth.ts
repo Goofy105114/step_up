@@ -8,6 +8,12 @@ import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
 
+const getSecret = (): string => {
+  const s = process.env.JWT_SECRET;
+  if (!s) throw new Error('JWT_SECRET is not set');
+  return s;
+};
+
 // POST /api/auth/register
 router.post('/register', [
   body('email').isEmail().normalizeEmail(),
@@ -19,7 +25,6 @@ router.post('/register', [
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
   const { email, password, first_name, last_name, phone } = req.body;
-
   const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
   if (existing.rows.length > 0) throw new AppError('Email already registered', 409);
 
@@ -32,7 +37,7 @@ router.post('/register', [
   const user = result.rows[0];
   const token = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET || 'secret',
+    getSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
   return res.status(201).json({ success: true, token, user });
@@ -49,17 +54,14 @@ router.post('/login', [
   const { email, password } = req.body;
   const result = await query('SELECT * FROM users WHERE email = $1', [email]);
   const user = result.rows[0];
-
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  if (!user || !(await bcrypt.compare(password, user.password_hash)))
     throw new AppError('Invalid email or password', 401);
-  }
 
   const token = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET || 'secret',
+    getSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
-
   const { password_hash: _, ...safeUser } = user;
   return res.json({ success: true, token, user: safeUser });
 });
@@ -82,9 +84,8 @@ router.post('/change-password', authenticate, [
   const { current_password, new_password } = req.body;
   const result = await query('SELECT password_hash FROM users WHERE id = $1', [req.user!.userId]);
   const user = result.rows[0];
-  if (!user || !(await bcrypt.compare(current_password, user.password_hash))) {
+  if (!user || !(await bcrypt.compare(current_password, user.password_hash)))
     throw new AppError('Current password is incorrect', 400);
-  }
   const hash = await bcrypt.hash(new_password, 12);
   await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user!.userId]);
   return res.json({ success: true, message: 'Password updated successfully' });

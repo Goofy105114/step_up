@@ -7,10 +7,10 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, message: 'No token provided' });
   }
-
-  const token = authHeader.split(' ')[1];
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return res.status(500).json({ success: false, message: 'Server misconfiguration' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as JwtPayload;
+    const decoded = jwt.verify(authHeader.split(' ')[1], secret) as JwtPayload;
     req.user = decoded;
     return next();
   } catch {
@@ -18,11 +18,10 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const authorize = (...roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const authorize = (...roles: string[]) =>
+  (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
     return next();
   };
-};

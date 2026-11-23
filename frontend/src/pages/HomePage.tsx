@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, ChevronLeft, ChevronRight, Truck, Shield, Headphones, RotateCcw } from 'lucide-react';
 import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
-import { formatPrice } from '../lib/formatters';
 
 /* ─── Hero slides ─────────────────────────────────────────── */
 const slides = [

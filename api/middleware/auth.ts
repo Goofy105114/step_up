@@ -18,8 +18,12 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   if (!auth?.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, message: 'No token provided' });
   }
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return res.status(500).json({ success: false, message: 'Server misconfiguration' });
+  }
   try {
-    const decoded = jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET || 'secret') as JwtPayload;
+    const decoded = jwt.verify(auth.split(' ')[1], secret) as JwtPayload;
     req.user = decoded;
     return next();
   } catch {

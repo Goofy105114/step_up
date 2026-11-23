@@ -8,9 +8,15 @@ import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
 
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is not set');
+  return secret;
+};
+
 router.post('/register', [
   body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 8 }),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('first_name').trim().notEmpty(),
   body('last_name').trim().notEmpty(),
 ], async (req: Request, res: Response) => {
@@ -26,8 +32,11 @@ router.post('/register', [
     [email, hash, first_name, last_name, phone || null]
   );
   const user = result.rows[0];
-  const token = jwt.sign({ userId: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+  const token = jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
+    getJwtSecret(),
+    { expiresIn: '7d' }
+  );
   return res.status(201).json({ success: true, token, user });
 });
 
@@ -42,8 +51,11 @@ router.post('/login', [
   const user = result.rows[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash)))
     throw new AppError('Invalid email or password', 401);
-  const token = jwt.sign({ userId: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+  const token = jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
+    getJwtSecret(),
+    { expiresIn: '7d' }
+  );
   const { password_hash: _pw, ...safeUser } = user;
   return res.json({ success: true, token, user: safeUser });
 });
@@ -51,7 +63,8 @@ router.post('/login', [
 router.get('/me', authenticate, async (req: Request, res: Response) => {
   const result = await query(
     'SELECT id,email,first_name,last_name,phone,role,avatar_url,created_at FROM users WHERE id=$1',
-    [req.user!.userId]);
+    [req.user!.userId]
+  );
   if (!result.rows[0]) throw new AppError('User not found', 404);
   return res.json({ success: true, user: result.rows[0] });
 });

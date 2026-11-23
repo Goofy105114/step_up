@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/formatters';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, X } from 'lucide-react';
+import { Plus, Minus, ShoppingBag, ArrowRight, Tag, X } from 'lucide-react';
 import { useState } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
