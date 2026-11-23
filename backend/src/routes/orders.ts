@@ -143,12 +143,39 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
     'INSERT INTO order_status_history (order_id, status, note) VALUES ($1,$2,$3)',
     [order.id, 'cancelled', 'Cancelled by customer']
   );
-  // Restore stock
   const items = await query('SELECT * FROM order_items WHERE order_id = $1', [order.id]);
   for (const item of items.rows) {
     await query('UPDATE product_variants SET stock_qty = stock_qty + $1 WHERE id = $2', [item.quantity, item.variant_id]);
   }
   return res.json({ success: true, message: 'Order cancelled' });
+});
+
+// POST /api/orders/:id/return  — request a return/refund
+router.post('/:id/return', authenticate, [
+  body('reason').trim().notEmpty().withMessage('Please provide a reason for the return'),
+], async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+  const orderRes = await query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [req.params.id, req.user!.userId]);
+  const order = orderRes.rows[0];
+  if (!order) throw new AppError('Order not found', 404);
+  if (order.status !== 'delivered') throw new AppError('Only delivered orders can be returned', 400);
+  if (order.status === 'returned' || order.status === 'refunded')
+    throw new AppError('Return already requested for this order', 400);
+
+  // Check within 30-day window
+  const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : new Date(order.updated_at);
+  const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSinceDelivery > 30) throw new AppError('Return window of 30 days has expired', 400);
+
+  const { reason } = req.body;
+  await query("UPDATE orders SET status = 'returned' WHERE id = $1", [order.id]);
+  await query(
+    'INSERT INTO order_status_history (order_id, status, note) VALUES ($1,$2,$3)',
+    [order.id, 'returned', `Return requested: ${reason}`]
+  );
+  return res.json({ success: true, message: 'Return request submitted. We will process your refund within 5–7 business days.' });
 });
 
 export default router;

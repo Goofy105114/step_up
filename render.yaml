@@ -1,25 +1,25 @@
 services:
-  # ── Backend API (Render Web Service) ────────────────────────────────────────
   - type: web
     name: stepup-api
     runtime: node
     rootDir: api
     buildCommand: npm install && npm run build
     startCommand: node dist/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      # Set all these manually in Render dashboard → Environment:
       - key: DATABASE_URL
-        sync: false          # Set manually in Render dashboard → Environment
+        sync: false   # Supabase connection string
       - key: JWT_SECRET
-        sync: false          # Set manually
+        sync: false   # openssl rand -hex 32
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: STRIPE_SECRET_KEY
-        sync: false          # Set manually
+        sync: false
       - key: STRIPE_WEBHOOK_SECRET
-        sync: false          # Set manually
+        sync: false
       - key: FRONTEND_URL
-        sync: false          # Set to your Vercel URL after deploy
-    healthCheckPath: /api/health
-    autoDeploy: true
+        sync: false   # your Vercel URL e.g. https://stepup.vercel.app

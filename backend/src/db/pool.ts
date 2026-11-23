@@ -1,25 +1,43 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
-
 dotenv.config();
 
-const pool = new Pool({
-  host:     process.env.DB_HOST     || 'localhost',
-  port:     parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME     || 'footwear_db',
-  user:     process.env.DB_USER     || 'goofy',
-  password: process.env.DB_PASSWORD || undefined,   // undefined = trust auth (no password)
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+/**
+ * Supports:
+ *   Local dev  → DB_HOST/DB_PORT/DB_USER/DB_NAME (no password, trust auth)
+ *   Supabase   → DATABASE_URL (postgresql://postgres:pass@db.xxx.supabase.co:5432/postgres)
+ *   Render PG  → DATABASE_URL (auto-injected)
+ */
 
-pool.on('connect', () => {
-  // silent – connection established
-});
+const connectionString = process.env.DATABASE_URL;
 
-pool.on('error', (err) => {
-  console.error('PostgreSQL pool error:', err.message);
+const isSupabase = connectionString?.includes('supabase.co');
+const isLocal    = !connectionString;
+
+const pool = new Pool(
+  connectionString
+    ? {
+        connectionString,
+        ssl: isSupabase ? { rejectUnauthorized: false } : false,
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+      }
+    : {
+        // Local fallback using individual env vars
+        host:     process.env.DB_HOST     || 'localhost',
+        port:     parseInt(process.env.DB_PORT || '5432'),
+        database: process.env.DB_NAME     || 'footwear_db',
+        user:     process.env.DB_USER     || process.env.USER || 'postgres',
+        password: process.env.DB_PASSWORD || undefined,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      }
+);
+
+pool.on('error', (err: Error) => {
+  console.error('[DB] Pool error:', err.message);
 });
 
 export const query = (text: string, params?: unknown[]) => pool.query(text, params);
