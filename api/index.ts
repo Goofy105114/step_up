@@ -23,6 +23,9 @@ import wishlistRoutes   from './routes/wishlist';
 
 const app = express();
 
+// Trust Render/Vercel proxy headers
+app.set('trust proxy', 1);
+
 /* ── Security ─────────────────────────────────────────────────────────── */
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
