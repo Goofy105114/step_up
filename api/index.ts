@@ -61,13 +61,6 @@ app.get('/api/health', (_req, res) =>
   res.json({ status: 'OK', env: process.env.NODE_ENV, ts: new Date().toISOString() })
 );
 
-/* ── One-time admin setup (remove after use) ──────────────────────────── */
-app.get('/api/setup-admin', async (_req, res) => {
-  const { query } = await import('./db/pool');
-  await query(`UPDATE users SET role='admin' WHERE email='admin@stepup.com'`);
-  res.json({ success: true, message: 'admin@stepup.com promoted to admin' });
-});
-
 /* ── Routes ───────────────────────────────────────────────────────────── */
 app.use('/api/auth',       authRoutes);
 app.use('/api/products',   productRoutes);
