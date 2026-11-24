@@ -1,4 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuthStore } from './store/authStore';
 import Layout from './components/layout/Layout';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
@@ -22,6 +24,13 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
+  const { token, fetchMe } = useAuthStore();
+
+  // Always re-fetch user from server on load so role is never stale
+  useEffect(() => {
+    if (token) fetchMe();
+  }, [token]);
+
   return (
     <Routes>
       {/* Public */}
