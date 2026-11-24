@@ -18,7 +18,13 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast.success('Welcome back!');
-      navigate(from, { replace: true });
+      // Redirect admins/staff to the admin panel; everyone else to their intended page
+      const { user } = useAuthStore.getState();
+      if (user?.role === 'admin' || user?.role === 'staff') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from === '/login' ? '/' : from, { replace: true });
+      }
     } catch { /* handled by axios interceptor */ }
   };
 
