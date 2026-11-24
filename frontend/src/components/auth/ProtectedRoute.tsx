@@ -6,8 +6,12 @@ interface Props { adminOnly?: boolean; }
 export default function ProtectedRoute({ adminOnly = false }: Props) {
   const { user, token, isLoading } = useAuthStore();
 
-  // Still fetching user from server — don't redirect yet
-  if (token && isLoading) return null;
+  // Wait for fetchMe to finish before making any redirect decision
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   if (!token || !user) return <Navigate to="/login" replace />;
 
