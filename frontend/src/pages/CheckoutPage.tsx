@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/formatters';
 import api from '../lib/api';
@@ -31,11 +30,36 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1);
   const [isPlacing, setIsPlacing] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
   const navigate = useNavigate();
 
-  const shipping = subtotal >= 599 ? 0 : 99;
-  const tax = subtotal * 0.05;
-  const total = subtotal + shipping + tax;
+  const discount = appliedCoupon
+    ? appliedCoupon.discount_type === 'percentage'
+      ? (subtotal * parseFloat(appliedCoupon.discount_value)) / 100
+      : parseFloat(appliedCoupon.discount_value)
+    : 0;
+  const shipping = (subtotal - discount) >= 599 ? 0 : 99;
+  const tax = (subtotal - discount) * 0.05;
+  const total = subtotal - discount + shipping + tax;
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const res = await api.post('/cart/apply-coupon', { code: couponCode });
+      const c = res.data.data;
+      if (subtotal < parseFloat(c.min_order_amount || 0)) {
+        toast.error(`Minimum order ₹${c.min_order_amount} required for this coupon`);
+        return;
+      }
+      setAppliedCoupon(c);
+      toast.success(`Coupon applied! ${c.discount_type === 'percentage' ? c.discount_value + '% off' : '₹' + c.discount_value + ' off'}`);
+    } catch { /* interceptor handles */ } finally {
+      setCouponLoading(false);
+    }
+  };
 
   const handlePlaceOrder = async () => {
     if (!address.full_name || !address.email || !address.phone || !address.line1 || !address.city || !address.state || !address.postal_code) {
@@ -46,6 +70,7 @@ export default function CheckoutPage() {
       const res = await api.post('/orders', {
         shipping_address: address,
         payment_method: payment,
+        coupon_code: appliedCoupon?.code || undefined,
       });
       setOrderId(res.data.data.order_number);
       setStep(3);
@@ -191,8 +216,28 @@ export default function CheckoutPage() {
           </div>
           <div className="border-t border-gray-100 pt-3 space-y-2 text-sm">
             <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
+            {appliedCoupon && (
+              <div className="flex justify-between text-green-600 font-medium">
+                <span>Coupon ({appliedCoupon.code})</span>
+                <span>-{formatPrice(discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-gray-600"><span>Shipping</span><span>{shipping === 0 ? <span className="text-green-600">Free</span> : formatPrice(shipping)}</span></div>
             <div className="flex justify-between text-gray-600"><span>GST</span><span>{formatPrice(tax)}</span></div>
+            {/* Coupon input */}
+            <div className="flex gap-2 pt-1">
+              <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="Coupon code" disabled={!!appliedCoupon}
+                className="input-field text-xs py-2 flex-1" />
+              {appliedCoupon
+                ? <button onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                    className="text-xs text-red-500 hover:text-red-700 shrink-0 font-medium px-2">Remove</button>
+                : <button onClick={applyCoupon} disabled={couponLoading || !couponCode}
+                    className="btn-primary text-xs py-2 px-3 shrink-0">
+                    {couponLoading ? '…' : 'Apply'}
+                  </button>
+              }
+            </div>
             <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100">
               <span>Total</span><span>{formatPrice(total)}</span>
             </div>

@@ -65,4 +65,22 @@ router.delete('/', authenticate, async (req: Request, res: Response) => {
   return res.json({ success: true, message: 'Cart cleared' });
 });
 
+router.post('/apply-coupon', authenticate, async (req: Request, res: Response) => {
+  const { code } = req.body;
+  if (!code) throw new AppError('Coupon code required', 400);
+  const result = await query(
+    `SELECT * FROM coupons WHERE UPPER(code)=UPPER($1) AND is_active=true
+     AND (valid_until IS NULL OR valid_until > NOW())
+     AND (max_uses IS NULL OR used_count < max_uses)`, [code]);
+  const coupon = result.rows[0];
+  if (!coupon) throw new AppError('Invalid or expired coupon code', 404);
+  return res.json({ success: true, data: {
+    code: coupon.code,
+    discount_type: coupon.discount_type,
+    discount_value: coupon.discount_value,
+    min_order_amount: coupon.min_order_amount,
+    description: coupon.description,
+  }});
+});
+
 export default router;
