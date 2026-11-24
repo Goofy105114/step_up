@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/formatters';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { MapPin, CreditCard, CheckCircle } from 'lucide-react';
+import CardPaymentForm from '../components/checkout/CardPaymentForm';
 
 interface AddressForm {
-  full_name: string; phone: string; line1: string; line2: string;
+  full_name: string; email: string; phone: string; line1: string; line2: string;
   city: string; state: string; postal_code: string; country: string;
 }
 
 const defaultAddress: AddressForm = {
-  full_name: '', phone: '', line1: '', line2: '',
+  full_name: '', email: '', phone: '', line1: '', line2: '',
   city: '', state: '', postal_code: '', country: 'India',
 };
 
@@ -25,6 +27,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCartStore();
   const [address, setAddress] = useState<AddressForm>(defaultAddress);
   const [payment, setPayment] = useState('cod');
+  const [cardData, setCardData] = useState({});
   const [step, setStep] = useState(1);
   const [isPlacing, setIsPlacing] = useState(false);
   const [orderId, setOrderId] = useState('');
@@ -35,7 +38,7 @@ export default function CheckoutPage() {
   const total = subtotal + shipping + tax;
 
   const handlePlaceOrder = async () => {
-    if (!address.full_name || !address.phone || !address.line1 || !address.city || !address.state || !address.postal_code) {
+    if (!address.full_name || !address.email || !address.phone || !address.line1 || !address.city || !address.state || !address.postal_code) {
       toast.error('Please fill all required fields'); return;
     }
     setIsPlacing(true);
@@ -99,6 +102,10 @@ export default function CheckoutPage() {
                   <input className="input-field" value={address.full_name} onChange={(e) => setAddress({ ...address, full_name: e.target.value })} />
                 </div>
                 <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Email *</label>
+                  <input className="input-field" type="email" value={address.email} onChange={(e) => setAddress({ ...address, email: e.target.value })} />
+                </div>
+                <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Phone *</label>
                   <input className="input-field" type="tel" value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
                 </div>
@@ -136,9 +143,7 @@ export default function CheckoutPage() {
               <div className="space-y-3">
                 {[
                   { id: 'cod', label: 'Cash on Delivery', desc: 'Pay when your order arrives', icon: '💵' },
-                  { id: 'upi', label: 'UPI', desc: 'Google Pay, PhonePe, Paytm', icon: '📱' },
                   { id: 'card', label: 'Credit / Debit Card', desc: 'Visa, Mastercard, RuPay', icon: '💳' },
-                  { id: 'netbanking', label: 'Net Banking', desc: 'All major banks supported', icon: '🏦' },
                 ].map((opt) => (
                   <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     payment === opt.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
@@ -152,6 +157,11 @@ export default function CheckoutPage() {
                   </label>
                 ))}
               </div>
+              {payment === 'card' && (
+                <div className="card p-4 border-brand-200 bg-brand-50">
+                  <CardPaymentForm disabled={isPlacing} onChange={setCardData} />
+                </div>
+              )}
               <div className="flex gap-3">
                 <button onClick={() => setStep(1)} className="btn-secondary flex-1">Back</button>
                 <button onClick={handlePlaceOrder} disabled={isPlacing} className="btn-primary flex-1">

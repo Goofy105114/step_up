@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Heart, ShoppingBag, Star, Truck, RotateCcw, Shield, Share2, Minus, Plus, ChevronDown } from 'lucide-react';
@@ -6,8 +7,10 @@ import api from '../lib/api';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { formatPrice, getDiscountPercent } from '../lib/formatters';
+import { setSeoTags, setJsonLd } from '../lib/seo';
 import toast from 'react-hot-toast';
 import ProductCard from '../components/products/ProductCard';
+import SizeGuideModal from '../components/products/SizeGuideModal';
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -17,6 +20,7 @@ export default function ProductPage() {
   const [qty, setQty] = useState(1);
   const [openTab, setOpenTab] = useState<string | null>('description');
   const [wishlisted, setWishlisted] = useState(false);
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem } = useCartStore();
   const { user } = useAuthStore();
 
@@ -29,6 +33,40 @@ export default function ProductPage() {
     enabled: !!product?.category_id,
     queryFn: () => api.get(`/products?category=${product.category_slug}&limit=4`).then((r) => r.data),
   });
+
+  // Set SEO tags
+  useEffect(() => {
+    if (product) {
+      setSeoTags(
+        product.name,
+        product.short_description || product.description?.substring(0, 160),
+        product.images?.[0]?.image_url,
+        window.location.href
+      );
+
+      // JSON-LD structured data
+      setJsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.name,
+        description: product.description,
+        image: product.images?.map((i: any) => i.image_url),
+        brand: { '@type': 'Brand', name: 'StepUp' },
+        offers: {
+          '@type': 'Offer',
+          url: window.location.href,
+          priceCurrency: 'INR',
+          price: product.sale_price || product.base_price,
+          availability: product.stock_qty > 0 ? 'InStock' : 'OutOfStock',
+        },
+        aggregateRating: product.avg_rating ? {
+          '@type': 'AggregateRating',
+          ratingValue: product.avg_rating,
+          reviewCount: product.review_count,
+        } : undefined,
+      });
+    }
+  }, [product]);
 
   if (isLoading) return (
     <div className="container-site py-12 grid md:grid-cols-2 gap-12 animate-pulse">
@@ -164,7 +202,15 @@ export default function ProductPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {colors.map((v: any) => (
-                    <button key={v.color} onClick={() => { setSelColor(v.color); setSelSize(''); }}
+                    <button key={v.color} onClick={() => {
+                      setSelColor(v.color);
+                      setSelSize('');
+                      // swap to image matching this colour if available
+                      const colourImgIdx = (product.images || []).findIndex(
+                        (img: any) => img.alt_text?.toLowerCase().includes(v.color.toLowerCase())
+                      );
+                      if (colourImgIdx >= 0) setImgIdx(colourImgIdx);
+                    }}
                       className={`flex items-center gap-2 px-3 py-2 border text-xs font-medium transition-all ${
                         selColor === v.color ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-500'}`}>
                       <span className="w-4 h-4 rounded-full border border-gray-300 shrink-0"
@@ -183,10 +229,11 @@ export default function ProductPage() {
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-700">
                     Size: <span className="font-normal text-gray-500 normal-case tracking-normal">{selSize || '—'}</span>
                   </p>
-                  <button className="text-xs text-brand-500 hover:underline uppercase tracking-wider">Size Guide</button>
+                  <button onClick={() => setShowSizeGuide(true)}
+                    className="text-xs text-brand-500 hover:underline uppercase tracking-wider">Size Guide</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {[...new Set(sizesForColor.map((v: any) => v.size))].map((size) => {
+                  {([...new Set(sizesForColor.map((v: any) => String(v.size)))] as string[]).map((size: string) => {
                     const v = sizesForColor.find((x: any) => x.size === size) as any;
                     const oos = v?.stock_qty === 0;
                     return (
@@ -320,6 +367,8 @@ export default function ProductPage() {
           </div>
         )}
       </div>
+
+      <SizeGuideModal isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />
     </div>
   );
 }

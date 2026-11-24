@@ -22,8 +22,13 @@ export default function AdminProducts() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold text-gray-900">Products</h1>
-        <span className="text-sm text-gray-500">{data?.data?.length || 0} products</span>
+        <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">Products</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400">{data?.data?.length || 0} products</span>
+          <Link to="/admin/products/new" className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
+            + Add Product
+          </Link>
+        </div>
       </div>
 
       <div className="card overflow-hidden">
@@ -70,8 +75,12 @@ export default function AdminProducts() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <Link to={`/product/${p.slug}`} target="_blank"
-                        className="text-xs text-brand-600 hover:text-brand-800 font-medium">View</Link>
+                      <div className="flex items-center gap-3">
+                        <Link to={`/product/${p.slug}`} target="_blank"
+                          className="text-xs text-brand-600 hover:text-brand-800 font-medium">View</Link>
+                        <Link to={`/admin/products/${p.id}/edit`}
+                          className="text-xs text-gray-500 hover:text-gray-900 font-medium">Edit</Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
