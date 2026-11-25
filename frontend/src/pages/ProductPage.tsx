@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
@@ -13,8 +13,14 @@ export default function ProductPage() {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [addingCart, setAddingCart] = useState(false);
-  const [wishlisted, setWishlisted] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const queryClient = useQueryClient();
+  const { data: wishlistData } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => api.get('/wishlist').then(response => response.data),
+    enabled: !!user,
+  });
+  const wishlisted = wishlistData?.data?.some((item: any) => item.product_id === product?.id) || false;
   const [openSpec, setOpenSpec] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -59,9 +65,9 @@ export default function ProductPage() {
     try {
       if (wishlisted) await api.delete(`/wishlist/${product.id}`);
       else await api.post('/wishlist', { product_id: product.id });
-      setWishlisted(!wishlisted);
+      await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
       toast.success(wishlisted ? 'Removed from wishlist' : 'Saved to wishlist ❤️');
-    } catch {}
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to update wishlist'); }
   };
 
   if (isLoading) return (
