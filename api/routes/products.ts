@@ -8,7 +8,7 @@ router.get('/', async (req: Request, res: Response) => {
   const {
     page = '1', limit = '12', category, search,
     min_price, max_price, sort = 'created_at', order = 'desc',
-    featured, new_arrival, bestseller,
+    featured, new_arrival, bestseller, tags,
   } = req.query as Record<string, string>;
 
   const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -26,6 +26,7 @@ router.get('/', async (req: Request, res: Response) => {
   if (featured === 'true') conditions.push('p.is_featured = true');
   if (new_arrival === 'true') conditions.push('p.is_new_arrival = true');
   if (bestseller === 'true') conditions.push('p.is_bestseller = true');
+  if (tags) { conditions.push(`${pIdx++} = ANY(p.tags)`); params.push(tags); }
 
   const where = `WHERE ${conditions.join(' AND ')}`;
   const sortMap: Record<string, string> = {
