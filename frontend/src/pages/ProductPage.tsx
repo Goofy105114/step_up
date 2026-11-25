@@ -329,7 +329,6 @@ export default function ProductPage() {
           </div>
         </div>
       </section>
-    </div>
       <SizeGuideModal isOpen={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
     </div>
   );
