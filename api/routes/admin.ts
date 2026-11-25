@@ -126,22 +126,22 @@ router.get('/products/:id', async (req: Request, res: Response) => {
 });
 
 router.post('/products', async (req: Request, res: Response) => {
-  const { name, slug, description, short_description, category_id, base_price, sale_price,
-          material, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
+  const { name, slug, description, short_description, category_id, base_price, sale_price, sku,
+          material, care_instructions, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
   if (!name || !slug || !base_price) throw new AppError('Name, slug and base_price required', 400);
   const result = await query(
-    `INSERT INTO products (name,slug,description,short_description,category_id,base_price,sale_price,
-                           material,tags,is_featured,is_new_arrival,is_bestseller)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    `INSERT INTO products (name,slug,description,short_description,category_id,base_price,sale_price,sku,
+                           material,care_instructions,tags,is_featured,is_new_arrival,is_bestseller)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
     [name, slug, description || null, short_description || null, category_id || null,
-     base_price, sale_price || null, material || null, tags || [],
+     base_price, sale_price || null, sku || null, material || null, care_instructions || null, tags || [],
      is_featured || false, is_new_arrival || false, is_bestseller || false]);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
 router.patch('/products/:id', async (req: Request, res: Response) => {
   const fields = ['name','slug','description','short_description','category_id','base_price',
-                  'sale_price','is_active','is_featured','is_new_arrival','is_bestseller','material','tags'];
+                  'sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','tags'];
   const updates: string[] = [];
   const params: unknown[] = [];
   let pIdx = 1;
