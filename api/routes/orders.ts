@@ -23,7 +23,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
     await client.query('BEGIN');
 
-    const cartRes = await client.query('SELECT id FROM carts WHERE user_id=$1 FOR UPDATE', [req.user!.userId]);
+    const cartRes = await client.query('SELECT id FROM carts WHERE user_id=$1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE', [req.user!.userId]);
     if (!cartRes.rows[0]) throw new AppError('Cart is empty', 400);
     const cartId = cartRes.rows[0].id;
 
