@@ -33,6 +33,7 @@ router.post('/intent', authenticate, async (req: Request, res: Response) => {
   const order = orderRes.rows[0];
   if (!order) throw new AppError('Order not found', 404);
   if (order.payment_status === 'paid') throw new AppError('Already paid', 400);
+  if (order.payment_method !== 'card') throw new AppError('This order is not configured for card payment', 400);
   const intent = await stripe.paymentIntents.create({
     amount: Math.round(parseFloat(order.total_amount) * 100),
     currency: 'inr',

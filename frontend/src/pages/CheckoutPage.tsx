@@ -4,7 +4,7 @@ import { useCartStore } from '../store/cartStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
-function fmt(n: number) { return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function fmt(n: number) { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); }
 
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCartStore();
@@ -39,9 +39,14 @@ export default function CheckoutPage() {
   };
 
   const placeOrder = async () => {
-    if (!addr.full_name || !addr.phone || !addr.line1 || !addr.city || !addr.state || !addr.postal_code) {
-      toast.error('Fill all required fields'); return;
+    if (!addr.full_name.trim() || !addr.phone.trim() || !addr.line1.trim() || !addr.city.trim() || !addr.state.trim() || !addr.postal_code.trim()) {
+      toast.error('Complete all required delivery fields'); return;
     }
+    const phoneDigits = addr.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    if (!/^[6-9]\d{9}$/.test(phoneDigits)) { toast.error('Enter a valid 10-digit Indian mobile number'); return; }
+    if (!/^\d{6}$/.test(addr.postal_code.trim())) { toast.error('Enter a valid 6-digit Indian PIN code'); return; }
+    if (addr.country !== 'India') { toast.error('STEPUP currently delivers within India only'); return; }
+    if (payment !== 'cod') { toast.error('Online payments are not enabled yet. Please choose Cash on Delivery.'); return; }
     setPlacing(true);
     try {
       const res = await api.post('/orders', { shipping_address: addr, payment_method: payment, coupon_code: appliedCoupon?.code });
@@ -158,7 +163,7 @@ export default function CheckoutPage() {
                     <label className="label">Mobile Number *</label>
                     <div className="relative">
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">sms</span>
-                      <input type="tel" placeholder="+91 99999 99999" value={addr.phone} onChange={e => setA('phone', e.target.value)} className="input-field pl-12" />
+                      <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="98765 43210" value={addr.phone} onChange={e => setA('phone', e.target.value)} className="input-field pl-12" />
                     </div>
                     <p className="text-body-sm text-outline mt-1">Your order confirmation will be available after checkout.</p>
                   </div>
@@ -180,7 +185,7 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label className="label">Pincode *</label>
-                      <input type="text" placeholder="400001" maxLength={6} value={addr.postal_code} onChange={e => setA('postal_code', e.target.value)} className="input-field" />
+                      <input type="text" placeholder="400001" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => setA('postal_code', e.target.value)} className="input-field" />
                     </div>
                   </div>
                   <button onClick={() => setStep(2)} className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 group mt-2">
@@ -196,19 +201,12 @@ export default function CheckoutPage() {
               <>
                 <div className="card p-space-lg md:p-space-xl">
                   <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-on-surface-variant block mb-space-md">Step 02 • Payment Method</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-sm mb-space-md">
-                    {[
-                      { id: 'cod', icon: 'payments', label: 'Cash on Delivery', sub: 'Pay when order arrives' },
-                      { id: 'card', icon: 'credit_card', label: 'Card Payment', sub: 'Demo only — no charge' },
-                      { id: 'upi', icon: 'phone_iphone', label: 'UPI', sub: 'Demo — no charge' },
-                    ].map(opt => (
-                      <button key={opt.id} onClick={() => setPayment(opt.id)}
-                        className={`flex flex-col items-center justify-center py-space-md px-space-sm rounded-DEFAULT transition-all text-center ${payment === opt.id ? 'bg-primary-container text-on-primary shadow-sm' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>
-                        <span className="material-symbols-outlined text-[22px] mb-1">{opt.icon}</span>
-                        <span className="text-label-md font-semibold">{opt.label}</span>
-                        <span className={`text-[10px] mt-0.5 ${payment === opt.id ? 'text-primary-fixed opacity-90' : 'text-on-surface-variant'}`}>{opt.sub}</span>
-                      </button>
-                    ))}
+                  <div className="mb-space-md rounded-xl border border-outline-variant/40 bg-surface-container-low p-space-md">
+                    <div className="flex items-center gap-space-sm">
+                      <span className="material-symbols-outlined text-[24px] text-primary">payments</span>
+                      <div><p className="text-label-md font-semibold text-on-surface">Cash on Delivery</p><p className="text-body-sm text-on-surface-variant">Pay in Indian Rupees when your order arrives.</p></div>
+                    </div>
+                    <p className="mt-3 text-body-sm text-on-surface-variant">UPI and card payments will be available after a payment gateway is configured. No online payment will be simulated.</p>
                   </div>
                 </div>
 
@@ -233,7 +231,7 @@ export default function CheckoutPage() {
                   {placing ? 'Placing Order...' : `Place Order — ${fmt(total)}`}
                   {!placing && <span className="material-symbols-outlined text-[18px]">arrow_forward</span>}
                 </button>
-                <p className="text-body-sm text-on-surface-variant text-center">🔒 256-bit encrypted secure checkout</p>
+                <p className="text-body-sm text-on-surface-variant text-center">Prices and order totals are displayed in INR (₹).</p>
               </>
             )}
           </div>
@@ -263,7 +261,7 @@ export default function CheckoutPage() {
                   <span>Shipping</span>
                   <span className={shipping === 0 ? 'text-secondary font-semibold' : ''}>{shipping === 0 ? 'FREE' : fmt(shipping)}</span>
                 </div>
-                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Tax (5%)</span><span>{fmt(tax)}</span></div>
+                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Estimated tax (5%)</span><span>{fmt(tax)}</span></div>
                 <div className="flex justify-between text-title-md font-semibold text-on-surface border-t border-outline-variant/20 pt-space-sm">
                   <span>Total</span>
                   <span className="text-headline-sm text-primary">{fmt(total)}</span>
