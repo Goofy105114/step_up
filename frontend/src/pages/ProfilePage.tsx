@@ -70,7 +70,7 @@ export default function ProfilePage() {
                 </div>
                 <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Welcome back, {user.first_name} {user.last_name}</h1>
                 <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs mt-1">
-                  <span className="material-symbols-outlined text-[18px] text-secondary">clinical_notes</span>
+                  <span className="material-symbols-outlined text-[18px] text-secondary">mail</span>
                   {user.email}
                 </p>
               </div>
