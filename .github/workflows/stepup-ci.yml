@@ -7,7 +7,7 @@ on:
     branches: [main, "build/**"]
 
 concurrency:
-  group: stepup-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: stepup-ci-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
