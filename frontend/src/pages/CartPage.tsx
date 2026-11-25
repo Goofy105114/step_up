@@ -1,162 +1,308 @@
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/formatters';
-import { Plus, Minus, ShoppingBag, ArrowRight, Tag, X } from 'lucide-react';
 import { useState } from 'react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
+
+const FREE_SHIPPING_THRESHOLD = 599;
+const SHIPPING_COST = 99;
+
+const trustBadges = [
+  { icon: 'verified', label: 'Verified Products' },
+  { icon: 'replay', label: '30-Day Returns' },
+  { icon: 'lock', label: 'Secure Payment' },
+];
 
 export default function CartPage() {
   const { items, subtotal, updateItem, removeItem } = useCartStore();
   const [coupon, setCoupon] = useState('');
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
-  const shipping = subtotal - discount >= 599 ? 0 : 99;
+  const shipping = subtotal - discount >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
   const tax = (subtotal - discount) * 0.05;
   const total = subtotal - discount + shipping + tax;
 
+  const freeShippingProgress = Math.min(((subtotal - discount) / FREE_SHIPPING_THRESHOLD) * 100, 100);
+  const amountToFreeShipping = Math.max(FREE_SHIPPING_THRESHOLD - (subtotal - discount), 0);
+
   const handleApplyCoupon = async () => {
     if (!coupon.trim()) return;
+    setApplyingCoupon(true);
     try {
       const res = await api.post('/payments/validate-coupon', { code: coupon, subtotal });
       setDiscount(res.data.discount);
       setAppliedCoupon(coupon);
       toast.success(`Coupon applied — you save ${formatPrice(res.data.discount)}!`);
-    } catch { /* handled */ }
+    } catch { /* handled */ } finally {
+      setApplyingCoupon(false);
+    }
   };
 
-  if (items.length === 0) return (
-    <div className="container-site py-24 text-center">
-      <ShoppingBag size={64} className="mx-auto text-gray-200 mb-6" strokeWidth={1} />
-      <h2 className="text-lg font-bold uppercase tracking-widest text-gray-700 mb-2">Your Cart is Empty</h2>
-      <p className="text-sm text-gray-400 mb-8">Looks like you haven't added anything yet.</p>
-      <Link to="/shop" className="btn-primary">Start Shopping</Link>
-    </div>
-  );
+  if (items.length === 0) {
+    return (
+      <div className="bg-surface min-h-[80vh] flex items-center justify-center px-6">
+        <div className="text-center max-w-sm">
+          <div className="w-28 h-28 rounded-full bg-surface-container mx-auto flex items-center justify-center mb-space-xl">
+            <span className="material-symbols-outlined text-[56px] text-on-surface-variant">shopping_bag</span>
+          </div>
+          <h2 className="text-headline-sm text-on-surface mb-space-sm">Your cart is empty</h2>
+          <p className="text-body-md text-on-surface-variant mb-space-xl">
+            Looks like you haven't added anything yet. Discover our latest styles!
+          </p>
+          <Link to="/shop" className="btn-primary">
+            <span className="material-symbols-outlined text-[18px]">storefront</span>
+            Shop Now
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white">
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="container-site py-4 text-xs text-gray-500 flex gap-2">
-          <Link to="/" className="hover:text-brand-500">Home</Link><span>/</span>
-          <span className="text-gray-900 font-semibold uppercase tracking-wider">Shopping Cart</span>
+    <div className="bg-surface min-h-screen">
+      {/* Breadcrumb */}
+      <div className="bg-surface-container-low border-b border-outline/10">
+        <div className="container-site py-space-md">
+          <nav className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
+            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span className="text-on-surface font-semibold">Shopping Cart</span>
+          </nav>
         </div>
       </div>
 
-      <div className="container-site py-10 pb-20">
-        <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900 mb-8">Shopping Cart</h1>
+      <div className="container-site py-space-xl pb-16">
+        <h1 className="text-headline-md text-on-surface mb-space-xl">
+          Shopping Cart
+          <span className="text-body-lg text-on-surface-variant font-normal ml-space-md">
+            ({items.length} {items.length === 1 ? 'item' : 'items'})
+          </span>
+        </h1>
 
-        <div className="grid lg:grid-cols-3 gap-10">
-          {/* Items table */}
-          <div className="lg:col-span-2">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b-2 border-gray-900">
-                  <th className="text-left pb-3 text-xs uppercase tracking-widest font-bold text-gray-700">Product</th>
-                  <th className="text-center pb-3 text-xs uppercase tracking-widest font-bold text-gray-700 hidden sm:table-cell">Price</th>
-                  <th className="text-center pb-3 text-xs uppercase tracking-widest font-bold text-gray-700">Qty</th>
-                  <th className="text-right pb-3 text-xs uppercase tracking-widest font-bold text-gray-700">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {items.map((item) => (
-                  <tr key={item.id} className="group">
-                    <td className="py-5 pr-4">
-                      <div className="flex items-center gap-4">
-                        <button onClick={() => removeItem(item.id)}
-                          className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
-                          <X size={14} />
-                        </button>
-                        <div className="w-16 h-16 border border-gray-100 overflow-hidden shrink-0 bg-gray-50">
-                          {item.image_url && <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />}
-                        </div>
-                        <div>
-                          <Link to={`/product/${item.slug}`} className="font-semibold text-gray-900 hover:text-brand-500 transition-colors text-xs uppercase tracking-wide leading-snug line-clamp-2">
-                            {item.name}
-                          </Link>
-                          <p className="text-xs text-gray-400 mt-1">{item.size} / {item.color}</p>
+        <div className="grid lg:grid-cols-3 gap-space-xl">
+          {/* ── Left: Cart items ── */}
+          <div className="lg:col-span-2 space-y-space-md">
+            {/* Free shipping progress */}
+            <div className="card p-space-lg">
+              <div className="flex items-center justify-between mb-space-sm">
+                <div className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[18px] text-primary">local_shipping</span>
+                  {amountToFreeShipping > 0 ? (
+                    <span>Add <strong className="text-primary">{formatPrice(amountToFreeShipping)}</strong> more for free shipping</span>
+                  ) : (
+                    <span className="text-primary font-semibold">🎉 You've unlocked free shipping!</span>
+                  )}
+                </div>
+                <span className="text-label-badge text-on-surface-variant">{Math.round(freeShippingProgress)}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-container-low overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${freeShippingProgress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Cart items */}
+            {items.map((item) => (
+              <div key={item.id} className="card p-space-md">
+                <div className="flex gap-space-md">
+                  {/* Image */}
+                  <div className="w-[100px] h-[100px] rounded-DEFAULT overflow-hidden bg-surface-container shrink-0">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[36px] text-outline">photo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-space-sm">
+                      <div className="min-w-0">
+                        <Link
+                          to={`/product/${item.slug}`}
+                          className="text-title-md font-semibold text-on-surface hover:text-primary transition-colors line-clamp-2 leading-snug block"
+                        >
+                          {item.name}
+                        </Link>
+                        {/* Size & Color tags */}
+                        <div className="flex flex-wrap gap-space-xs mt-space-sm">
+                          {item.size && (
+                            <span className="inline-flex items-center px-space-sm py-0.5 rounded-full bg-surface-container text-label-badge text-on-surface-variant">
+                              Size: {item.size}
+                            </span>
+                          )}
+                          {item.color && (
+                            <span className="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-surface-container text-label-badge text-on-surface-variant">
+                              {item.color_hex && (
+                                <span
+                                  className="w-2 h-2 rounded-full border border-outline/20"
+                                  style={{ background: item.color_hex }}
+                                />
+                              )}
+                              {item.color}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </td>
-                    <td className="py-5 text-center text-sm text-gray-600 hidden sm:table-cell">
-                      {formatPrice(item.unit_price)}
-                    </td>
-                    <td className="py-5 text-center">
-                      <div className="inline-flex items-center border border-gray-200">
-                        <button onClick={() => updateItem(item.id, item.quantity - 1)}
-                          className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                          <Minus size={12} />
+                      {/* Remove */}
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors shrink-0"
+                        aria-label="Remove item"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+
+                    {/* Qty + price row */}
+                    <div className="flex items-center justify-between mt-space-md">
+                      {/* Qty stepper */}
+                      <div className="inline-flex items-center gap-space-xs rounded-full bg-surface-container p-1">
+                        <button
+                          onClick={() => updateItem(item.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
+                          aria-label="Decrease quantity"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">remove</span>
                         </button>
-                        <span className="w-9 text-center text-xs font-semibold border-x border-gray-200 py-2">{item.quantity}</span>
-                        <button onClick={() => updateItem(item.id, item.quantity + 1)}
+                        <span className="text-title-md font-semibold text-on-surface w-8 text-center tabular-nums">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateItem(item.id, item.quantity + 1)}
                           disabled={item.quantity >= item.stock_qty}
-                          className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-30">
-                          <Plus size={12} />
+                          className="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
+                          aria-label="Increase quantity"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">add</span>
                         </button>
                       </div>
-                    </td>
-                    <td className="py-5 text-right font-bold text-gray-900 text-sm">
-                      {formatPrice(item.unit_price * item.quantity)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+                      {/* Price */}
+                      <div className="text-right">
+                        <p className="text-title-md font-semibold text-primary">
+                          {formatPrice(item.unit_price * item.quantity)}
+                        </p>
+                        {item.quantity > 1 && (
+                          <p className="text-body-sm text-on-surface-variant">
+                            {formatPrice(item.unit_price)} each
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
 
             {/* Coupon */}
-            <div className="flex gap-0 mt-8 border-t border-gray-200 pt-6">
-              <div className="relative flex-1">
-                <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                  placeholder="Coupon code" className="input-field pl-9 text-xs py-3 uppercase tracking-widest" />
+            <div className="card p-space-lg">
+              <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
+                <span className="material-symbols-outlined text-[18px] text-primary">sell</span>
+                Have a coupon?
+              </h3>
+              <div className="flex gap-space-sm">
+                <input
+                  value={coupon}
+                  onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+                  placeholder="Enter coupon code"
+                  className="input-field flex-1 uppercase tracking-widest text-label-md"
+                />
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={applyingCoupon || !coupon.trim()}
+                  className="btn-primary shrink-0 disabled:opacity-50"
+                >
+                  {applyingCoupon ? 'Applying…' : 'Apply'}
+                </button>
               </div>
-              <button onClick={handleApplyCoupon} className="btn-primary px-6 py-3 text-xs">Apply</button>
+              {appliedCoupon && (
+                <p className="text-body-sm text-primary mt-space-sm flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  Coupon "{appliedCoupon}" applied
+                </p>
+              )}
             </div>
-            {appliedCoupon && (
-              <p className="text-xs text-green-600 mt-2 flex items-center gap-1">✓ Coupon "{appliedCoupon}" applied</p>
-            )}
           </div>
 
-          {/* Summary */}
+          {/* ── Right: Order summary ── */}
           <div className="lg:col-span-1">
-            <div className="border border-gray-200 p-6 space-y-4 sticky top-24">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-900 pb-3 border-b border-gray-200">
-                Order Summary
-              </h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between text-gray-600">
-                  <span className="text-xs uppercase tracking-wider">Subtotal</span>
-                  <span className="font-semibold">{formatPrice(subtotal)}</span>
+            <div className="card p-space-lg sticky top-24 space-y-space-md">
+              <h2 className="text-headline-sm text-on-surface">Your Order</h2>
+
+              {/* Line items */}
+              <div className="space-y-space-sm">
+                <div className="flex justify-between text-body-md text-on-surface-variant">
+                  <span>Subtotal ({items.length} items)</span>
+                  <span className="font-semibold text-on-surface">{formatPrice(subtotal)}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between text-green-600 text-xs">
-                    <span className="uppercase tracking-wider">Discount</span>
+                  <div className="flex justify-between text-body-md text-primary">
+                    <span>Coupon discount</span>
                     <span className="font-semibold">−{formatPrice(discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600">
-                  <span className="text-xs uppercase tracking-wider">Shipping</span>
-                  <span className="font-semibold">{shipping === 0 ? <span className="text-green-600">Free</span> : formatPrice(shipping)}</span>
+                <div className="flex justify-between text-body-md text-on-surface-variant">
+                  <span>Shipping</span>
+                  {shipping === 0 ? (
+                    <span className="font-semibold text-primary">FREE</span>
+                  ) : (
+                    <span className="font-semibold text-on-surface">{formatPrice(shipping)}</span>
+                  )}
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span className="text-xs uppercase tracking-wider">GST (5%)</span>
-                  <span className="font-semibold">{formatPrice(tax)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-3 text-base">
-                  <span className="text-xs uppercase tracking-widest">Total</span>
-                  <span>{formatPrice(total)}</span>
+                <div className="flex justify-between text-body-md text-on-surface-variant">
+                  <span>GST (5%)</span>
+                  <span className="font-semibold text-on-surface">{formatPrice(tax)}</span>
                 </div>
               </div>
-              {subtotal < 599 && (
-                <div className="bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-500 text-center">
-                  Add {formatPrice(599 - subtotal)} more for free shipping
+
+              <div className="border-t border-outline/10 pt-space-md">
+                <div className="flex justify-between items-center">
+                  <span className="text-title-md font-semibold text-on-surface">Total</span>
+                  <span className="text-headline-sm font-bold text-primary">{formatPrice(total)}</span>
                 </div>
-              )}
-              <Link to="/checkout" className="btn-primary w-full text-center block py-3.5 flex items-center justify-center gap-2">
-                Proceed to Checkout <ArrowRight size={14} />
+                {discount > 0 && (
+                  <p className="text-body-sm text-primary mt-space-xs">
+                    You're saving {formatPrice(discount)} with your coupon!
+                  </p>
+                )}
+              </div>
+
+              {/* CTA */}
+              <Link
+                to="/checkout"
+                className="btn-primary w-full h-[52px] text-label-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">shopping_cart_checkout</span>
+                Proceed to Checkout
               </Link>
-              <Link to="/shop" className="btn-outline w-full text-center block py-3 text-xs">Continue Shopping</Link>
+              <Link to="/shop" className="btn-outline w-full h-[44px] text-label-badge">
+                Continue Shopping
+              </Link>
+
+              {/* Trust badges */}
+              <div className="border-t border-outline/10 pt-space-md">
+                <div className="grid grid-cols-3 gap-space-sm">
+                  {trustBadges.map((badge) => (
+                    <div key={badge.icon} className="flex flex-col items-center gap-space-xs text-center">
+                      <div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[18px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {badge.icon}
+                        </span>
+                      </div>
+                      <span className="text-label-badge text-on-surface-variant leading-tight">{badge.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

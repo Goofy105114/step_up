@@ -1,17 +1,14 @@
 import { useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { SlidersHorizontal, ChevronDown, X, Grid3X3, LayoutList } from 'lucide-react';
 import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
 
 const sortOptions = [
-  { label: 'Default Sorting', value: 'created_at:desc' },
-  { label: 'Newest First', value: 'created_at:asc' },
+  { label: 'Newest', value: 'created_at:desc' },
   { label: 'Price: Low → High', value: 'price:asc' },
   { label: 'Price: High → Low', value: 'price:desc' },
   { label: 'Top Rated', value: 'rating:desc' },
-  { label: 'Name A–Z', value: 'name:asc' },
 ];
 
 const priceRanges = [
@@ -22,6 +19,16 @@ const priceRanges = [
   { label: 'Above ₹5,000', min: '5000', max: '999999' },
 ];
 
+const categories = [
+  { label: "Men's", value: 'mens' },
+  { label: "Women's", value: 'womens' },
+  { label: "Kids'", value: 'kids' },
+  { label: 'Sports', value: 'sports' },
+  { label: 'Casual', value: 'casual' },
+  { label: 'Formal', value: 'formal' },
+  { label: 'Sandals', value: 'sandals' },
+];
+
 const catLabels: Record<string, string> = {
   mens: "Men's Footwear", womens: "Women's Footwear", kids: "Kids' Footwear",
   sports: 'Sports & Athletic', casual: 'Casual', formal: 'Formal', sandals: 'Sandals & Slippers',
@@ -30,8 +37,7 @@ const catLabels: Record<string, string> = {
 export default function ShopPage() {
   const { category } = useParams();
   const [sp, setSp] = useSearchParams();
-  const [showFilters, setShowFilters] = useState(false);
-  const [cols, setCols] = useState<4 | 3>(4);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const page = parseInt(sp.get('page') || '1');
   const sort = sp.get('sort') || 'created_at:desc';
@@ -43,11 +49,13 @@ export default function ShopPage() {
   const bestseller = sp.get('bestseller') || '';
   const [sortKey, sortOrder] = sort.split(':');
 
+  const LIMIT = 12;
+
   const { data, isLoading } = useQuery({
     queryKey: ['products', category, page, sort, search, minPrice, maxPrice, featured, newArrival, bestseller],
     queryFn: () => {
       const p = new URLSearchParams({
-        limit: '12', page: String(page), sort: sortKey, order: sortOrder,
+        limit: String(LIMIT), page: String(page), sort: sortKey, order: sortOrder,
         ...(category && { category }),
         ...(search && { search }),
         ...(minPrice && { min_price: minPrice }),
@@ -74,149 +82,317 @@ export default function ShopPage() {
     : bestseller === 'true' ? 'Bestsellers'
     : 'All Products';
 
+  const totalPages = data?.pagination?.pages || 1;
+  const totalProducts = data?.pagination?.total || 0;
+
+  // Active filter chips
+  const activeFilters: { label: string; clear: () => void }[] = [];
+  if (minPrice || maxPrice) {
+    const rangeLabel = priceRanges.find(r => r.min === minPrice && r.max === maxPrice)?.label || 'Custom price';
+    activeFilters.push({ label: rangeLabel, clear: () => { setParam('min_price', null); setParam('max_price', null); } });
+  }
+  if (featured === 'true') activeFilters.push({ label: 'Featured', clear: () => setParam('featured', null) });
+  if (newArrival === 'true') activeFilters.push({ label: 'New Arrivals', clear: () => setParam('new_arrival', null) });
+  if (bestseller === 'true') activeFilters.push({ label: 'Bestsellers', clear: () => setParam('bestseller', null) });
+  if (search) activeFilters.push({ label: `"${search}"`, clear: () => setParam('search', null) });
+
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-surface min-h-screen">
       {/* Breadcrumb */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="container-site py-4 flex items-center gap-2 text-xs text-gray-500">
-          <Link to="/" className="hover:text-brand-500 transition-colors">Home</Link>
-          <span>/</span>
-          {category && <><Link to="/shop" className="hover:text-brand-500 transition-colors">Shop</Link><span>/</span></>}
-          <span className="text-gray-900 font-semibold uppercase tracking-wider">{title}</span>
+      <div className="bg-surface-container-low border-b border-outline/10">
+        <div className="container-site py-space-md">
+          <nav className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
+            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            {category && (
+              <>
+                <Link to="/shop" className="hover:text-primary transition-colors">Shop</Link>
+                <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+              </>
+            )}
+            <span className="text-on-surface font-semibold">{title}</span>
+          </nav>
         </div>
       </div>
 
-      <div className="container-site py-10">
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-5 border-b border-gray-200">
+      <div className="container-site py-space-xl">
+        {/* Header row */}
+        <div className="flex flex-wrap items-start justify-between gap-space-md mb-space-lg">
           <div>
-            <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">{title}</h1>
-            {data && <p className="text-xs text-gray-400 mt-0.5">{data.pagination?.total} products found</p>}
+            <h1 className="text-headline-sm text-on-surface">{title}</h1>
+            {!isLoading && (
+              <p className="text-body-sm text-on-surface-variant mt-space-xs">
+                {totalProducts} {totalProducts === 1 ? 'product' : 'products'} found
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-3">
-            {/* Sort */}
-            <div className="relative group">
-              <button className="flex items-center gap-2 border border-gray-300 px-4 py-2 text-xs uppercase tracking-wider hover:border-gray-900 transition-colors">
-                {sortOptions.find((s) => s.value === sort)?.label || 'Sort by'}
-                <ChevronDown size={12} />
-              </button>
-              <div className="absolute right-0 top-full mt-px w-52 bg-white border border-gray-200 shadow-lg py-1 z-30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                {sortOptions.map((opt) => (
-                  <button key={opt.value} onClick={() => setParam('sort', opt.value)}
-                    className={`w-full text-left px-4 py-2.5 text-xs hover:bg-gray-50 transition-colors ${sort === opt.value ? 'text-brand-500 font-semibold' : 'text-gray-700'}`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Filter toggle */}
-            <button onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 border border-gray-300 px-4 py-2 text-xs uppercase tracking-wider hover:border-gray-900 transition-colors">
-              <SlidersHorizontal size={13} /> Filters
-            </button>
-
-            {/* Grid/list */}
-            <div className="hidden md:flex items-center border border-gray-200">
-              <button onClick={() => setCols(4)} className={`p-2 transition-colors ${cols === 4 ? 'bg-gray-900 text-white' : 'hover:bg-gray-50 text-gray-500'}`}>
-                <Grid3X3 size={15} />
-              </button>
-              <button onClick={() => setCols(3)} className={`p-2 transition-colors ${cols === 3 ? 'bg-gray-900 text-white' : 'hover:bg-gray-50 text-gray-500'}`}>
-                <LayoutList size={15} />
-              </button>
-            </div>
-          </div>
+          {/* Mobile filter toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden btn-outline gap-space-xs"
+          >
+            <span className="material-symbols-outlined text-[18px]">tune</span>
+            Filters
+          </button>
         </div>
 
-        {/* Filter panel */}
-        {showFilters && (
-          <div className="bg-gray-50 border border-gray-200 p-6 mb-6 animate-slide-up">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Price */}
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-700 mb-3">Price Range</p>
-                <div className="space-y-2">
-                  {priceRanges.map((r) => (
-                    <label key={r.label} className="flex items-center gap-2 cursor-pointer group">
-                      <input type="radio" name="price" onChange={() => { setParam('min_price', r.min || null); setParam('max_price', r.max || null); }}
-                        checked={minPrice === r.min && maxPrice === r.max}
-                        className="accent-brand-500 cursor-pointer" />
-                      <span className="text-xs text-gray-600 group-hover:text-brand-500 transition-colors">{r.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              {/* Collections */}
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-700 mb-3">Collections</p>
-                <div className="space-y-2">
-                  {[['Featured', 'featured'], ['New Arrivals', 'new_arrival'], ['Bestsellers', 'bestseller']].map(([label, key]) => (
-                    <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                      <input type="checkbox" checked={sp.get(key) === 'true'}
-                        onChange={(e) => setParam(key, e.target.checked ? 'true' : null)}
-                        className="accent-brand-500 cursor-pointer" />
-                      <span className="text-xs text-gray-600 group-hover:text-brand-500 transition-colors">{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <button onClick={() => { setSp({}); }}
-              className="mt-5 text-xs text-brand-500 hover:text-brand-700 font-semibold flex items-center gap-1 uppercase tracking-wider">
-              <X size={12} /> Clear All Filters
+        {/* Active filter chips */}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-space-sm mb-space-lg">
+            <span className="text-label-md text-on-surface-variant">Active:</span>
+            {activeFilters.map((f) => (
+              <button
+                key={f.label}
+                onClick={f.clear}
+                className="inline-flex items-center gap-1 px-space-md py-1 rounded-full bg-primary-container text-on-primary text-label-badge hover:bg-primary transition-colors"
+              >
+                {f.label}
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setSp({})}
+              className="text-body-sm text-on-surface-variant hover:text-error transition-colors underline"
+            >
+              Clear all
             </button>
           </div>
         )}
 
-        {/* Products */}
-        {isLoading ? (
-          <div className={`grid grid-cols-2 md:grid-cols-${cols} gap-5`}>
-            {Array(12).fill(0).map((_, i) => (
-              <div key={i} className="border border-gray-100">
-                <div className="skeleton aspect-square" />
-                <div className="p-4 space-y-2 text-center">
-                  <div className="skeleton h-3 w-1/2 mx-auto" />
-                  <div className="skeleton h-4 w-3/4 mx-auto" />
-                  <div className="skeleton h-4 w-1/4 mx-auto" />
+        <div className="flex gap-space-xl">
+          {/* ── Sidebar ── */}
+          <aside className={`w-64 shrink-0 ${sidebarOpen ? 'block' : 'hidden'} lg:block`}>
+            <div className="sticky top-24 space-y-space-md">
+              {/* Sort */}
+              <div className="card p-space-lg">
+                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
+                  <span className="material-symbols-outlined text-[18px] text-primary">swap_vert</span>
+                  Sort By
+                </h3>
+                <div className="flex flex-wrap gap-space-sm">
+                  {sortOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setParam('sort', opt.value)}
+                      className={`px-space-md py-1.5 rounded-full text-label-badge transition-all ${
+                        sort === opt.value
+                          ? 'bg-primary-container text-on-primary'
+                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : !data?.data?.length ? (
-          <div className="text-center py-24">
-            <p className="text-6xl mb-6">👟</p>
-            <h3 className="text-lg font-bold uppercase tracking-widest text-gray-700 mb-2">No Products Found</h3>
-            <p className="text-sm text-gray-400 mb-6">Try adjusting your filters or search term</p>
-            <Link to="/shop" className="btn-outline">Browse All Products</Link>
-          </div>
-        ) : (
-          <>
-            <div className={`grid grid-cols-2 md:grid-cols-${cols} gap-5`}>
-              {data.data.map((p: any) => <ProductCard key={p.id} product={p} />)}
-            </div>
 
-            {/* Pagination */}
-            {data.pagination?.pages > 1 && (
-              <div className="flex justify-center items-center gap-1 mt-10">
-                <button onClick={() => setParam('page', String(page - 1))} disabled={page === 1}
-                  className="w-10 h-10 border border-gray-300 flex items-center justify-center hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-colors disabled:opacity-30 text-sm">
-                  ‹
-                </button>
-                {Array.from({ length: data.pagination.pages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setParam('page', String(p))}
-                    className={`w-10 h-10 border text-sm font-medium transition-colors ${
-                      page === p ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 hover:bg-gray-900 hover:text-white hover:border-gray-900'}`}>
-                    {p}
-                  </button>
-                ))}
-                <button onClick={() => setParam('page', String(page + 1))} disabled={page === data.pagination.pages}
-                  className="w-10 h-10 border border-gray-300 flex items-center justify-center hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-colors disabled:opacity-30 text-sm">
-                  ›
-                </button>
+              {/* Categories */}
+              <div className="card p-space-lg">
+                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
+                  <span className="material-symbols-outlined text-[18px] text-primary">category</span>
+                  Category
+                </h3>
+                <div className="space-y-space-sm">
+                  <label className="flex items-center gap-space-sm cursor-pointer group">
+                    <input
+                      type="radio" name="cat" checked={!category}
+                      onChange={() => setSp({})}
+                      className="sr-only"
+                    />
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      !category ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'
+                    }`}>
+                      {!category && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </span>
+                    <span className={`text-body-sm transition-colors ${!category ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
+                      All Products
+                    </span>
+                  </label>
+                  {categories.map((cat) => (
+                    <label key={cat.value} className="flex items-center gap-space-sm cursor-pointer group">
+                      <input
+                        type="radio" name="cat" checked={category === cat.value}
+                        onChange={() => window.location.href = `/shop/${cat.value}`}
+                        className="sr-only"
+                      />
+                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        category === cat.value ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'
+                      }`}>
+                        {category === cat.value && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span className={`text-body-sm transition-colors ${category === cat.value ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
+                        {cat.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
+
+              {/* Price Range */}
+              <div className="card p-space-lg">
+                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
+                  <span className="material-symbols-outlined text-[18px] text-primary">sell</span>
+                  Price Range
+                </h3>
+                <div className="space-y-space-sm">
+                  {priceRanges.map((r) => (
+                    <label key={r.label} className="flex items-center gap-space-sm cursor-pointer group">
+                      <input
+                        type="radio" name="price"
+                        checked={minPrice === r.min && maxPrice === r.max}
+                        onChange={() => { setParam('min_price', r.min || null); setParam('max_price', r.max || null); }}
+                        className="sr-only"
+                      />
+                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        minPrice === r.min && maxPrice === r.max
+                          ? 'border-primary bg-primary'
+                          : 'border-outline-variant group-hover:border-primary'
+                      }`}>
+                        {minPrice === r.min && maxPrice === r.max && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span className={`text-body-sm transition-colors ${
+                        minPrice === r.min && maxPrice === r.max ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'
+                      }`}>
+                        {r.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Collections */}
+              <div className="card p-space-lg">
+                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
+                  <span className="material-symbols-outlined text-[18px] text-primary">collections_bookmark</span>
+                  Collections
+                </h3>
+                <div className="space-y-space-sm">
+                  {([
+                    ['Featured', 'featured', 'star'],
+                    ['New Arrivals', 'new_arrival', 'new_releases'],
+                    ['Bestsellers', 'bestseller', 'trending_up'],
+                  ] as [string, string, string][]).map(([label, key, icon]) => (
+                    <label key={key} className="flex items-center gap-space-sm cursor-pointer group">
+                      <input
+                        type="checkbox" checked={sp.get(key) === 'true'}
+                        onChange={(e) => setParam(key, e.target.checked ? 'true' : null)}
+                        className="sr-only"
+                      />
+                      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                        sp.get(key) === 'true' ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'
+                      }`}>
+                        {sp.get(key) === 'true' && (
+                          <span className="material-symbols-outlined text-white text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                        )}
+                      </span>
+                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">{icon}</span>
+                      <span className={`text-body-sm transition-colors ${sp.get(key) === 'true' ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
+                        {label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Clear */}
+              {activeFilters.length > 0 && (
+                <button
+                  onClick={() => setSp({})}
+                  className="w-full btn-outline text-label-badge gap-space-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+          </aside>
+
+          {/* ── Main content ── */}
+          <div className="flex-1 min-w-0">
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+                {Array(9).fill(0).map((_, i) => (
+                  <div key={i} className="card overflow-hidden animate-pulse">
+                    <div className="aspect-[4/5] bg-surface-container" />
+                    <div className="p-space-md space-y-space-sm">
+                      <div className="h-3 w-1/2 rounded-full bg-surface-container" />
+                      <div className="h-4 w-3/4 rounded-full bg-surface-container" />
+                      <div className="h-4 w-1/4 rounded-full bg-surface-container" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : !data?.data?.length ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-24 h-24 rounded-full bg-surface-container flex items-center justify-center mb-space-lg">
+                  <span className="material-symbols-outlined text-[48px] text-on-surface-variant">search_off</span>
+                </div>
+                <h3 className="text-headline-sm text-on-surface mb-space-sm">No Products Found</h3>
+                <p className="text-body-md text-on-surface-variant mb-space-xl max-w-sm">
+                  Try adjusting your filters or search term to discover more products.
+                </p>
+                <Link to="/shop" className="btn-primary">
+                  <span className="material-symbols-outlined text-[18px]">storefront</span>
+                  Browse All Products
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+                  {data.data.map((p: any) => <ProductCard key={p.id} product={p} />)}
+                </div>
+
+                {/* Load more / Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-space-xl flex flex-col items-center gap-space-md">
+                    {page < totalPages && (
+                      <button
+                        onClick={() => setParam('page', String(page + 1))}
+                        className="btn-primary gap-space-sm"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                        Load More Products
+                      </button>
+                    )}
+                    <div className="flex items-center gap-space-xs">
+                      <button
+                        onClick={() => setParam('page', String(page - 1))}
+                        disabled={page === 1}
+                        className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setParam('page', String(p))}
+                          className={`w-9 h-9 rounded-full text-label-md transition-colors ${
+                            page === p
+                              ? 'bg-primary-container text-on-primary'
+                              : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setParam('page', String(page + 1))}
+                        disabled={page === totalPages}
+                        className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                      </button>
+                    </div>
+                    <p className="text-body-sm text-on-surface-variant">
+                      Page {page} of {totalPages}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );
