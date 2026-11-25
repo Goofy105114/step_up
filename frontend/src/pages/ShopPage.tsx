@@ -22,16 +22,20 @@ export default function ShopPage() {
   const [category, setCategory] = useState(paramCategory || '');
   const [sort, setSort] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [page, setPage] = useState(1);
   const [allProducts, setAllProducts] = useState<any[]>([]);
 
   useEffect(() => { setCategory(paramCategory || ''); setPage(1); setAllProducts([]); }, [paramCategory]);
-  useEffect(() => { setPage(1); setAllProducts([]); }, [category, sort, search]);
+  useEffect(() => { setPage(1); setAllProducts([]); }, [category, sort, search, minPrice, maxPrice]);
 
   const buildQuery = (p = page) => {
     const params: Record<string, string> = { limit: '12', page: String(p) };
     if (category) params.category = category;
     if (search) params.search = search;
+    if (minPrice) params.min_price = minPrice;
+    if (maxPrice) params.max_price = maxPrice;
     if (sort === 'price_asc') { params.sort = 'price'; params.order = 'asc'; }
     if (sort === 'price_desc') { params.sort = 'price'; params.order = 'desc'; }
     if (sort === 'rating') { params.sort = 'rating'; params.order = 'desc'; }
@@ -39,7 +43,7 @@ export default function ShopPage() {
   };
 
   const { data, isFetching } = useQuery({
-    queryKey: ['products', 'shop', category, sort, search, page],
+    queryKey: ['products', 'shop', category, sort, search, minPrice, maxPrice, page],
     queryFn: () => api.get(`/products?${buildQuery()}`).then(r => r.data),
   } as any);
 
@@ -113,7 +117,7 @@ export default function ShopPage() {
                   <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
                   <h2 className="text-title-md font-semibold text-primary">Filters &amp; Specs</h2>
                 </div>
-                <button onClick={() => { setCategory(''); setSort(''); setSearch(''); }} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
+                <button onClick={() => { setCategory(''); setSort(''); setSearch(''); setMinPrice(''); setMaxPrice(''); }} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
               </div>
 
               {/* Search */}
@@ -126,6 +130,15 @@ export default function ShopPage() {
                       className="input-field pl-10 h-11 text-body-sm" />
                   </div>
                 </form>
+              </div>
+
+              {/* Price range */}
+              <div className="mb-space-md">
+                <label className="label">Price range (₹)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" min="0" inputMode="numeric" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="input-field h-10 text-body-sm" />
+                  <input type="number" min="0" inputMode="numeric" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="input-field h-10 text-body-sm" />
+                </div>
               </div>
 
               {/* Categories */}
@@ -184,7 +197,7 @@ export default function ShopPage() {
                   <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">search_off</span>
                   <h3 className="text-headline-sm font-semibold text-primary mb-space-sm">No products found</h3>
                   <p className="text-body-md text-on-surface-variant mb-space-lg">Try adjusting your filters or search term</p>
-                  <button onClick={() => { setCategory(''); setSort(''); setSearch(''); }} className="btn-primary">Clear Filters</button>
+                  <button onClick={() => { setCategory(''); setSort(''); setSearch(''); setMinPrice(''); setMaxPrice(''); }} className="btn-primary">Clear Filters</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-space-md md:gap-space-lg">
