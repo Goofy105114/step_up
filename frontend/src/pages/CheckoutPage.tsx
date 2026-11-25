@@ -69,10 +69,10 @@ export default function CheckoutPage() {
               <div>
                 <div className="flex flex-wrap items-center gap-space-xs mb-2">
                   <span className="bg-primary-fixed text-on-primary-fixed text-label-badge font-bold px-space-sm py-0.5 rounded-full uppercase">Order Confirmed</span>
-                  <span className="bg-surface-container text-on-surface-variant text-label-badge font-bold px-space-sm py-0.5 rounded-full uppercase tracking-wider"></span>
+                  
                 </div>
-                <h1 className="text-headline-lg font-semibold text-primary tracking-tight mb-2">Order {orderId} Confirmed!</h1>
-                <p className="text-body-lg text-on-surface-variant">Thank you! Your footwear is being prepared for dispatch.</p>
+                <h1 className="text-headline-lg font-semibold text-primary tracking-tight mb-2">Order {orderId} placed</h1>
+                <p className="text-body-lg text-on-surface-variant">Your order has been received. Payment and fulfilment status will be available in My Orders.</p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-space-md">
@@ -104,9 +104,9 @@ export default function CheckoutPage() {
             <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Checkout</h1>
           </div>
           <div className="flex items-center gap-space-md text-on-surface-variant text-body-sm">
-            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-secondary text-[18px]">lock</span> 256-Bit SSL</span>
+            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-secondary text-[18px]">lock</span> Secure checkout</span>
             <span className="opacity-30">•</span>
-            <span className="flex items-center gap-1.5 text-primary font-semibold"><span className="material-symbols-outlined text-primary text-[18px]">verified</span> </span>
+            
           </div>
         </div>
         {/* Step indicator */}
