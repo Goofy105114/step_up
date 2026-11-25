@@ -15,7 +15,6 @@ export default function ProductPage() {
   const [addingCart, setAddingCart] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
-  const [heatmap, setHeatmap] = useState(false);
   const [openSpec, setOpenSpec] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -138,33 +137,12 @@ export default function ProductPage() {
                 )}
               </div>
 
-              {/* Heatmap toggle */}
-              <div className="absolute top-space-md right-space-md z-10">
-                <button onClick={() => setHeatmap(!heatmap)}
-                  className="inline-flex items-center gap-1.5 px-space-md py-2 rounded-full text-label-md font-semibold bg-surface-container hover:bg-surface-container-high text-primary shadow-sm transition-all">
-                  <span className="material-symbols-outlined text-[16px] text-secondary">thermostat</span>
-                  {heatmap ? 'View Product' : 'View Pressure Map'}
-                </button>
-              </div>
-
-              {!heatmap ? (
-                <img src={images[activeImg] || ''}
-                  alt={product.name}
-                  className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
+              {images[activeImg] ? (
+                <img src={images[activeImg]} alt={product.name} className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-space-lg text-center">
-                  <svg className="w-full max-w-[300px] max-h-[280px] text-primary" fill="none" viewBox="0 0 200 320">
-                    <path d="M60 20 C110 15, 145 40, 145 90 C145 140, 150 170, 140 210 C130 250, 125 310, 95 325 C65 330, 45 305, 45 250 C45 200, 35 150, 38 100 C40 60, 45 25, 60 20 Z" fill="#E4E2DF" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2"/>
-                    <circle cx="85" cy="275" fill="#8ed4c4" fillOpacity="0.45" r="28"/>
-                    <circle cx="85" cy="275" fill="#006b5f" fillOpacity="0.8" r="16"/>
-                    <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="85" y="278">ILLUSTRATIVE</text>
-                    <path d="M48 140 C52 110, 75 120, 85 145 C95 170, 70 210, 52 200 Z" fill="#6df5e1" fillOpacity="0.6"/>
-                    <text fill="#004339" fontSize="7" fontWeight="700" textAnchor="middle" x="75" y="170">ARCH REST</text>
-                    <ellipse cx="95" cy="85" fill="#8ed4c4" fillOpacity="0.5" rx="35" ry="25"/>
-                    <ellipse cx="95" cy="85" fill="#006b5f" fillOpacity="0.75" rx="20" ry="14"/>
-                    <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="95" y="88">LOAD BALANCE</text>
-                  </svg>
-                  <p className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary mt-space-sm">Illustrative graphic only — no measured gait data is available for this product.</p>
+                <div className="flex min-h-[420px] w-full flex-col items-center justify-center gap-3 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-5xl text-outline-variant">image</span>
+                  <span className="text-sm">No product images available</span>
                 </div>
               )}
 
