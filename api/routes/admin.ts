@@ -351,4 +351,15 @@ router.delete('/lab-settings/:id', authorize('admin'), async (req: Request, res:
   return res.json({ success: true });
 });
 
+/* ── Self-reported fit profiles ─────────────────────────────────────── */
+router.get('/patient-fit-profiles', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT p.id,p.user_id,p.foot_length_mm,p.usual_size,p.arch_preference,p.comfort_focus,
+       p.daily_activity,p.consent_at,p.updated_at,u.first_name,u.last_name,u.email
+     FROM patient_fit_profiles p
+     JOIN users u ON u.id=p.user_id
+     ORDER BY p.updated_at DESC`);
+  return res.json({ success: true, data: result.rows });
+});
+
 export default router;
