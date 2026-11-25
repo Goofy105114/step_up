@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 import Layout from './components/layout/Layout';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
+import ShopByConditionPage from './pages/ShopByConditionPage';
 import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -28,28 +29,25 @@ import NotFoundPage from './pages/NotFoundPage';
 export default function App() {
   const { token, fetchMe } = useAuthStore();
 
-  // Always re-fetch user from server on load so role is never stale
   useEffect(() => {
     if (token) fetchMe();
-  }, [token]);
+  }, [token, fetchMe]);
 
   return (
     <Routes>
-      {/* Public */}
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/shop/:category" element={<ShopPage />} />
+        <Route path="/shop-by-condition" element={<ShopByConditionPage />} />
         <Route path="/product/:slug" element={<ProductPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/find-your-fit" element={<FindYourFitPage />} />
         <Route path="/clinical-studies" element={<ClinicalStudiesPage />} />
 
-        {/* Protected customer routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/orders" element={<OrdersPage />} />
@@ -59,7 +57,6 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Admin routes */}
       <Route element={<ProtectedRoute adminOnly />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
