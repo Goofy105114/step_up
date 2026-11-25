@@ -1,11 +1,15 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import { formatPrice } from '../lib/formatters';
+import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
   const { user, logout } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [fitForm, setFitForm] = useState({ foot_length_mm: '', usual_size: '', arch_preference: 'unknown', comfort_focus: 'general', daily_activity: 'moderate', consent: false });
 
   const { data: ordersData } = useQuery({
     queryKey: ['orders'],
@@ -16,6 +20,53 @@ export default function ProfilePage() {
     queryKey: ['wishlist'],
     queryFn: () => api.get('/wishlist').then(r => r.data),
     enabled: !!user,
+  });
+  const { data: fitProfileData } = useQuery({
+    queryKey: ['patient-fit-profile'],
+    queryFn: () => api.get('/patient-profile').then(r => r.data),
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    const profile = fitProfileData?.data;
+    if (!profile) return;
+    setFitForm({
+      foot_length_mm: profile.foot_length_mm ? String(profile.foot_length_mm) : '',
+      usual_size: profile.usual_size || '',
+      arch_preference: profile.arch_preference || 'unknown',
+      comfort_focus: profile.comfort_focus || 'general',
+      daily_activity: profile.daily_activity || 'moderate',
+      consent: false,
+    });
+  }, [fitProfileData]);
+
+  const saveFitProfile = useMutation({
+    mutationFn: () => api.put('/patient-profile', {
+      consent: true,
+      foot_length_mm: fitForm.foot_length_mm === '' ? null : Number(fitForm.foot_length_mm),
+      usual_size: fitForm.usual_size,
+      arch_preference: fitForm.arch_preference,
+      comfort_focus: fitForm.comfort_focus,
+      daily_activity: fitForm.daily_activity,
+    }),
+    onSuccess: () => {
+      toast.success('Fit preferences saved');
+      setFitForm(current => ({ ...current, consent: false }));
+      queryClient.invalidateQueries({ queryKey: ['patient-fit-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'patient-fit-profiles'] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to save fit preferences'),
+  });
+
+  const deleteFitProfile = useMutation({
+    mutationFn: () => api.delete('/patient-profile'),
+    onSuccess: () => {
+      toast.success('Fit profile deleted');
+      setFitForm({ foot_length_mm: '', usual_size: '', arch_preference: 'unknown', comfort_focus: 'general', daily_activity: 'moderate', consent: false });
+      queryClient.invalidateQueries({ queryKey: ['patient-fit-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'patient-fit-profiles'] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to delete fit profile'),
   });
 
   if (!user) return (
@@ -39,7 +90,7 @@ export default function ProfilePage() {
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
 
   const MENU = [
-    { icon: 'footprint', label: 'My Foot Health &amp; Orders', href: '/orders', badge: orders.length > 0 ? `${orders.length} Active` : null },
+    { icon: 'footprint', label: 'My Orders', href: '/orders', badge: orders.length > 0 ? `${orders.length} Active` : null },
     { icon: 'favorite', label: 'Saved Wishlist', href: '/wishlist', badge: wishlist.length > 0 ? `${wishlist.length} Items` : null },
     { icon: 'receipt_long', label: 'Order receipts', href: '/orders', badge: null },
     { icon: 'tune', label: 'Settings &amp; Sizing Specs', href: '/profile', badge: null },
@@ -89,6 +140,54 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <section className="card mb-space-xl p-space-lg md:p-space-xl">
+          <div className="mb-space-md">
+            <p className="text-label-badge font-bold uppercase tracking-[0.14em] text-secondary">Optional fit information</p>
+            <h2 className="mt-2 text-xl font-semibold text-primary">Your fit profile</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-on-surface-variant">
+              Save measurements and comfort preferences you choose to share. This is self-reported shopping information, not a medical record, diagnosis or gait analysis.
+            </p>
+          </div>
+          <form onSubmit={(event) => { event.preventDefault(); if (!fitForm.consent) { toast.error('Please provide consent before saving'); return; } saveFitProfile.mutate(); }} className="space-y-space-md">
+            <div className="grid gap-space-md sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label className="label">Foot length (mm)</label>
+                <input type="number" min="1" max="500" step="0.1" value={fitForm.foot_length_mm} onChange={event => setFitForm(current => ({ ...current, foot_length_mm: event.target.value }))} className="input-field" placeholder="Optional measurement" />
+              </div>
+              <div>
+                <label className="label">Usual shoe size</label>
+                <input value={fitForm.usual_size} onChange={event => setFitForm(current => ({ ...current, usual_size: event.target.value }))} className="input-field" placeholder="e.g. UK 8 / EU 42" />
+              </div>
+              <div>
+                <label className="label">Arch preference</label>
+                <select value={fitForm.arch_preference} onChange={event => setFitForm(current => ({ ...current, arch_preference: event.target.value }))} className="input-field">
+                  <option value="unknown">Not sure</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Comfort focus</label>
+                <select value={fitForm.comfort_focus} onChange={event => setFitForm(current => ({ ...current, comfort_focus: event.target.value }))} className="input-field">
+                  <option value="general">General comfort</option><option value="heel">Heel area</option><option value="arch">Arch area</option><option value="forefoot">Forefoot</option><option value="stability">Stability</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Daily activity</label>
+                <select value={fitForm.daily_activity} onChange={event => setFitForm(current => ({ ...current, daily_activity: event.target.value }))} className="input-field">
+                  <option value="low">Mostly seated / light activity</option><option value="moderate">Mixed activity</option><option value="high">Frequent standing or walking</option>
+                </select>
+              </div>
+            </div>
+            <label className="flex items-start gap-space-sm text-sm leading-6 text-on-surface-variant">
+              <input type="checkbox" checked={fitForm.consent} onChange={event => setFitForm(current => ({ ...current, consent: event.target.checked }))} className="mt-1" />
+              <span>I consent to STEPUP storing these self-reported fit preferences in my account to help with product discovery. I can delete this profile at any time.</span>
+            </label>
+            <div className="flex flex-wrap gap-space-sm">
+              <button type="submit" disabled={!fitForm.consent || saveFitProfile.isPending} className="btn-primary px-6 py-3">{saveFitProfile.isPending ? 'Saving…' : 'Save fit profile'}</button>
+              {fitProfileData?.data ? <button type="button" disabled={deleteFitProfile.isPending} onClick={() => { if (window.confirm('Delete your saved fit profile?')) deleteFitProfile.mutate(); }} className="btn-outline px-6 py-3 text-error">{deleteFitProfile.isPending ? 'Deleting…' : 'Delete profile'}</button> : null}
+            </div>
+          </form>
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
           {/* Sidebar */}
