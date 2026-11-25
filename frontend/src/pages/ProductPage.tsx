@@ -208,9 +208,9 @@ export default function ProductPage() {
               {/* Price */}
               <div className="flex items-center gap-space-md">
                 <span className="text-display-hero-mobile font-bold text-primary">
-                  ₹{(salePrice ?? basePrice).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(salePrice ?? basePrice)}
                 </span>
-                {salePrice && <span className="text-title-md text-on-surface-variant line-through">₹{basePrice.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>}
+                {salePrice && <span className="text-title-md text-on-surface-variant line-through">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(basePrice)}</span>}
                 {discount > 0 && <span className="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container px-space-sm py-0.5 rounded-full text-label-badge font-bold">-{discount}% OFF</span>}
               </div>
             </div>
@@ -269,7 +269,7 @@ export default function ProductPage() {
 
             {/* CTA buttons */}
             <div className="flex gap-space-sm">
-              <button onClick={addToCart} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
+              <button onClick={() => addToCart()} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
                 className="flex-1 h-14 bg-surface-container-high text-on-surface rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs hover:bg-surface-container-highest transition-all border border-outline-variant disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 {addingCart ? 'Adding...' : 'Add to Bag'}
@@ -277,7 +277,7 @@ export default function ProductPage() {
               <button onClick={() => addToCart(true)} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
                 className="flex-1 h-14 bg-primary-container text-on-primary rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs shadow-primary hover:bg-primary transition-all disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">bolt</span>
-                {addingCart ? '...' : `Buy Now · ₹${(salePrice ?? basePrice).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                {addingCart ? '...' : `Buy Now · ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(salePrice ?? basePrice)}`}
               </button>
             </div>
 
