@@ -30,31 +30,65 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 
 router.post('/items', authenticate, async (req: Request, res: Response) => {
   const { product_id, variant_id, quantity = 1 } = req.body;
+  const requestedQuantity = Number(quantity);
   if (!product_id || !variant_id) throw new AppError('product_id and variant_id required', 400);
-  const v = await query('SELECT stock_qty FROM product_variants WHERE id=$1', [variant_id]);
-  if (!v.rows[0]) throw new AppError('Variant not found', 404);
-  if (v.rows[0].stock_qty < quantity) throw new AppError('Insufficient stock', 400);
+  if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+    throw new AppError('Quantity must be a positive whole number', 400);
+  }
+
+  const variant = await query(
+    `SELECT pv.stock_qty,pv.product_id FROM product_variants pv
+     JOIN products p ON p.id=pv.product_id
+     WHERE pv.id=$1 AND pv.product_id=$2 AND p.is_active=true`,
+    [variant_id, product_id]);
+  if (!variant.rows[0]) throw new AppError('Product variant not found or unavailable', 404);
+
   const cartId = await getOrCreateCart(req.user!.userId);
+  const existing = await query(
+    'SELECT quantity FROM cart_items WHERE cart_id=$1 AND variant_id=$2',
+    [cartId, variant_id]);
+  const totalQuantity = Number(existing.rows[0]?.quantity || 0) + requestedQuantity;
+  if (totalQuantity > Number(variant.rows[0].stock_qty)) {
+    throw new AppError('Requested quantity exceeds available stock', 400);
+  }
+
   await query(
     `INSERT INTO cart_items (cart_id,product_id,variant_id,quantity) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (cart_id,variant_id) DO UPDATE SET quantity=cart_items.quantity+$4`,
-    [cartId, product_id, variant_id, quantity]);
+     ON CONFLICT (cart_id,variant_id) DO UPDATE SET quantity=cart_items.quantity+EXCLUDED.quantity`,
+    [cartId, product_id, variant_id, requestedQuantity]);
   const items = await getCartData(cartId);
   return res.json({ success: true, data: items.rows });
 });
 
 router.patch('/items/:id', authenticate, async (req: Request, res: Response) => {
-  const { quantity } = req.body;
-  if (quantity < 1) await query('DELETE FROM cart_items WHERE id=$1', [req.params.id]);
-  else await query('UPDATE cart_items SET quantity=$1 WHERE id=$2', [quantity, req.params.id]);
+  const quantity = Number(req.body.quantity);
   const cartId = await getOrCreateCart(req.user!.userId);
+  const existing = await query(
+    `SELECT ci.id,pv.stock_qty FROM cart_items ci
+     JOIN product_variants pv ON pv.id=ci.variant_id
+     WHERE ci.id=$1 AND ci.cart_id=$2`,
+    [req.params.id, cartId]);
+  if (!existing.rows[0]) throw new AppError('Cart item not found', 404);
+
+  if (!Number.isInteger(quantity)) throw new AppError('Quantity must be a whole number', 400);
+  if (quantity < 1) {
+    await query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2', [req.params.id, cartId]);
+  } else {
+    if (quantity > Number(existing.rows[0].stock_qty)) {
+      throw new AppError('Requested quantity exceeds available stock', 400);
+    }
+    await query('UPDATE cart_items SET quantity=$1 WHERE id=$2 AND cart_id=$3',
+      [quantity, req.params.id, cartId]);
+  }
   const items = await getCartData(cartId);
   return res.json({ success: true, data: items.rows });
 });
 
 router.delete('/items/:id', authenticate, async (req: Request, res: Response) => {
-  await query('DELETE FROM cart_items WHERE id=$1', [req.params.id]);
   const cartId = await getOrCreateCart(req.user!.userId);
+  const result = await query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2 RETURNING id',
+    [req.params.id, cartId]);
+  if (!result.rows[0]) throw new AppError('Cart item not found', 404);
   const items = await getCartData(cartId);
   return res.json({ success: true, data: items.rows });
 });
@@ -70,7 +104,7 @@ router.post('/apply-coupon', authenticate, async (req: Request, res: Response) =
   if (!code) throw new AppError('Coupon code required', 400);
   const result = await query(
     `SELECT * FROM coupons WHERE UPPER(code)=UPPER($1) AND is_active=true
-     AND (valid_until IS NULL OR valid_until > NOW())
+     AND valid_from <= NOW() AND (valid_until IS NULL OR valid_until > NOW())
      AND (max_uses IS NULL OR used_count < max_uses)`, [code]);
   const coupon = result.rows[0];
   if (!coupon) throw new AppError('Invalid or expired coupon code', 404);
