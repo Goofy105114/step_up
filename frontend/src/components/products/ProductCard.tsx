@@ -150,11 +150,11 @@ export default function ProductCard({ product }: { product: Product }) {
         {/* Price */}
         <div className="flex items-center gap-space-sm">
           <span className="text-title-md font-semibold text-primary">
-            ₹{displayPrice.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(displayPrice)}
           </span>
           {salePrice && (
             <span className="text-body-sm text-on-surface-variant line-through">
-              ₹{basePrice.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+              {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(basePrice)}
             </span>
           )}
         </div>
