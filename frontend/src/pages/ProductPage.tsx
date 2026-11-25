@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
+import SizeGuideModal from '../components/products/SizeGuideModal';
 import { useCartStore } from '../store/cartStore';
 import toast from 'react-hot-toast';
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { fetchCart } = useCartStore();
   const [selectedColor, setSelectedColor] = useState('');
@@ -22,6 +24,7 @@ export default function ProductPage() {
   });
   const wishlisted = wishlistData?.data?.some((item: any) => item.product_id === product?.id) || false;
   const [openSpec, setOpenSpec] = useState<number | null>(null);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['product', slug],
@@ -47,7 +50,7 @@ export default function ProductPage() {
     setSelectedVariant(v);
   };
 
-  const addToCart = async () => {
+  const addToCart = async (goToCheckout = false) => {
     if (!user) { toast.error('Please sign in to add items to cart'); return; }
     if (!selectedVariant) { toast.error('Please select a size'); return; }
     if (selectedVariant.stock_qty < 1) { toast.error('Out of stock'); return; }
@@ -56,6 +59,7 @@ export default function ProductPage() {
       await api.post('/cart/items', { product_id: product.id, variant_id: selectedVariant.id, quantity: 1 });
       await fetchCart();
       toast.success(`${product.name} added to bag!`);
+      if (goToCheckout) navigate('/checkout');
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to add'); }
     finally { setAddingCart(false); }
   };
@@ -235,7 +239,7 @@ export default function ProductPage() {
               <div>
                 <div className="flex items-center justify-between mb-space-sm">
                   <label className="label mb-0">Select US Size</label>
-                  <button className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">↑ Size Guide</button>
+                  <button onClick={() => setSizeGuideOpen(true)} className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">↑ Size Guide</button>
                 </div>
                 <div className="flex flex-wrap gap-space-sm">
                   {sizesForColor.map((v: any) => (
@@ -267,7 +271,7 @@ export default function ProductPage() {
                 <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 {addingCart ? 'Adding...' : 'Add to Bag'}
               </button>
-              <button onClick={addToCart} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
+              <button onClick={() => addToCart(true)} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
                 className="flex-1 h-14 bg-primary-container text-on-primary rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs shadow-primary hover:bg-primary transition-all disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">bolt</span>
                 {addingCart ? '...' : `Buy Now · ₹${(salePrice ?? basePrice).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
@@ -325,6 +329,8 @@ export default function ProductPage() {
           </div>
         </div>
       </section>
+    </div>
+      <SizeGuideModal isOpen={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
     </div>
   );
 }
