@@ -285,9 +285,7 @@ export default function AdminProductForm() {
         <div className="bg-white border border-gray-200 p-6">
           <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700 pb-3 border-b border-gray-100 mb-4">Visibility & Badges</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {(['is_active', 'Active'], ['is_featured', 'Featured'], ['is_new_arrival', 'New Arrival'], ['is_bestseller', 'Bestseller']) && (
-              [['is_active', 'Active'], ['is_featured', 'Featured'], ['is_new_arrival', 'New Arrival'], ['is_bestseller', 'Bestseller']] as [keyof ProductForm, string][]
-            ).map(([key, label]) => (
+            {([['is_active', 'Active'], ['is_featured', 'Featured'], ['is_new_arrival', 'New Arrival'], ['is_bestseller', 'Bestseller']] as [keyof ProductForm, string][]).map(([key, label]) => (
               <label key={key} className="flex items-center gap-3 cursor-pointer" onClick={() => setField(key, !form[key])}>
                 <div className={`w-11 h-6 rounded-full transition-colors relative ${form[key] ? 'bg-brand-500' : 'bg-gray-200'}`}>
                   <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
