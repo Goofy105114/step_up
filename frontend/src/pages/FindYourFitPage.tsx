@@ -22,7 +22,7 @@ const STEPS = [
     options: [
       { id: 'light', icon: 'weekend', title: 'Under 2 hours', desc: 'Sedentary desk with light walking', zone: 'Low Impact', tag: 'arch-support' },
       { id: 'moderate', icon: 'directions_walk', title: '2 to 6 hours', desc: 'Retail, teaching, home movement', zone: 'Moderate', tag: 'arch-support' },
-      { id: 'heavy', icon: 'local_hospital', title: '8+ hours / Shift', desc: 'Clinical, nursing, hospitality staff', zone: 'High Stress', tag: 'stability-support' },
+      { id: 'heavy', icon: 'work', title: '8+ hours / Shift', desc: 'Retail, service, hospitality, or other long shifts', zone: 'Long periods standing', tag: 'stability-support' },
     ],
   },
   {
@@ -247,12 +247,12 @@ export default function FindYourFitPage() {
             </div>
           </section>
 
-          {/* Right: Clinical prescription preview */}
+          {/* Right: Preference summary */}
           <aside className="lg:col-span-5 xl:col-span-4 sticky top-32">
             <div className="card p-space-lg">
               <div className="flex items-center gap-space-sm mb-space-md">
                 <span className="material-symbols-outlined text-[22px] text-secondary">clinical_notes</span>
-                <h3 className="text-title-md font-semibold text-primary">Clinical Prescription Preview</h3>
+                <h3 className="text-title-md font-semibold text-primary">Your selections</h3>
               </div>
               <div className="space-y-space-sm">
                 {STEPS.map((s, idx) => {
@@ -276,7 +276,7 @@ export default function FindYourFitPage() {
               </div>
               <div className="mt-space-md pt-space-md border-t border-outline-variant/20 flex items-center gap-space-xs text-body-sm text-on-surface-variant">
                 <span className="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
-                Algorithm calibrates Shore-A EVA durometer & arch bridge height
+                Your choices help us find products with matching catalogue tags.
               </div>
             </div>
           </aside>
