@@ -6,9 +6,9 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Save, Plus, Trash2, Image } from 'lucide-react';
 
 interface ProductForm {
-  name: string; slug: string; description: string; short_description: string;
+  name: string; slug: string; sku: string; description: string; short_description: string;
   category_id: string; base_price: string; sale_price: string;
-  material: string; tags: string;
+  material: string; care_instructions: string; tags: string;
   is_featured: boolean; is_new_arrival: boolean; is_bestseller: boolean; is_active: boolean;
 }
 
@@ -20,9 +20,9 @@ interface Variant {
 interface ProductImage { id: string; url: string; alt_text: string; is_primary: boolean; }
 
 const emptyForm: ProductForm = {
-  name: '', slug: '', description: '', short_description: '',
+  name: '', slug: '', sku: '', description: '', short_description: '',
   category_id: '', base_price: '', sale_price: '',
-  material: '', tags: '',
+  material: '', care_instructions: '', tags: '',
   is_featured: false, is_new_arrival: false, is_bestseller: false, is_active: true,
 };
 
@@ -58,12 +58,14 @@ export default function AdminProductForm() {
     setForm({
       name: productData.name || '',
       slug: productData.slug || '',
+      sku: productData.sku || '',
       description: productData.description || '',
       short_description: productData.short_description || '',
       category_id: productData.category_id || '',
       base_price: productData.base_price || '',
       sale_price: productData.sale_price || '',
       material: productData.material || '',
+      care_instructions: productData.care_instructions || '',
       tags: (productData.tags || []).join(', '),
       is_featured: productData.is_featured ?? false,
       is_new_arrival: productData.is_new_arrival ?? false,
@@ -160,7 +162,12 @@ export default function AdminProductForm() {
             <div>
               <label className="label">Slug *</label>
               <input value={form.slug} onChange={(e) => setField('slug', e.target.value)}
-                className="input-field font-mono text-xs" placeholder="cloudstep-runner-pro" required />
+                className="input-field font-mono text-xs" placeholder="product-url-slug" required />
+            </div>
+            <div>
+              <label className="label">Product SKU</label>
+              <input value={form.sku} onChange={(e) => setField('sku', e.target.value)}
+                className="input-field font-mono text-xs" placeholder="Optional catalogue SKU" />
             </div>
           </div>
           <div>
@@ -201,13 +208,18 @@ export default function AdminProductForm() {
             <div>
               <label className="label">Material</label>
               <input value={form.material} onChange={(e) => setField('material', e.target.value)}
-                className="input-field" placeholder="e.g. Genuine leather upper, rubber sole" />
+                className="input-field" placeholder="Material details from supplier" />
             </div>
             <div>
-              <label className="label">Tags (comma separated)</label>
-              <input value={form.tags} onChange={(e) => setField('tags', e.target.value)}
-                className="input-field" placeholder="running, sports, mens" />
+              <label className="label">Care Instructions</label>
+              <input value={form.care_instructions} onChange={(e) => setField('care_instructions', e.target.value)}
+                className="input-field" placeholder="Care guidance supplied for this product" />
             </div>
+          </div>
+          <div>
+            <label className="label">Catalogue Tags (comma separated)</label>
+            <input value={form.tags} onChange={(e) => setField('tags', e.target.value)}
+              className="input-field" placeholder="Add tags from your product catalogue" />
           </div>
         </div>
 
