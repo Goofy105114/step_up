@@ -3,307 +3,200 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
 
+type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  primary_image?: string;
+};
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image_url?: string;
+  product_count?: number;
+};
+
 export default function HomePage() {
-  const { data: featured } = useQuery({
+  const { data: featured, isLoading: featuredLoading } = useQuery({
     queryKey: ['products', 'featured'],
     queryFn: () => api.get('/products?featured=true&limit=8').then(r => r.data),
+  });
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/categories').then(r => r.data),
   });
   const { data: bestsellers } = useQuery({
     queryKey: ['products', 'bestsellers'],
     queryFn: () => api.get('/products?bestseller=true&limit=4').then(r => r.data),
   });
   const { data: newArrivals } = useQuery({
-    queryKey: ['products', 'new'],
+    queryKey: ['products', 'new-arrivals'],
     queryFn: () => api.get('/products?new_arrival=true&limit=4').then(r => r.data),
   });
 
-  const featuredProducts = featured?.data || [];
+  const featuredProducts: Product[] = featured?.data || [];
+  const categories: Category[] = categoriesData?.data || [];
   const bestsellerProducts = bestsellers?.data || [];
   const newArrivalProducts = newArrivals?.data || [];
+  const heroImage = featuredProducts[0]?.primary_image;
 
   return (
-    <div className="bg-surface">
-
-      {/* ── Clinical Proof Strip ── */}
-      <section className="w-full bg-surface-container py-space-md">
-        <div className="container-site">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md items-center">
-            {[
-              { icon: 'verified', label: 'APMA Accepted', desc: 'American Podiatric Medical Seal' },
-              { icon: 'healing', label: '98% Pain Relief', desc: 'Documented calcaneal relief' },
-              { icon: 'calendar_today', label: '60-Day Trial', desc: '100% pain-free walk guarantee' },
-              { icon: 'receipt_long', label: 'HSA/FSA Eligible', desc: 'Auto-itemized claim receipt' },
-            ].map(({ icon, label, desc }) => (
-              <div key={label} className="flex items-center gap-space-sm justify-center md:justify-start">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <span className="material-symbols-outlined text-[22px]">{icon}</span>
-                </div>
-                <div>
-                  <p className="text-title-md font-semibold text-primary leading-tight">{label}</p>
-                  <p className="text-body-sm text-on-surface-variant">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Hero ── */}
-      <section className="relative w-full py-space-xl overflow-hidden bg-gradient-to-b from-surface via-surface-container-low to-surface">
-        <div className="container-site">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
-            <div className="lg:col-span-6 flex flex-col items-start gap-space-md">
-              <div className="inline-flex items-center gap-space-xs bg-surface-container-highest px-space-md py-1 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Podiatric Surgeon Bio-Architecture</span>
-              </div>
-              <h1 className="text-display-hero-mobile md:text-display-hero font-bold text-primary tracking-tight">
-                Clinical Arch Support Meets Everyday Style.
-              </h1>
-              <p className="text-body-lg text-on-surface-variant max-w-xl">
-                Engineered by podiatric surgeons to eliminate plantar fasciitis pain and calcaneal stress without looking like clunky orthopedic shoes.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-space-md pt-space-xs">
-                <Link to="/shop" className="inline-flex items-center justify-center bg-primary-container text-on-primary px-8 py-4 rounded-full text-title-md font-semibold shadow-primary hover:bg-primary transition-all duration-300 gap-space-sm">
-                  Shop Plantar Relief Sandals
-                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                </Link>
-                <Link to="/find-your-fit" className="inline-flex items-center justify-center bg-transparent text-primary-container px-7 py-4 rounded-full text-title-md font-semibold border-2 border-primary-container hover:bg-secondary-container/20 transition-all duration-300 gap-space-sm">
-                  <span className="material-symbols-outlined text-[20px]">psychology_alt</span>
-                  Take 60-Sec Arch Quiz
-                </Link>
-              </div>
-              <div className="flex items-center gap-space-md pt-space-md">
-                <div className="flex -space-x-2">
-                  {['bg-primary-fixed', 'bg-secondary-fixed', 'bg-tertiary-fixed'].map((bg, i) => (
-                    <div key={i} className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center`}>
-                      <span className="material-symbols-outlined text-[18px] text-primary">person</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1 text-[#f59e0b]">
-                    {[1,2,3,4,5].map(i => <span key={i} className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>)}
-                    <span className="text-title-md font-semibold text-primary ml-1">4.9 / 5</span>
-                  </div>
-                  <p className="text-body-sm text-on-surface-variant">Over <strong className="text-on-surface">140,000+</strong> pain-free steps taken by 8,400+ verified patients</p>
-                </div>
-              </div>
+    <main className="bg-surface text-on-surface">
+      <section className="relative overflow-hidden bg-[#e9eee9]">
+        <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#c6d8ce] blur-3xl opacity-70" />
+        <div className="container-site relative grid min-h-[560px] grid-cols-1 items-center gap-10 py-16 lg:grid-cols-2 lg:py-20">
+          <div className="max-w-2xl">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <span className="h-2 w-2 rounded-full bg-secondary" />
+              Comfort that moves with you
+            </p>
+            <h1 className="max-w-xl text-4xl font-bold leading-[1.08] tracking-tight text-primary md:text-6xl">
+              Every step deserves a better foundation.
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-8 text-[#52645d] md:text-lg">
+              Discover thoughtfully designed footwear with supportive shapes, considered materials and comfort made for everyday movement.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link to="/shop" className="btn-primary px-7 py-4">
+                Explore the collection <span aria-hidden="true">→</span>
+              </Link>
+              <Link to="/find-your-fit" className="btn-outline px-7 py-4">
+                Find your fit
+              </Link>
             </div>
-
-            <div className="lg:col-span-6 relative flex justify-center">
-              <div className="relative w-full max-w-lg aspect-square rounded-lg bg-surface-container-low overflow-hidden shadow-card-hover">
-                {featuredProducts[0]?.primary_image ? (
-                  <img src={featuredProducts[0].primary_image} alt="Featured product" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[80px] text-outline-variant">shoe</span>
-                  </div>
-                )}
-                <div className="absolute -top-3 left-4 bg-surface/95 backdrop-blur-md px-space-md py-space-xs rounded-full shadow-card flex items-center gap-space-xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <div>
-                    <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-primary">22mm Deep Heel Cup</span>
-                    <p className="text-body-sm text-on-surface-variant leading-none">Aligns calcaneus &amp; spine</p>
-                  </div>
+            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-[#52645d]">
+              <span className="flex items-center gap-2"><span className="text-primary">✓</span> Support-led designs</span>
+              <span className="flex items-center gap-2"><span className="text-primary">✓</span> Everyday versatility</span>
+              <span className="flex items-center gap-2"><span className="text-primary">✓</span> Easy online shopping</span>
+            </div>
+          </div>
+          <div className="relative mx-auto w-full max-w-[560px]">
+            <div className="absolute inset-8 rounded-full bg-[#c6d8ce] blur-2xl" />
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-[#dce5df] shadow-2xl">
+              {heroImage ? (
+                <img src={heroImage} alt={featuredProducts[0]?.name || 'StepUp featured footwear'} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-primary/60">
+                  <span className="text-6xl" aria-hidden="true">✳</span>
+                  <span className="text-sm font-semibold tracking-wide">STEPUP</span>
                 </div>
-                <div className="absolute top-1/2 -right-4 -translate-y-1/2 bg-surface/95 backdrop-blur-md px-space-md py-space-xs rounded-full shadow-card flex items-center gap-space-xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                  <div>
-                    <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Plantar Fascia Bridge</span>
-                    <p className="text-body-sm text-on-surface-variant leading-none">Continuous arch cradle</p>
-                  </div>
-                </div>
-              </div>
+              )}
+            </div>
+            <div className="absolute -bottom-5 left-5 rounded-2xl bg-white px-5 py-4 shadow-xl sm:left-0">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-secondary">Made for daily movement</p>
+              <p className="mt-1 text-lg font-semibold text-primary">Find your everyday comfort</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Shop by Category ── */}
-      <section className="py-space-xl bg-surface-container-low">
-        <div className="container-site">
-          <div className="flex items-end justify-between mb-space-lg">
-            <div>
-              <div className="inline-flex items-center gap-space-xs bg-surface-container-highest px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary mb-space-sm">
-                <span className="material-symbols-outlined text-[15px] text-secondary">vital_signs</span>
-                Shop by Condition
-              </div>
-              <h2 className="text-headline-lg-mobile md:text-headline-lg font-semibold text-primary tracking-tight">Targeted Footwear for Your Needs</h2>
-            </div>
-            <Link to="/shop" className="hidden md:flex items-center gap-1 text-label-md font-semibold text-secondary hover:text-primary transition-colors">
-              View All <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-            </Link>
+      <section className="container-site py-16 md:py-20">
+        <div className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">Explore STEPUP</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-primary md:text-4xl">Shop the collection</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-on-surface-variant">Browse the categories currently available in our store.</p>
           </div>
-          <div className="flex items-center gap-space-xs overflow-x-auto pb-space-sm no-scrollbar">
-            {[
-              { label: 'All Footwear', value: '', count: `${featuredProducts.length + bestsellerProducts.length}` },
-              { label: "Men's", value: 'mens', count: '' },
-              { label: "Women's", value: 'womens', count: '' },
-              { label: 'Sports', value: 'sports', count: '' },
-              { label: "Kids'", value: 'kids', count: '' },
-              { label: 'Sandals', value: 'sandals', count: '' },
-            ].map((cat) => (
-              <Link
-                key={cat.value}
-                to={cat.value ? `/shop/${cat.value}` : '/shop'}
-                className="shrink-0 flex items-center gap-space-xs bg-surface-container-lowest text-on-surface hover:bg-primary-container hover:text-on-primary px-space-lg py-space-sm rounded-full text-label-md font-semibold transition-all shadow-sm"
-              >
-                <span>{cat.label}</span>
-                {cat.count && <span className="bg-primary-container/20 text-primary px-2 py-0.5 rounded-full text-label-badge font-bold">{cat.count} Styles</span>}
+          <Link to="/shop" className="hidden text-sm font-semibold text-primary hover:underline sm:inline">View all products →</Link>
+        </div>
+        {categories.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {categories.slice(0, 8).map(category => (
+              <Link key={category.id} to={`/shop/${category.slug}`} className="group overflow-hidden rounded-2xl border border-black/5 bg-white transition hover:-translate-y-1 hover:shadow-lg">
+                <div className="aspect-[5/4] overflow-hidden bg-[#eef2ee]">
+                  {category.image_url ? <img src={category.image_url} alt={category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-4xl text-primary/30" aria-hidden="true">✳</div>}
+                </div>
+                <div className="flex items-center justify-between gap-2 p-4">
+                  <div>
+                    <h3 className="font-semibold text-primary">{category.name}</h3>
+                    <p className="mt-1 text-xs text-on-surface-variant">{Number(category.product_count || 0)} products</p>
+                  </div>
+                  <span className="text-xl text-secondary transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                </div>
               </Link>
             ))}
           </div>
-        </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-outline-variant p-10 text-center text-sm text-on-surface-variant">
+            {categoriesData ? 'New collections are being prepared. Browse all products to see what is available.' : 'Loading collections…'}
+          </div>
+        )}
       </section>
 
-      {/* ── Featured Products ── */}
       {featuredProducts.length > 0 && (
-        <section className="py-space-xl bg-surface">
+        <section className="bg-[#f3f5f2] py-16 md:py-20">
           <div className="container-site">
-            <div className="flex items-end justify-between mb-space-lg">
+            <div className="mb-8 flex items-end justify-between gap-4">
               <div>
-                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary block mb-1">Editor's Selection</span>
-                <h2 className="text-headline-lg-mobile md:text-headline-lg font-semibold text-primary tracking-tight">Trending Drops</h2>
-                <p className="text-body-md text-on-surface-variant mt-1">Just landed from the design lab</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">A good place to start</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-primary md:text-4xl">Featured footwear</h2>
               </div>
-              <Link to="/shop?featured=true" className="hidden md:flex items-center gap-1 text-label-md font-semibold text-secondary hover:text-primary transition-colors">
-                See All (24) <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
+              <Link to="/shop?featured=true" className="hidden text-sm font-semibold text-primary hover:underline sm:inline">Explore all →</Link>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-space-md md:gap-space-lg">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
               {featuredProducts.map((product: any) => <ProductCard key={product.id} product={product} />)}
             </div>
           </div>
         </section>
       )}
 
-      {/* ── Find Your Fit Banner ── */}
-      <section className="py-space-xl bg-surface-container-low">
-        <div className="container-site">
-          <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary to-primary-container p-space-xl md:p-16 shadow-card-hover">
-            <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
-            <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-space-xl items-center">
-              <div>
-                <div className="inline-flex items-center gap-space-xs bg-on-primary/10 px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary-fixed mb-space-md">
-                  <span className="material-symbols-outlined text-[15px]">psychology_alt</span>
-                  60-Second Arch Quiz
-                </div>
-                <h2 className="text-headline-lg-mobile md:text-headline-lg font-semibold text-on-primary tracking-tight mb-space-md">
-                  Not Sure Which Style Fits Your Arch?
-                </h2>
-                <p className="text-body-lg text-on-primary/80 mb-space-lg max-w-lg">
-                  Answer 5 quick biomechanical questions about your foot type, activity level, and pain points. Our clinical algorithm recommends the perfect StepUp shoe for your arch profile.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-space-md">
-                  <Link to="/find-your-fit" className="inline-flex items-center justify-center gap-space-sm bg-on-primary text-primary px-8 py-4 rounded-full text-title-md font-semibold shadow-lg hover:bg-primary-fixed transition-all duration-300">
-                    Take the Arch Quiz
-                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                  </Link>
-                  <Link to="/shop" className="inline-flex items-center justify-center gap-space-sm bg-transparent text-on-primary px-7 py-4 rounded-full text-title-md font-semibold border-2 border-on-primary/40 hover:border-on-primary hover:bg-on-primary/10 transition-all duration-300">
-                    Browse All Styles
-                  </Link>
-                </div>
-              </div>
-              <div className="hidden lg:grid grid-cols-3 gap-space-sm">
-                {[
-                  { icon: 'arrow_upload_progress', label: 'Heel Strike', desc: 'Deep calcaneal cradle' },
-                  { icon: 'timeline', label: 'Arch Support', desc: '34mm dynamic lift' },
-                  { icon: 'lens_blur', label: 'Metatarsal', desc: 'Transverse met dome' },
-                  { icon: 'swap_driving_apps', label: 'Overpronation', desc: 'Subtalar stabilizer' },
-                  { icon: 'directions_run', label: 'Running', desc: 'Calcaneal alignment' },
-                  { icon: 'spa', label: 'Recovery', desc: 'Zero-drop neutral' },
-                ].map(({ icon, label, desc }) => (
-                  <div key={label} className="bg-on-primary/10 backdrop-blur-sm rounded-DEFAULT p-space-md text-center border border-on-primary/10 hover:bg-on-primary/15 transition-colors cursor-pointer">
-                    <span className="material-symbols-outlined text-[28px] text-on-primary block mb-1">{icon}</span>
-                    <p className="text-label-md font-semibold text-on-primary leading-tight">{label}</p>
-                    <p className="text-body-sm text-on-primary/60">{desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── New Arrivals ── */}
-      {newArrivalProducts.length > 0 && (
-        <section className="py-space-xl bg-surface">
-          <div className="container-site">
-            <div className="flex items-end justify-between mb-space-lg">
-              <div>
-                <div className="inline-flex items-center gap-space-xs bg-secondary-container px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-on-secondary-container mb-space-sm">
-                  <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  Clinical Batch 2026
-                </div>
-                <h2 className="text-headline-lg-mobile md:text-headline-lg font-semibold text-primary tracking-tight">New Arrivals</h2>
-              </div>
-              <Link to="/shop?new_arrival=true" className="hidden md:flex items-center gap-1 text-label-md font-semibold text-secondary hover:text-primary transition-colors">
-                View All <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md md:gap-space-lg">
-              {newArrivalProducts.map((product: any) => <ProductCard key={product.id} product={product} />)}
-            </div>
+      {featuredLoading && (
+        <section className="container-site py-12">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map(item => <div key={item} className="aspect-[4/5] animate-pulse rounded-2xl bg-surface-container" />)}
           </div>
         </section>
       )}
 
-      {/* ── Bestsellers ── */}
-      {bestsellerProducts.length > 0 && (
-        <section className="py-space-xl bg-surface-container-low">
-          <div className="container-site">
-            <div className="flex items-end justify-between mb-space-lg">
-              <div>
-                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary block mb-1">Patient Verified</span>
-                <h2 className="text-headline-lg-mobile md:text-headline-lg font-semibold text-primary tracking-tight">Bestsellers</h2>
-              </div>
-              <Link to="/shop?bestseller=true" className="hidden md:flex items-center gap-1 text-label-md font-semibold text-secondary hover:text-primary transition-colors">
-                See All <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
+      {newArrivalProducts.length > 0 && (
+        <section className="container-site py-16 md:py-20">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">Just added</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-primary md:text-4xl">New arrivals</h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md md:gap-space-lg">
+            <Link to="/shop?new_arrival=true" className="text-sm font-semibold text-primary hover:underline">View all →</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+            {newArrivalProducts.map((product: any) => <ProductCard key={product.id} product={product} />)}
+          </div>
+        </section>
+      )}
+
+      {bestsellerProducts.length > 0 && (
+        <section className="bg-[#f3f5f2] py-16 md:py-20">
+          <div className="container-site">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">Customer favourites</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-primary md:text-4xl">Popular right now</h2>
+              </div>
+              <Link to="/shop?bestseller=true" className="text-sm font-semibold text-primary hover:underline">View all →</Link>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
               {bestsellerProducts.map((product: any) => <ProductCard key={product.id} product={product} />)}
             </div>
           </div>
         </section>
       )}
 
-      {/* ── Why StepUp ── */}
-      <section className="py-space-xl bg-surface">
-        <div className="container-site">
-          <div className="text-center mb-space-xl">
-            <div className="inline-flex items-center gap-space-xs bg-surface-container-highest px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary mb-space-md">
-              <span className="material-symbols-outlined text-[15px] text-secondary">biotech</span>
-              Peer-Reviewed Podiatric Science
+      <section className="container-site py-16 md:py-20">
+        <div className="overflow-hidden rounded-[2rem] bg-primary px-6 py-12 text-white md:px-14 md:py-16">
+          <div className="grid items-center gap-8 md:grid-cols-[1.3fr_0.7fr]">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#a9d8c7]">A more considered fit</p>
+              <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">A little help finding your next pair?</h2>
+              <p className="mt-4 max-w-xl leading-7 text-white/75">Answer a few questions about your comfort preferences and daily routine, then explore the products available in the store.</p>
             </div>
-            <h2 className="text-headline-lg-mobile md:text-headline-lg font-semibold text-primary tracking-tight">The StepUp Orthopedic Difference</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
-            {[
-              { icon: 'verified_user', title: '94.2% Calcaneal Pain Relief', desc: 'Statistically significant reduction in morning initial-step plantar fascia pain within a 14-day daily wear cohort (n=840 patients; p < 0.001).', color: 'text-primary', bg: 'bg-primary/8' },
-              { icon: 'speed', title: '67.4% Peak Pressure Offload', desc: 'Measured at the medial plantar tuberosity via high-density capacitive insole telemetry matrices during heel strike phase. Peak: 74 → 24 PSI.', color: 'text-secondary', bg: 'bg-secondary-container/40' },
-              { icon: 'accessibility_new', title: 'Zero-Drop Postural Alignment', desc: 'Neutralizes kinetic Achilles tendon strain while stabilizing the subtalar joint and engaging the passive Windlass mechanism leverage.', color: 'text-tertiary', bg: 'bg-tertiary-fixed/40' },
-            ].map(({ icon, title, desc, color, bg }) => (
-              <div key={title} className="card p-space-xl flex flex-col gap-space-md">
-                <div className={`w-14 h-14 rounded-DEFAULT ${bg} flex items-center justify-center ${color}`}>
-                  <span className="material-symbols-outlined text-[28px]">{icon}</span>
-                </div>
-                <h3 className="text-headline-sm font-semibold text-primary">{title}</h3>
-                <p className="text-body-md text-on-surface-variant leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-space-xl">
-            <Link to="/clinical-studies" className="inline-flex items-center gap-space-sm text-label-md font-semibold text-secondary hover:text-primary transition-colors">
-              <span className="material-symbols-outlined text-[18px]">article</span>
-              Read Full Clinical Studies
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-            </Link>
+            <div className="md:text-right">
+              <Link to="/find-your-fit" className="inline-flex items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-bold text-primary transition hover:bg-[#dce9e1]">Find your fit <span className="ml-3">→</span></Link>
+            </div>
           </div>
         </div>
       </section>
-
-    </div>
+    </main>
   );
 }
