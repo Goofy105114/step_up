@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Users, ArrowLeft, Bell, FileText, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, ArrowLeft, Bell, FileText, FlaskConical, Activity } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const nav = [
@@ -10,6 +10,7 @@ const nav = [
   { to: '/admin/clinical-studies', label: 'Research Library', icon: FileText },
   { to: '/admin/lab-settings', label: 'Lab Settings', icon: FlaskConical },
   { to: '/admin/patient-profiles', label: 'Fit Profiles', icon: Users },
+  { to: '/admin/fit-operations', label: 'Fit Operations', icon: Activity },
 ];
 
 export default function AdminLayout() {
