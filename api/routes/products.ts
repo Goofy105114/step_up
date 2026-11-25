@@ -53,6 +53,15 @@ router.get('/', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/tags', async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT DISTINCT tag
+     FROM products p, UNNEST(p.tags) AS tag
+     WHERE p.is_active=true AND NULLIF(BTRIM(tag), '') IS NOT NULL
+     ORDER BY tag`);
+  return res.json({ success: true, data: result.rows.map(row => row.tag) });
+});
+
 router.get('/:slug', async (req: Request, res: Response) => {
   const result = await query(
     `SELECT p.*, c.name AS category_name, c.slug AS category_slug,
