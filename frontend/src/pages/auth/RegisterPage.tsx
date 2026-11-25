@@ -17,7 +17,7 @@ export default function RegisterPage() {
       await register(form);
       toast.success('Welcome to StepUp! 🎉');
       navigate('/');
-    } catch {}
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to create your account. Please try again.'); }
   };
 
   return (
