@@ -22,6 +22,7 @@ import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminClinicalStudies from './pages/admin/AdminClinicalStudies';
+import AdminLabSettings from './pages/admin/AdminLabSettings';
 import FindYourFitPage from './pages/FindYourFitPage';
 import ClinicalStudiesPage from './pages/ClinicalStudiesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/admin/orders" element={<AdminOrders />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/clinical-studies" element={<AdminClinicalStudies />} />
+          <Route path="/admin/lab-settings" element={<AdminLabSettings />} />
         </Route>
       </Route>
 
