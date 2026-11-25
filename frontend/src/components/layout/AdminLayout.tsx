@@ -1,11 +1,12 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Users, ArrowLeft, Bell, FileText, FlaskConical, Activity } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, RotateCcw, Users, ArrowLeft, Bell, FileText, FlaskConical, Activity } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { to: '/admin/returns', label: 'Returns', icon: RotateCcw },
   { to: '/admin/users', label: 'Customers', icon: Users },
   { to: '/admin/clinical-studies', label: 'Research Library', icon: FileText },
   { to: '/admin/lab-settings', label: 'Lab Settings', icon: FlaskConical },
