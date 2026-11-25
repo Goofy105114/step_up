@@ -55,10 +55,11 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.get('/tags', async (_req: Request, res: Response) => {
   const result = await query(
-    `SELECT DISTINCT tag
-     FROM products p, UNNEST(p.tags) AS tag
-     WHERE p.is_active=true AND NULLIF(BTRIM(tag), '') IS NOT NULL
-     ORDER BY tag`);
+    `SELECT DISTINCT tag.value AS tag
+     FROM products p
+     CROSS JOIN LATERAL UNNEST(p.tags) AS tag(value)
+     WHERE p.is_active=true AND NULLIF(BTRIM(tag.value), '') IS NOT NULL
+     ORDER BY tag.value`);
   return res.json({ success: true, data: result.rows.map(row => row.tag) });
 });
 
