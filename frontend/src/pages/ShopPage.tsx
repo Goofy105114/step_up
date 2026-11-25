@@ -42,10 +42,10 @@ export default function ShopPage() {
     return new URLSearchParams(params).toString();
   };
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching } = useQuery<{ data: any[]; pagination: { pages: number; total: number } }>({
     queryKey: ['products', 'shop', category, sort, search, minPrice, maxPrice, page],
     queryFn: () => api.get(`/products?${buildQuery()}`).then(r => r.data),
-  } as any);
+  });
 
   useEffect(() => {
     if (!data?.data) return;
