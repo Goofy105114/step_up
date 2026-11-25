@@ -110,6 +110,16 @@ CREATE INDEX IF NOT EXISTS idx_clinical_studies_published
   ON clinical_studies (publication_date DESC)
   WHERE is_published = true AND source_verified = true;
 
+CREATE TABLE IF NOT EXISTS lab_settings (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  setting_key   VARCHAR(120) UNIQUE NOT NULL,
+  setting_value JSONB NOT NULL DEFAULT '{}'::jsonb,
+  description   TEXT,
+  updated_by    UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS product_variants (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
