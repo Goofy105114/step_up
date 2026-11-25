@@ -36,7 +36,11 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
        JOIN product_variants pv ON ci.variant_id=pv.id AND pv.product_id=p.id
        WHERE ci.cart_id=$1
        FOR UPDATE OF pv`, [cartId]);
+    const cartCount = await client.query('SELECT COUNT(*) FROM cart_items WHERE cart_id=$1', [cartId]);
     if (!itemsRes.rows.length) throw new AppError('Cart is empty or contains unavailable products', 400);
+    if (Number(cartCount.rows[0].count) !== itemsRes.rows.length) {
+      throw new AppError('One or more cart items are no longer available. Remove them and try again.', 409);
+    }
 
     for (const item of itemsRes.rows) {
       if (Number(item.stock_qty) < Number(item.quantity)) {
