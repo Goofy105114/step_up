@@ -130,18 +130,35 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 });
 
 router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => {
-  const or = await query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, req.user!.userId]);
-  const order = or.rows[0];
-  if (!order) throw new AppError('Order not found', 404);
-  if (!['pending', 'confirmed'].includes(order.status)) throw new AppError('Order cannot be cancelled', 400);
-  await query('UPDATE orders SET status=$1 WHERE id=$2', ['cancelled', order.id]);
-  await query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
-    [order.id, 'cancelled', 'Cancelled by customer']);
-  const items = await query('SELECT * FROM order_items WHERE order_id=$1', [order.id]);
-  for (const item of items.rows) {
-    await query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2', [item.quantity, item.variant_id]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderResult = await client.query(
+      'SELECT * FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE',
+      [req.params.id, req.user!.userId]);
+    const order = orderResult.rows[0];
+    if (!order) throw new AppError('Order not found', 404);
+    if (!['pending', 'confirmed'].includes(order.status)) {
+      throw new AppError('Order cannot be cancelled', 400);
+    }
+
+    await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2', ['cancelled', order.id]);
+    await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
+      [order.id, 'cancelled', 'Cancelled by customer']);
+    const items = await client.query('SELECT * FROM order_items WHERE order_id=$1', [order.id]);
+    for (const item of items.rows) {
+      await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
+        [item.quantity, item.variant_id]);
+    }
+
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Order cancelled' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-  return res.json({ success: true, message: 'Order cancelled' });
 });
 
 export default router;
