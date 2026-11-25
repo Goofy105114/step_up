@@ -58,7 +58,7 @@ export default function CartPage() {
       <div className="text-center max-w-md">
         <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">shopping_bag</span>
         <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Sign in to view your cart</h2>
-        <p className="text-body-md text-on-surface-variant mb-space-lg">Your orthopedic footwear selections are waiting for you.</p>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Sign in to view and manage your saved cart items.</p>
         <Link to="/login" className="btn-primary px-10 py-4 text-title-md font-semibold">Sign In</Link>
       </div>
     </div>
@@ -91,8 +91,7 @@ export default function CartPage() {
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" /> Stock is checked when you place your order
             </span>
-            <span className="text-on-surface-variant">•</span>
-            <span></span>
+            
           </div>
         </div>
       </div>
@@ -122,7 +121,7 @@ export default function CartPage() {
               <div className="flex items-baseline justify-between mb-space-xs">
                 <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Your shopping bag</h1>
                 <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-md py-space-xs rounded-full">
-                  {items.length} item{items.length > 1 ? 's' : ''}
+                  {items.length} item{items.length !== 1 ? 's' : ''}
                 </span>
               </div>
               <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs">
