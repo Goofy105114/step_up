@@ -84,6 +84,7 @@ export default function ProductPage() {
   );
 
   const images = product.images?.length ? product.images.map((i: any) => i.url) : product.primary_image ? [product.primary_image] : [];
+  const hasAvailableStock = product.variants?.some((variant: any) => Number(variant.stock_qty) > 0) || false;
   const basePrice = parseFloat(product.base_price);
   const salePrice = product.sale_price ? parseFloat(product.sale_price) : null;
   const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
@@ -107,9 +108,9 @@ export default function ProductPage() {
             <span className="text-primary font-semibold">{product.name}</span>
           </div>
           <div className="flex items-center gap-space-md">
-            <span className="inline-flex items-center gap-1.5 text-secondary font-semibold">
-              <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse" />
-              In Stock
+            <span className={`inline-flex items-center gap-1.5 font-semibold ${hasAvailableStock ? "text-secondary" : "text-error"}`}>
+              <span className={`inline-block w-2 h-2 rounded-full ${hasAvailableStock ? "bg-secondary" : "bg-error"}`} />
+              {hasAvailableStock ? "In stock" : "Out of stock"}
             </span>
             <span className="hidden md:inline text-on-surface-variant text-body-sm">Product details and available variants</span>
           </div>
@@ -170,7 +171,7 @@ export default function ProductPage() {
               <div className="absolute bottom-space-md left-1/2 -translate-x-1/2 bg-surface-container-lowest/90 backdrop-blur-md px-space-md py-1.5 rounded-full shadow-sm flex items-center gap-space-md text-on-surface-variant text-label-badge font-bold uppercase tracking-[0.06em]">
                 <span className="flex items-center gap-1 text-primary"><span className="material-symbols-outlined text-[14px]">360</span> {images.length} Product Images</span>
                 <span className="opacity-30">|</span>
-                <span className="text-tertiary font-bold"></span>
+                
               </div>
             </div>
 
