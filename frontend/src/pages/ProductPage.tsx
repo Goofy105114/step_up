@@ -100,9 +100,9 @@ export default function ProductPage() {
   const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
 
   const SPECS = [
-    { icon: 'arrow_upload_progress', title: 'Product construction', desc: 'See the product description and materials listed for this item.' },
-    { icon: 'layers', title: 'Materials & care', desc: 'Refer to the product details for material and care information.' },
-    { icon: 'local_shipping', title: 'Delivery & returns', desc: 'Review the current delivery and return information at checkout.' },
+    { icon: 'layers', title: 'Material', desc: product.material || 'Material information has not been added to this listing.' },
+    { icon: 'info', title: 'Product details', desc: product.short_description || product.description || 'Additional product details have not been added to this listing.' },
+    { icon: 'hand', title: 'Care instructions', desc: product.care_instructions || 'Care instructions have not been added to this listing.' },
   ];
 
   return (
