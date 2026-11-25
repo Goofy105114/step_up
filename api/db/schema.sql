@@ -60,6 +60,12 @@ CREATE TABLE IF NOT EXISTS products (
   sku               VARCHAR(100) UNIQUE,
   material          VARCHAR(255),
   care_instructions TEXT,
+  arch_support_level VARCHAR(20),
+  arch_height_mm DECIMAL(5,2),
+  durometer_shore_a DECIMAL(5,2),
+  calibration_reference VARCHAR(255),
+  calibrated_at DATE,
+  calibration_notes TEXT,
   is_active         BOOLEAN DEFAULT true,
   is_featured       BOOLEAN DEFAULT false,
   is_new_arrival    BOOLEAN DEFAULT false,
@@ -72,6 +78,14 @@ CREATE TABLE IF NOT EXISTS products (
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Additive product-fit metadata for existing installations.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS arch_support_level VARCHAR(20);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS arch_height_mm DECIMAL(5,2);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS durometer_shore_a DECIMAL(5,2);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS calibration_reference VARCHAR(255);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS calibrated_at DATE;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS calibration_notes TEXT;
 
 CREATE TABLE IF NOT EXISTS product_variants (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
