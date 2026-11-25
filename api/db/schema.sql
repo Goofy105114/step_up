@@ -87,6 +87,29 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS calibration_reference VARCHAR(255)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS calibrated_at DATE;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS calibration_notes TEXT;
 
+CREATE TABLE IF NOT EXISTS clinical_studies (
+  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title              VARCHAR(255) NOT NULL,
+  authors            TEXT,
+  publication        VARCHAR(255),
+  publication_date   DATE,
+  doi                VARCHAR(255),
+  source_url         TEXT NOT NULL,
+  document_url       TEXT,
+  summary            TEXT,
+  source_verified    BOOLEAN NOT NULL DEFAULT false,
+  is_published       BOOLEAN NOT NULL DEFAULT false,
+  created_by         UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT clinical_studies_published_requires_verification
+    CHECK (is_published = false OR source_verified = true)
+);
+
+CREATE INDEX IF NOT EXISTS idx_clinical_studies_published
+  ON clinical_studies (publication_date DESC)
+  WHERE is_published = true AND source_verified = true;
+
 CREATE TABLE IF NOT EXISTS product_variants (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
