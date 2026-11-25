@@ -74,6 +74,8 @@ app.use('/api/reviews',    reviewRoutes);
 app.use('/api/payments',   paymentRoutes);
 app.use('/api/admin',      adminRoutes);
 app.use('/api/wishlist',   wishlistRoutes);
+app.use('/api/clinical-studies', clinicalStudiesRoutes);
+app.use('/api/patient-profile', patientProfileRoutes);
 
 /* ── Error handling ───────────────────────────────────────────────────── */
 app.use(notFound);
