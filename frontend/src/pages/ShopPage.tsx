@@ -73,7 +73,7 @@ export default function ShopPage() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary mb-space-sm">
                 <span className="material-symbols-outlined text-[15px] text-secondary">vital_signs</span>
-                Clinical Biomechanical Matrix
+                Explore the collection
               </div>
               <h1 className="text-headline-lg font-semibold text-primary tracking-tight">{pageTitle}</h1>
               {total > 0 && <p className="text-body-md text-on-surface-variant mt-space-xs">Showing {allProducts.length} of {total} curated releases</p>}
@@ -81,11 +81,11 @@ export default function ShopPage() {
             <div className="flex items-center gap-space-sm bg-surface-container-lowest p-space-sm rounded-lg shadow-sm">
               <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-primary">
                 <span className="material-symbols-outlined text-[18px]">verified</span>
-                <span className="text-label-badge font-bold uppercase">APMA Approved</span>
+                <span className="text-label-badge font-bold uppercase"></span>
               </div>
               <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-secondary">
                 <span className="material-symbols-outlined text-[18px]">health_and_safety</span>
-                <span className="text-label-badge font-bold uppercase">HSA/FSA Eligible</span>
+                <span className="text-label-badge font-bold uppercase"></span>
               </div>
             </div>
           </div>
