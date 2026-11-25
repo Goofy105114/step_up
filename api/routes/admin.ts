@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../db/pool';
+import pool, { query } from '../db/pool';
 import { authenticate, authorize } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
@@ -52,30 +52,45 @@ router.get('/orders', async (req: Request, res: Response) => {
 
 router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   const { status, note, tracking_number } = req.body;
-  const orderRes = await query('SELECT * FROM orders WHERE id=$1', [req.params.id]);
-  const order = orderRes.rows[0];
-  if (!order) throw new AppError('Order not found', 404);
+  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
+  if (!allowedStatuses.includes(status)) throw new AppError('Invalid order status', 400);
 
-  const updates = ['status=$1', 'updated_at=NOW()'];
-  const params: unknown[] = [status];
-  let pIdx = 2;
-  if (tracking_number) { updates.push(`tracking_number=$${pIdx++}`); params.push(tracking_number); }
-  if (status === 'delivered') updates.push('delivered_at=NOW()');
-  params.push(req.params.id);
-  await query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
-  await query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-    [req.params.id, status, note || null, req.user!.userId]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
+    const order = orderRes.rows[0];
+    if (!order) throw new AppError('Order not found', 404);
 
-  // Restore stock when admin cancels an order
-  if (status === 'cancelled' && order.status !== 'cancelled') {
-    const items = await query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
-    for (const item of items.rows) {
-      await query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
-        [item.quantity, item.variant_id]);
+    const updates = ['status=$1', 'updated_at=NOW()'];
+    const params: unknown[] = [status];
+    let pIdx = 2;
+    if (tracking_number !== undefined) {
+      updates.push(`tracking_number=$${pIdx++}`);
+      params.push(tracking_number || null);
     }
-  }
+    if (status === 'delivered') updates.push('delivered_at=COALESCE(delivered_at,NOW())');
+    params.push(req.params.id);
+    await client.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
+    await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
+      [req.params.id, status, note || null, req.user!.userId]);
 
-  return res.json({ success: true, message: 'Order status updated' });
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      const items = await client.query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
+      for (const item of items.rows) {
+        await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
+          [item.quantity, item.variant_id]);
+      }
+    }
+
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Order status updated' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 /* ── Products ────────────────────────────────────────────────────────── */
