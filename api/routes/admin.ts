@@ -362,4 +362,29 @@ router.get('/patient-fit-profiles', authorize('admin'), async (_req: Request, re
   return res.json({ success: true, data: result.rows });
 });
 
+/* ── Fit profile operations summary ─────────────────────────────────── */
+router.get('/fit-operations', authorize('admin'), async (_req: Request, res: Response) => {
+  const [totals, archPreferences, comfortFocus, recent] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS total_profiles,
+             COUNT(foot_length_mm)::int AS profiles_with_measurements
+           FROM patient_fit_profiles`),
+    query(`SELECT arch_preference AS label, COUNT(*)::int AS count
+           FROM patient_fit_profiles WHERE arch_preference IS NOT NULL
+           GROUP BY arch_preference ORDER BY count DESC`),
+    query(`SELECT comfort_focus AS label, COUNT(*)::int AS count
+           FROM patient_fit_profiles WHERE comfort_focus IS NOT NULL
+           GROUP BY comfort_focus ORDER BY count DESC`),
+    query(`SELECT p.id,p.foot_length_mm,p.usual_size,p.arch_preference,p.comfort_focus,p.updated_at,
+             u.first_name,u.last_name
+           FROM patient_fit_profiles p JOIN users u ON u.id=p.user_id
+           ORDER BY p.updated_at DESC LIMIT 8`)
+  ]);
+  return res.json({ success: true, data: {
+    totals: totals.rows[0],
+    arch_preferences: archPreferences.rows,
+    comfort_focus: comfortFocus.rows,
+    recent_profiles: recent.rows
+  }});
+});
+
 export default router;
