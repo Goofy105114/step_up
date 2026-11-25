@@ -120,6 +120,19 @@ CREATE TABLE IF NOT EXISTS lab_settings (
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS patient_fit_profiles (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  foot_length_mm    DECIMAL(6,2) CHECK (foot_length_mm IS NULL OR foot_length_mm > 0),
+  usual_size        VARCHAR(20),
+  arch_preference   VARCHAR(20) CHECK (arch_preference IS NULL OR arch_preference IN ('low','medium','high','unknown')),
+  comfort_focus     VARCHAR(30) CHECK (comfort_focus IS NULL OR comfort_focus IN ('heel','arch','forefoot','stability','general')),
+  daily_activity    VARCHAR(20) CHECK (daily_activity IS NULL OR daily_activity IN ('low','moderate','high')),
+  consent_at        TIMESTAMPTZ NOT NULL,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS product_variants (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
