@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../db/pool';
+import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
@@ -8,73 +8,104 @@ const genOrderNo = () => 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 
 
 router.post('/', authenticate, async (req: Request, res: Response) => {
   const { shipping_address, billing_address, payment_method = 'cod', coupon_code } = req.body;
-  if (!shipping_address) throw new AppError('Shipping address required', 400);
-  const userId = req.user!.userId;
-
-  const cartRes = await query('SELECT id FROM carts WHERE user_id=$1', [userId]);
-  if (!cartRes.rows[0]) throw new AppError('Cart is empty', 400);
-  const cartId = cartRes.rows[0].id;
-
-  const itemsRes = await query(
-    `SELECT ci.*, COALESCE(p.sale_price,p.base_price)+pv.price_adj AS unit_price,
-      p.name, pv.size, pv.color, pv.stock_qty,
-      (SELECT url FROM product_images WHERE product_id=p.id AND is_primary=true LIMIT 1) AS image_url
-     FROM cart_items ci
-     JOIN products p ON ci.product_id=p.id
-     JOIN product_variants pv ON ci.variant_id=pv.id
-     WHERE ci.cart_id=$1`, [cartId]);
-  if (!itemsRes.rows.length) throw new AppError('Cart is empty', 400);
-
-  for (const item of itemsRes.rows) {
-    if (item.stock_qty < item.quantity) throw new AppError(`Insufficient stock for ${item.name}`, 400);
+  if (!shipping_address || typeof shipping_address !== 'object') {
+    throw new AppError('Shipping address required', 400);
+  }
+  const requiredAddressFields = ['full_name', 'phone', 'line1', 'city', 'state', 'postal_code'];
+  if (requiredAddressFields.some(field => !String(shipping_address[field] || '').trim())) {
+    throw new AppError('Complete all required shipping address fields', 400);
+  }
+  if (!['cod', 'card', 'upi'].includes(payment_method)) {
+    throw new AppError('Unsupported payment method', 400);
   }
 
-  let subtotal = itemsRes.rows.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * i.quantity, 0);
-  let discountAmount = 0;
-  let couponId = null;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  if (coupon_code) {
-    const cr = await query(
-      `SELECT * FROM coupons WHERE code=$1 AND is_active=true
-       AND (valid_until IS NULL OR valid_until>NOW())
-       AND (max_uses IS NULL OR used_count<max_uses)`, [coupon_code]);
-    const coupon = cr.rows[0];
-    if (coupon && subtotal >= parseFloat(coupon.min_order_amount)) {
-      couponId = coupon.id;
-      discountAmount = coupon.discount_type === 'percentage'
-        ? (subtotal * parseFloat(coupon.discount_value)) / 100
-        : parseFloat(coupon.discount_value);
+    const cartRes = await client.query('SELECT id FROM carts WHERE user_id=$1 FOR UPDATE', [req.user!.userId]);
+    if (!cartRes.rows[0]) throw new AppError('Cart is empty', 400);
+    const cartId = cartRes.rows[0].id;
+
+    const itemsRes = await client.query(
+      `SELECT ci.*, COALESCE(p.sale_price,p.base_price)+pv.price_adj AS unit_price,
+        p.name, pv.size, pv.color, pv.stock_qty,
+        (SELECT url FROM product_images WHERE product_id=p.id AND is_primary=true LIMIT 1) AS image_url
+       FROM cart_items ci
+       JOIN products p ON ci.product_id=p.id AND p.is_active=true
+       JOIN product_variants pv ON ci.variant_id=pv.id AND pv.product_id=p.id
+       WHERE ci.cart_id=$1
+       FOR UPDATE OF pv`, [cartId]);
+    if (!itemsRes.rows.length) throw new AppError('Cart is empty or contains unavailable products', 400);
+
+    for (const item of itemsRes.rows) {
+      if (Number(item.stock_qty) < Number(item.quantity)) {
+        throw new AppError(`Insufficient stock for ${item.name}`, 400);
+      }
     }
+
+    const subtotal = itemsRes.rows.reduce(
+      (sum: number, item: any) => sum + Number(item.unit_price) * Number(item.quantity), 0);
+    let discountAmount = 0;
+    let couponId: string | null = null;
+
+    if (coupon_code) {
+      const couponResult = await client.query(
+        `SELECT * FROM coupons WHERE code=$1 AND is_active=true
+         AND valid_from<=NOW() AND (valid_until IS NULL OR valid_until>NOW())
+         AND (max_uses IS NULL OR used_count<max_uses)
+         FOR UPDATE`, [coupon_code]);
+      const coupon = couponResult.rows[0];
+      if (coupon && subtotal >= Number(coupon.min_order_amount)) {
+        couponId = coupon.id;
+        discountAmount = coupon.discount_type === 'percentage'
+          ? (subtotal * Number(coupon.discount_value)) / 100
+          : Number(coupon.discount_value);
+        discountAmount = Math.min(discountAmount, subtotal);
+      } else if (coupon_code) {
+        throw new AppError('Coupon is invalid, expired, or does not meet the minimum order amount', 400);
+      }
+    }
+
+    const shippingAmount = subtotal - discountAmount >= 599 ? 0 : 99;
+    const taxAmount = (subtotal - discountAmount) * 0.05;
+    const totalAmount = subtotal - discountAmount + shippingAmount + taxAmount;
+
+    const orderRes = await client.query(
+      `INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,
+         shipping_address,billing_address,payment_method,coupon_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [genOrderNo(), req.user!.userId, subtotal, discountAmount, shippingAmount, taxAmount, totalAmount,
+       JSON.stringify(shipping_address), JSON.stringify(billing_address || shipping_address),
+       payment_method, couponId]);
+    const order = orderRes.rows[0];
+
+    for (const item of itemsRes.rows) {
+      const stockUpdate = await client.query(
+        'UPDATE product_variants SET stock_qty=stock_qty-$1 WHERE id=$2 AND stock_qty >= $1 RETURNING id',
+        [item.quantity, item.variant_id]);
+      if (stockUpdate.rowCount !== 1) throw new AppError(`Insufficient stock for ${item.name}`, 409);
+
+      await client.query(
+        `INSERT INTO order_items (order_id,product_id,variant_id,product_name,size,color,quantity,unit_price,total_price,image_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [order.id, item.product_id, item.variant_id, item.name, item.size, item.color,
+         item.quantity, item.unit_price, Number(item.unit_price) * Number(item.quantity), item.image_url]);
+    }
+
+    await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
+      [order.id, 'pending', 'Order placed']);
+    await client.query('DELETE FROM cart_items WHERE cart_id=$1', [cartId]);
+    if (couponId) await client.query('UPDATE coupons SET used_count=used_count+1 WHERE id=$1', [couponId]);
+
+    await client.query('COMMIT');
+    return res.status(201).json({ success: true, data: order });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  const shippingAmount = subtotal - discountAmount >= 599 ? 0 : 99;
-  const taxAmount = (subtotal - discountAmount) * 0.05;
-  const totalAmount = subtotal - discountAmount + shippingAmount + taxAmount;
-
-  const orderRes = await query(
-    `INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,
-       shipping_address,billing_address,payment_method,coupon_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-    [genOrderNo(), userId, subtotal, discountAmount, shippingAmount, taxAmount, totalAmount,
-     JSON.stringify(shipping_address), JSON.stringify(billing_address || shipping_address),
-     payment_method, couponId]);
-  const order = orderRes.rows[0];
-
-  for (const item of itemsRes.rows) {
-    await query(
-      `INSERT INTO order_items (order_id,product_id,variant_id,product_name,size,color,quantity,unit_price,total_price,image_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [order.id, item.product_id, item.variant_id, item.name, item.size, item.color,
-       item.quantity, item.unit_price, parseFloat(item.unit_price) * item.quantity, item.image_url]);
-    await query('UPDATE product_variants SET stock_qty=stock_qty-$1 WHERE id=$2', [item.quantity, item.variant_id]);
-  }
-
-  await query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
-    [order.id, 'pending', 'Order placed']);
-  await query('DELETE FROM cart_items WHERE cart_id=$1', [cartId]);
-  if (couponId) await query('UPDATE coupons SET used_count=used_count+1 WHERE id=$1', [couponId]);
-
-  return res.status(201).json({ success: true, data: order });
 });
 
 router.get('/', authenticate, async (req: Request, res: Response) => {
