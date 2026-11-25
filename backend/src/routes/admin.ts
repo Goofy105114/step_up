@@ -425,7 +425,7 @@ router.patch('/return-requests/:id', async (req: Request, res: Response) => {
       [status, admin_note || null, req.user!.userId, req.params.id]);
     await client.query(
       'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-      [request.order_id, request.order_status || 'delivered', `Return request ${status}: ${admin_note || 'No additional note'}`, req.user!.userId]);
+      [request.order_id, 'delivered', `Return request ${status}: ${admin_note || 'No additional note'}`, req.user!.userId]);
     await client.query('COMMIT');
     return res.json({ success: true, data: updated.rows[0] });
   } catch (error) {
