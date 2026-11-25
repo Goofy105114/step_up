@@ -9,10 +9,10 @@ const STEPS = [
     question: 'Where would you most like extra comfort or support?',
     sub: 'Choose the area that best matches your own experience. This questionnaire is for product discovery, not diagnosis or clinical assessment.',
     options: [
-      { id: 'heel', icon: 'arrow_upload_progress', title: 'Heel Strike & Plantar Fascia', desc: 'Heel-area comfort for everyday standing and walking.', zone: 'Heel comfort', category: 'sports' },
-      { id: 'arch', icon: 'timeline', title: 'Medial Longitudinal Arch', desc: 'Arch-area comfort and support for daily movement.', zone: 'Arch comfort', category: 'casual' },
-      { id: 'metatarsal', icon: 'lens_blur', title: 'Metatarsal & Ball of Foot', desc: 'Forefoot cushioning and room for everyday movement.', zone: 'Forefoot comfort', category: 'formal' },
-      { id: 'pronation', icon: 'swap_driving_apps', title: 'Overpronation & Ankle Roll', desc: 'A steadier-feeling fit for your usual walking routine.', zone: 'Stability preference', category: 'sports' },
+      { id: 'heel', icon: 'arrow_upload_progress', title: 'Heel Strike & Plantar Fascia', desc: 'Heel-area comfort for everyday standing and walking.', zone: 'Heel comfort', tag: 'stability-support' },
+      { id: 'arch', icon: 'timeline', title: 'Medial Longitudinal Arch', desc: 'Arch-area comfort and support for daily movement.', zone: 'Arch comfort', tag: 'arch-support' },
+      { id: 'metatarsal', icon: 'lens_blur', title: 'Metatarsal & Ball of Foot', desc: 'Forefoot cushioning and room for everyday movement.', zone: 'Forefoot comfort', tag: 'forefoot-comfort' },
+      { id: 'pronation', icon: 'swap_driving_apps', title: 'Overpronation & Ankle Roll', desc: 'A steadier-feeling fit for your usual walking routine.', zone: 'Stability preference', tag: 'stability-support' },
     ],
   },
   {
@@ -20,9 +20,9 @@ const STEPS = [
     question: 'Daily standing & occupational load',
     sub: 'Tell us roughly how much time you spend standing or walking on a typical day.',
     options: [
-      { id: 'light', icon: 'weekend', title: 'Under 2 hours', desc: 'Sedentary desk with light walking', zone: 'Low Impact', category: 'casual' },
-      { id: 'moderate', icon: 'directions_walk', title: '2 to 6 hours', desc: 'Retail, teaching, home movement', zone: 'Moderate', category: 'casual' },
-      { id: 'heavy', icon: 'local_hospital', title: '8+ hours / Shift', desc: 'Clinical, nursing, hospitality staff', zone: 'High Stress', category: 'sports' },
+      { id: 'light', icon: 'weekend', title: 'Under 2 hours', desc: 'Sedentary desk with light walking', zone: 'Low Impact', tag: 'arch-support' },
+      { id: 'moderate', icon: 'directions_walk', title: '2 to 6 hours', desc: 'Retail, teaching, home movement', zone: 'Moderate', tag: 'arch-support' },
+      { id: 'heavy', icon: 'local_hospital', title: '8+ hours / Shift', desc: 'Clinical, nursing, hospitality staff', zone: 'High Stress', tag: 'stability-support' },
     ],
   },
   {
@@ -30,10 +30,10 @@ const STEPS = [
     question: 'What is your primary footwear activity?',
     sub: 'Choose the kind of footwear you are shopping for.',
     options: [
-      { id: 'running', icon: 'directions_run', title: 'Running & Sports', desc: 'High impact, pronation control, energy return', zone: 'Kinetic Load', category: 'sports' },
-      { id: 'formal', icon: 'business_center', title: 'Formal & Office', desc: 'All-day comfort, leather upper, professional look', zone: 'Low Impact', category: 'formal' },
-      { id: 'casual', icon: 'wb_sunny', title: 'Casual & Daily Wear', desc: 'Versatile, stylish, comfortable for everyday use', zone: 'Mixed Use', category: 'casual' },
-      { id: 'sandal', icon: 'beach_access', title: 'Sandals & Recovery', desc: 'Open-toe, breathable, post-workout or home wear', zone: 'Recovery', category: 'sandals' },
+      { id: 'running', icon: 'directions_run', title: 'Running & Sports', desc: 'High impact, pronation control, energy return', zone: 'Kinetic Load', tag: 'stability-support' },
+      { id: 'formal', icon: 'business_center', title: 'Formal & Office', desc: 'All-day comfort, leather upper, professional look', zone: 'Low Impact', tag: 'forefoot-comfort' },
+      { id: 'casual', icon: 'wb_sunny', title: 'Casual & Daily Wear', desc: 'Versatile, stylish, comfortable for everyday use', zone: 'Mixed Use', tag: 'arch-support' },
+      { id: 'sandal', icon: 'beach_access', title: 'Sandals & Recovery', desc: 'Open-toe, breathable, post-workout or home wear', zone: 'Recovery', tag: 'everyday-sandals' },
     ],
   },
 ];
@@ -48,20 +48,20 @@ export default function FindYourFitPage() {
   const progress = ((step) / STEPS.length) * 100;
 
   // Determine recommended category from answers
-  const getRecommendedCategory = () => {
-    const categoryVotes: Record<string, number> = {};
+  const getRecommendedTag = () => {
+    const tagVotes: Record<string, number> = {};
     answers.forEach((answerId, stepIdx) => {
       const opt = STEPS[stepIdx].options.find(o => o.id === answerId);
-      if (opt?.category) {
-        categoryVotes[opt.category] = (categoryVotes[opt.category] || 0) + 1;
+      if (opt?.tag) {
+        tagVotes[opt.tag] = (tagVotes[opt.tag] || 0) + 1;
       }
     });
-    return Object.entries(categoryVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || 'casual';
+    return Object.entries(tagVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || 'arch-support';
   };
 
   const { data: recommendedProducts } = useQuery({
     queryKey: ['quiz-results', answers],
-    queryFn: () => api.get(`/products?category=${getRecommendedCategory()}&limit=4`).then(r => r.data),
+    queryFn: () => api.get(`/products?tags=${encodeURIComponent(getRecommendedTag())}&limit=4`).then(r => r.data),
     enabled: showResult,
   });
 
@@ -80,7 +80,7 @@ export default function FindYourFitPage() {
   };
 
   if (showResult) {
-    const category = getRecommendedCategory();
+    const tag = getRecommendedTag();
     const products = recommendedProducts?.data || [];
     return (
       <div className="bg-surface min-h-screen py-space-xl">
@@ -154,7 +154,7 @@ export default function FindYourFitPage() {
           )}
 
           <div className="flex flex-col sm:flex-row gap-space-md justify-center">
-            <Link to={`/shop/${category}`} className="btn-primary px-10 py-4 text-title-md font-semibold">
+            <Link to="/shop-by-condition" className="btn-primary px-10 py-4 text-title-md font-semibold">
               Browse products by support need
               <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </Link>
