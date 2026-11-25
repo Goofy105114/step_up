@@ -61,6 +61,12 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
     const order = orderRes.rows[0];
     if (!order) throw new AppError('Order not found', 404);
+    if (status === 'cancelled' && order.payment_status === 'paid') {
+      throw new AppError('Refund the payment through the payment provider before cancelling this order.', 409);
+    }
+    if (status === 'refunded') {
+      throw new AppError('Refund status must be confirmed by the payment provider integration.', 409);
+    }
 
     const updates = ['status=$1', 'updated_at=NOW()'];
     const params: unknown[] = [status];
