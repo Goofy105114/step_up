@@ -36,14 +36,17 @@ Create the repo first at github.com → New repository → `stepup-footwear` →
    ```
 
 3. Go to **SQL Editor** (left sidebar) → **New query**
-   Paste the entire contents of `api/db/schema.sql` → Click **Run**
-   Then paste the entire contents of `api/db/seed.sql` → Click **Run**
+   Paste the entire contents of `api/db/schema.sql` → Click **Run**. This creates missing tables and applies additive product metadata columns without deleting existing records. The updated schema includes optional arch-support/durometer fields, the verified research library, laboratory settings and consent-based customer fit profiles.
 
-4. Go to **Table Editor** to verify — you should see all 15 tables with data.
+4. Verify the tables and columns in **Table Editor**. Add your real product catalogue, images, variants, stock, categories and coupons through the admin panel or an approved import.
+
+   **Do not run `api/db/seed.sql` against production.** It contains development/demo records. Use it only in a disposable local development database.
 
 ---
 
 ## Step 3 — Deploy API to Render
+
+**Database migration order:** apply the updated `api/db/schema.sql` to the target database before deploying the matching API code. The current update adds optional arch-support and durometer metadata fields. Do not deploy the API changes before those additive columns exist.
 
 1. Go to **render.com** → Sign up with GitHub → **New → Web Service**
 2. Connect your `stepup-footwear` repo
@@ -70,7 +73,7 @@ Create the repo first at github.com → New repository → `stepup-footwear` →
 
 5. Click **Create Web Service** → wait ~3 minutes to deploy
 6. Test: visit `https://stepup-api.onrender.com/api/health` → should return `{"status":"OK"}`
-7. Test products: `https://stepup-api.onrender.com/api/products` → should return 8 products
+7. Test products: `https://stepup-api.onrender.com/api/products` → should return the products currently entered in your catalogue (an empty list is valid before products are added)
 
 ---
 

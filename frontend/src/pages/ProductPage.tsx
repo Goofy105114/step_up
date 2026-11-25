@@ -1,22 +1,29 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
+import SizeGuideModal from '../components/products/SizeGuideModal';
 import { useCartStore } from '../store/cartStore';
 import toast from 'react-hot-toast';
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { fetchCart } = useCartStore();
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [addingCart, setAddingCart] = useState(false);
-  const [wishlisted, setWishlisted] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
-  const [heatmap, setHeatmap] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: wishlistData } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => api.get('/wishlist').then(response => response.data),
+    enabled: !!user,
+  });
   const [openSpec, setOpenSpec] = useState<number | null>(null);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['product', slug],
@@ -24,10 +31,11 @@ export default function ProductPage() {
   });
 
   const product = data;
+  const wishlisted = wishlistData?.data?.some((item: any) => item.product_id === product?.id) || false;
 
   useEffect(() => {
     if (product?.variants?.length) {
-      const first = product.variants[0];
+      const first = product.variants.find((variant: any) => Number(variant.stock_qty) > 0) || product.variants[0];
       setSelectedColor(first.color);
       setSelectedVariant(first);
     }
@@ -38,11 +46,12 @@ export default function ProductPage() {
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
-    const v = product.variants.find((v: any) => v.color === color);
+    const colorVariants = product.variants.filter((v: any) => v.color === color);
+    const v = colorVariants.find((variant: any) => Number(variant.stock_qty) > 0) || colorVariants[0];
     setSelectedVariant(v);
   };
 
-  const addToCart = async () => {
+  const addToCart = async (goToCheckout = false) => {
     if (!user) { toast.error('Please sign in to add items to cart'); return; }
     if (!selectedVariant) { toast.error('Please select a size'); return; }
     if (selectedVariant.stock_qty < 1) { toast.error('Out of stock'); return; }
@@ -51,6 +60,7 @@ export default function ProductPage() {
       await api.post('/cart/items', { product_id: product.id, variant_id: selectedVariant.id, quantity: 1 });
       await fetchCart();
       toast.success(`${product.name} added to bag!`);
+      if (goToCheckout) navigate('/checkout');
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to add'); }
     finally { setAddingCart(false); }
   };
@@ -60,9 +70,9 @@ export default function ProductPage() {
     try {
       if (wishlisted) await api.delete(`/wishlist/${product.id}`);
       else await api.post('/wishlist', { product_id: product.id });
-      setWishlisted(!wishlisted);
+      await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
       toast.success(wishlisted ? 'Removed from wishlist' : 'Saved to wishlist ❤️');
-    } catch {}
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to update wishlist'); }
   };
 
   if (isLoading) return (
@@ -84,14 +94,17 @@ export default function ProductPage() {
   );
 
   const images = product.images?.length ? product.images.map((i: any) => i.url) : product.primary_image ? [product.primary_image] : [];
+  const hasAvailableStock = product.variants?.some((variant: any) => Number(variant.stock_qty) > 0) || false;
   const basePrice = parseFloat(product.base_price);
   const salePrice = product.sale_price ? parseFloat(product.sale_price) : null;
   const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
 
   const SPECS = [
-    { icon: 'arrow_upload_progress', title: 'Product construction', desc: 'See the product description and materials listed for this item.' },
-    { icon: 'layers', title: 'Materials & care', desc: 'Refer to the product details for material and care information.' },
-    { icon: 'local_shipping', title: 'Delivery & returns', desc: 'Review the current delivery and return information at checkout.' },
+    ...(product.material ? [{ icon: 'layers', title: 'Material', desc: product.material }] : []),
+    ...(product.arch_support_level ? [{ icon: 'footprint', title: 'Arch support', desc: `${product.arch_support_level} support` }] : []),
+    ...(product.arch_height_mm ? [{ icon: 'straighten', title: 'Arch height', desc: `${product.arch_height_mm} mm` }] : []),
+    ...(product.durometer_shore_a !== null && product.durometer_shore_a !== undefined ? [{ icon: 'tune', title: 'Cushion firmness', desc: `${product.durometer_shore_a} Shore A` }] : []),
+    ...(product.care_instructions ? [{ icon: 'hand', title: 'Care instructions', desc: product.care_instructions }] : []),
   ];
 
   return (
@@ -107,9 +120,9 @@ export default function ProductPage() {
             <span className="text-primary font-semibold">{product.name}</span>
           </div>
           <div className="flex items-center gap-space-md">
-            <span className="inline-flex items-center gap-1.5 text-secondary font-semibold">
-              <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse" />
-              In Stock
+            <span className={`inline-flex items-center gap-1.5 font-semibold ${hasAvailableStock ? "text-secondary" : "text-error"}`}>
+              <span className={`inline-block w-2 h-2 rounded-full ${hasAvailableStock ? "bg-secondary" : "bg-error"}`} />
+              {hasAvailableStock ? "In stock" : "Out of stock"}
             </span>
             <span className="hidden md:inline text-on-surface-variant text-body-sm">Product details and available variants</span>
           </div>
@@ -137,40 +150,19 @@ export default function ProductPage() {
                 )}
               </div>
 
-              {/* Heatmap toggle */}
-              <div className="absolute top-space-md right-space-md z-10">
-                <button onClick={() => setHeatmap(!heatmap)}
-                  className="inline-flex items-center gap-1.5 px-space-md py-2 rounded-full text-label-md font-semibold bg-surface-container hover:bg-surface-container-high text-primary shadow-sm transition-all">
-                  <span className="material-symbols-outlined text-[16px] text-secondary">thermostat</span>
-                  {heatmap ? 'View Product' : 'View Pressure Map'}
-                </button>
-              </div>
-
-              {!heatmap ? (
-                <img src={images[activeImg] || ''}
-                  alt={product.name}
-                  className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
+              {images[activeImg] ? (
+                <img src={images[activeImg]} alt={product.name} className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-space-lg text-center">
-                  <svg className="w-full max-w-[300px] max-h-[280px] text-primary" fill="none" viewBox="0 0 200 320">
-                    <path d="M60 20 C110 15, 145 40, 145 90 C145 140, 150 170, 140 210 C130 250, 125 310, 95 325 C65 330, 45 305, 45 250 C45 200, 35 150, 38 100 C40 60, 45 25, 60 20 Z" fill="#E4E2DF" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2"/>
-                    <circle cx="85" cy="275" fill="#8ed4c4" fillOpacity="0.45" r="28"/>
-                    <circle cx="85" cy="275" fill="#006b5f" fillOpacity="0.8" r="16"/>
-                    <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="85" y="278">ILLUSTRATIVE</text>
-                    <path d="M48 140 C52 110, 75 120, 85 145 C95 170, 70 210, 52 200 Z" fill="#6df5e1" fillOpacity="0.6"/>
-                    <text fill="#004339" fontSize="7" fontWeight="700" textAnchor="middle" x="75" y="170">ARCH REST</text>
-                    <ellipse cx="95" cy="85" fill="#8ed4c4" fillOpacity="0.5" rx="35" ry="25"/>
-                    <ellipse cx="95" cy="85" fill="#006b5f" fillOpacity="0.75" rx="20" ry="14"/>
-                    <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="95" y="88">LOAD BALANCE</text>
-                  </svg>
-                  <p className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary mt-space-sm">Illustrative graphic only — no measured gait data is available for this product.</p>
+                <div className="flex min-h-[420px] w-full flex-col items-center justify-center gap-3 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-5xl text-outline-variant">image</span>
+                  <span className="text-sm">No product images available</span>
                 </div>
               )}
 
               <div className="absolute bottom-space-md left-1/2 -translate-x-1/2 bg-surface-container-lowest/90 backdrop-blur-md px-space-md py-1.5 rounded-full shadow-sm flex items-center gap-space-md text-on-surface-variant text-label-badge font-bold uppercase tracking-[0.06em]">
                 <span className="flex items-center gap-1 text-primary"><span className="material-symbols-outlined text-[14px]">360</span> {images.length} Product Images</span>
                 <span className="opacity-30">|</span>
-                <span className="text-tertiary font-bold"></span>
+                
               </div>
             </div>
 
@@ -195,7 +187,7 @@ export default function ProductPage() {
                 <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">{(product.brand || 'StepUp').toUpperCase()} PERFORMANCE</span>
                 {product.is_bestseller && (
                   <span className="inline-flex items-center gap-1 bg-tertiary-fixed text-tertiary px-space-sm py-0.5 rounded-full text-label-badge font-bold">
-                    <span className="material-symbols-outlined text-[13px]">verified_user</span>Top Rated
+                    <span className="material-symbols-outlined text-[13px]">verified_user</span>Bestseller
                   </span>
                 )}
               </div>
@@ -209,7 +201,7 @@ export default function ProductPage() {
                     ))}
                   </div>
                   <span className="text-title-md font-semibold text-primary">{parseFloat(product.avg_rating).toFixed(1)}</span>
-                  <span className="text-body-sm text-on-surface-variant">({product.review_count} verified reviews)</span>
+                  <span className="text-body-sm text-on-surface-variant">({product.review_count} customer reviews)</span>
                 </div>
               )}
 
@@ -250,7 +242,7 @@ export default function ProductPage() {
               <div>
                 <div className="flex items-center justify-between mb-space-sm">
                   <label className="label mb-0">Select US Size</label>
-                  <button className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">↑ Size Guide</button>
+                  <button onClick={() => setSizeGuideOpen(true)} className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">↑ Size Guide</button>
                 </div>
                 <div className="flex flex-wrap gap-space-sm">
                   {sizesForColor.map((v: any) => (
@@ -268,7 +260,7 @@ export default function ProductPage() {
                   <p className={`text-body-sm font-semibold mt-space-sm flex items-center gap-1 ${selectedVariant.stock_qty > 10 ? 'text-secondary' : selectedVariant.stock_qty > 0 ? 'text-tertiary' : 'text-error'}`}>
                     <span className="material-symbols-outlined text-[16px]">{selectedVariant.stock_qty > 0 ? 'check_circle' : 'cancel'}</span>
                     {selectedVariant.stock_qty > 10 ? 'In Stock — Ready to Ship'
-                      : selectedVariant.stock_qty > 0 ? `⚡ Only ${selectedVariant.stock_qty} Left — Limited Clinical Batch`
+                      : selectedVariant.stock_qty > 0 ? `⚡ Only ${selectedVariant.stock_qty} Left — Limited stock`
                       : 'Out of Stock'}
                   </p>
                 )}
@@ -282,7 +274,7 @@ export default function ProductPage() {
                 <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 {addingCart ? 'Adding...' : 'Add to Bag'}
               </button>
-              <button onClick={addToCart} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
+              <button onClick={() => addToCart(true)} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
                 className="flex-1 h-14 bg-primary-container text-on-primary rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs shadow-primary hover:bg-primary transition-all disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">bolt</span>
                 {addingCart ? '...' : `Buy Now · ₹${(salePrice ?? basePrice).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
@@ -326,9 +318,9 @@ export default function ProductPage() {
             {/* Trust row */}
             <div className="grid grid-cols-3 gap-space-sm">
               {[
-                { icon: 'verified', label: '100% Authentic', desc: 'APMA Verified' },
-                { icon: 'replay', label: '30-Day Returns', desc: 'Hassle-free' },
-                { icon: 'local_shipping', label: 'Free Delivery', desc: 'Orders over ₹599' },
+                { icon: 'verified', label: 'Product details', desc: 'Catalogue information' },
+                { icon: 'replay', label: 'Returns', desc: 'See checkout details' },
+                { icon: 'local_shipping', label: 'Delivery', desc: 'See checkout details' },
               ].map(({ icon, label, desc }) => (
                 <div key={label} className="card p-space-sm text-center">
                   <span className="material-symbols-outlined text-[22px] text-secondary block mb-1">{icon}</span>
@@ -340,6 +332,7 @@ export default function ProductPage() {
           </div>
         </div>
       </section>
+      <SizeGuideModal isOpen={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
     </div>
   );
 }

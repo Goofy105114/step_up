@@ -20,6 +20,8 @@ import reviewRoutes     from './routes/reviews';
 import paymentRoutes    from './routes/payments';
 import adminRoutes      from './routes/admin';
 import wishlistRoutes   from './routes/wishlist';
+import clinicalStudiesRoutes from './routes/clinical-studies';
+import patientProfileRoutes from './routes/patient-profile';
 
 const app = express();
 

@@ -4,8 +4,6 @@ import { useCartStore } from '../store/cartStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
-const INDIAN_STATES = ['Andhra Pradesh','Delhi','Gujarat','Karnataka','Kerala','Maharashtra','Punjab','Rajasthan','Tamil Nadu','Telangana','Uttar Pradesh','West Bengal'];
-
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 
 export default function CheckoutPage() {
@@ -65,17 +63,14 @@ export default function CheckoutPage() {
                 <div className="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center shadow-md">
                   <span className="material-symbols-outlined text-[34px] text-on-secondary-container">check_circle</span>
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-primary text-on-primary text-label-badge font-bold px-space-xs py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
-                  <span className="material-symbols-outlined text-[10px]">verified</span> NPI
                 </div>
-              </div>
               <div>
                 <div className="flex flex-wrap items-center gap-space-xs mb-2">
                   <span className="bg-primary-fixed text-on-primary-fixed text-label-badge font-bold px-space-sm py-0.5 rounded-full uppercase">Order Confirmed</span>
-                  <span className="bg-surface-container text-on-surface-variant text-label-badge font-bold px-space-sm py-0.5 rounded-full uppercase tracking-wider">HSA/FSA Approved</span>
+                  
                 </div>
-                <h1 className="text-headline-lg font-semibold text-primary tracking-tight mb-2">Order {orderId} Confirmed!</h1>
-                <p className="text-body-lg text-on-surface-variant">Thank you! Your footwear is being prepared for dispatch.</p>
+                <h1 className="text-headline-lg font-semibold text-primary tracking-tight mb-2">Order {orderId} placed</h1>
+                <p className="text-body-lg text-on-surface-variant">Your order has been received. Payment and fulfilment status will be available in My Orders.</p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-space-md">
@@ -87,10 +82,21 @@ export default function CheckoutPage() {
             </div>
             <p className="text-body-sm text-on-surface-variant text-center mt-space-md">
               <span className="material-symbols-outlined text-[16px] text-secondary align-middle mr-1">verified_user</span>
-              Provider NPI #1942084729 • Certified Podiatric Fulfillment
+              Your order details are available in your account.
             </p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+
+  if (items.length === 0 && step !== 3) return (
+    <div className="bg-surface min-h-screen flex items-center justify-center p-6">
+      <div className="max-w-md text-center">
+        <span className="material-symbols-outlined text-5xl text-outline-variant">shopping_bag</span>
+        <h1 className="mt-4 text-2xl font-semibold text-primary">Your shopping bag is empty</h1>
+        <p className="mt-3 text-sm leading-7 text-on-surface-variant">Add a product before continuing to checkout.</p>
+        <Link to="/shop" className="btn-primary mt-6 inline-flex px-7 py-3">Browse footwear</Link>
       </div>
     </div>
   );
@@ -102,21 +108,21 @@ export default function CheckoutPage() {
           <div>
             <div className="inline-flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container text-primary text-label-badge font-bold uppercase tracking-[0.06em] mb-space-xs">
               <span className="material-symbols-outlined text-[15px] text-secondary">verified_user</span>
-              HIPAA-Encrypted Clinical Checkout
+              Secure checkout
             </div>
-            <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Express Patient Order</h1>
+            <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Checkout</h1>
           </div>
           <div className="flex items-center gap-space-md text-on-surface-variant text-body-sm">
-            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-secondary text-[18px]">lock</span> 256-Bit SSL</span>
+            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-secondary text-[18px]">lock</span> Secure checkout</span>
             <span className="opacity-30">•</span>
-            <span className="flex items-center gap-1.5 text-primary font-semibold"><span className="material-symbols-outlined text-primary text-[18px]">verified</span> APMA Accepted</span>
+            
           </div>
         </div>
         {/* Step indicator */}
         <div className="flex items-center gap-space-xs text-label-badge font-bold uppercase tracking-[0.06em] text-outline mb-space-xl">
           <span className={step >= 1 ? 'text-primary font-bold' : ''}>01 Bag</span>
           <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span className={step >= 2 ? 'text-primary font-bold' : ''}>02 Clinical &amp; Shipping Profile</span>
+          <span className={step >= 2 ? 'text-primary font-bold' : ''}>02 Delivery Details</span>
           <span className="material-symbols-outlined text-[14px]">chevron_right</span>
           <span className={step >= 3 ? 'text-primary font-bold' : ''}>03 Payment</span>
         </div>
@@ -154,7 +160,7 @@ export default function CheckoutPage() {
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">sms</span>
                       <input type="tel" placeholder="+91 99999 99999" value={addr.phone} onChange={e => setA('phone', e.target.value)} className="input-field pl-12" />
                     </div>
-                    <p className="text-body-sm text-outline mt-1">Itemized clinical receipt and digital receipt will arrive via email.</p>
+                    <p className="text-body-sm text-outline mt-1">Your order confirmation will be available after checkout.</p>
                   </div>
                   <div>
                     <label className="label">Street Address *</label>
@@ -170,10 +176,7 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label className="label">State *</label>
-                      <select value={addr.state} onChange={e => setA('state', e.target.value)} className="input-field">
-                        <option value="">Select State</option>
-                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <input type="text" placeholder="State or union territory" value={addr.state} onChange={e => setA('state', e.target.value)} className="input-field" />
                     </div>
                     <div>
                       <label className="label">Pincode *</label>
@@ -238,7 +241,7 @@ export default function CheckoutPage() {
           {/* Order summary sidebar */}
           <div className="lg:col-span-5 sticky top-32 flex flex-col gap-space-md">
             <div className="card p-space-lg">
-              <h3 className="text-title-md font-semibold text-primary mb-space-md">Your Relief Bag</h3>
+              <h3 className="text-title-md font-semibold text-primary mb-space-md">Order summary</h3>
               <div className="space-y-space-sm max-h-64 overflow-y-auto pr-1 mb-space-md">
                 {items.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-space-md">
@@ -270,7 +273,7 @@ export default function CheckoutPage() {
             <div className="card p-space-md bg-surface-container-low text-center">
               <p className="text-body-sm text-on-surface-variant flex items-center justify-center gap-1">
                 <span className="material-symbols-outlined text-[16px] text-secondary">receipt_long</span>
-                Itemized HSA/FSA receipt generated automatically at checkout.
+                An order summary will be available in your account after your order is placed.
               </p>
             </div>
           </div>

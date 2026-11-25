@@ -4,19 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
 
-const CATEGORIES = [
-  { slug: '', label: 'All Footwear' },
-  { slug: 'mens', label: "Men's" },
-  { slug: 'womens', label: "Women's" },
-  { slug: 'kids', label: "Kids'" },
-  { slug: 'sports', label: 'Sports' },
-  { slug: 'casual', label: 'Casual' },
-  { slug: 'formal', label: 'Formal' },
-  { slug: 'sandals', label: 'Sandals' },
-];
-
 const SORT_OPTIONS = [
-  { value: '', label: 'Sort: Popularity ▾' },
+  { value: '', label: 'Newest' },
   { value: 'price_asc', label: 'Price: Low to High' },
   { value: 'price_desc', label: 'Price: High to Low' },
   { value: 'rating', label: 'Rating ▾' },
@@ -25,19 +14,28 @@ const SORT_OPTIONS = [
 export default function ShopPage() {
   const { category: paramCategory } = useParams<{ category?: string }>();
   const [searchParams] = useSearchParams();
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/categories').then(response => response.data),
+  });
+  const CATEGORIES = [{ slug: '', label: 'All Footwear' }, ...(categoriesData?.data || []).map((category: any) => ({ slug: category.slug, label: category.name }))];
   const [category, setCategory] = useState(paramCategory || '');
   const [sort, setSort] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [page, setPage] = useState(1);
   const [allProducts, setAllProducts] = useState<any[]>([]);
 
   useEffect(() => { setCategory(paramCategory || ''); setPage(1); setAllProducts([]); }, [paramCategory]);
-  useEffect(() => { setPage(1); setAllProducts([]); }, [category, sort, search]);
+  useEffect(() => { setPage(1); setAllProducts([]); }, [category, sort, search, minPrice, maxPrice]);
 
   const buildQuery = (p = page) => {
     const params: Record<string, string> = { limit: '12', page: String(p) };
     if (category) params.category = category;
     if (search) params.search = search;
+    if (minPrice) params.min_price = minPrice;
+    if (maxPrice) params.max_price = maxPrice;
     if (sort === 'price_asc') { params.sort = 'price'; params.order = 'asc'; }
     if (sort === 'price_desc') { params.sort = 'price'; params.order = 'desc'; }
     if (sort === 'rating') { params.sort = 'rating'; params.order = 'desc'; }
@@ -45,7 +43,7 @@ export default function ShopPage() {
   };
 
   const { data, isFetching } = useQuery({
-    queryKey: ['products', 'shop', category, sort, search, page],
+    queryKey: ['products', 'shop', category, sort, search, minPrice, maxPrice, page],
     queryFn: () => api.get(`/products?${buildQuery()}`).then(r => r.data),
   } as any);
 
@@ -73,19 +71,19 @@ export default function ShopPage() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary mb-space-sm">
                 <span className="material-symbols-outlined text-[15px] text-secondary">vital_signs</span>
-                Clinical Biomechanical Matrix
+                Explore the collection
               </div>
               <h1 className="text-headline-lg font-semibold text-primary tracking-tight">{pageTitle}</h1>
-              {total > 0 && <p className="text-body-md text-on-surface-variant mt-space-xs">Showing {allProducts.length} of {total} curated releases</p>}
+              {total > 0 && <p className="text-body-md text-on-surface-variant mt-space-xs">Showing {allProducts.length} of {total} products</p>}
             </div>
             <div className="flex items-center gap-space-sm bg-surface-container-lowest p-space-sm rounded-lg shadow-sm">
               <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-primary">
-                <span className="material-symbols-outlined text-[18px]">verified</span>
-                <span className="text-label-badge font-bold uppercase">APMA Approved</span>
+                <span className="material-symbols-outlined text-[18px]">tune</span>
+                <span className="text-label-badge font-bold uppercase">Filters</span>
               </div>
               <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-secondary">
-                <span className="material-symbols-outlined text-[18px]">health_and_safety</span>
-                <span className="text-label-badge font-bold uppercase">HSA/FSA Eligible</span>
+                <span className="material-symbols-outlined text-[18px]">category</span>
+                <span className="text-label-badge font-bold uppercase">Categories</span>
               </div>
             </div>
           </div>
@@ -119,7 +117,7 @@ export default function ShopPage() {
                   <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
                   <h2 className="text-title-md font-semibold text-primary">Filters &amp; Specs</h2>
                 </div>
-                <button onClick={() => { setCategory(''); setSort(''); setSearch(''); }} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
+                <button onClick={() => { setCategory(''); setSort(''); setSearch(''); setMinPrice(''); setMaxPrice(''); }} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
               </div>
 
               {/* Search */}
@@ -128,10 +126,19 @@ export default function ShopPage() {
                 <form onSubmit={e => { e.preventDefault(); setPage(1); setAllProducts([]); }}>
                   <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">search</span>
-                    <input type="text" placeholder="Search 240+ styles..." value={search} onChange={e => setSearch(e.target.value)}
+                    <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)}
                       className="input-field pl-10 h-11 text-body-sm" />
                   </div>
                 </form>
+              </div>
+
+              {/* Price range */}
+              <div className="mb-space-md">
+                <label className="label">Price range (₹)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" min="0" inputMode="numeric" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="input-field h-10 text-body-sm" />
+                  <input type="number" min="0" inputMode="numeric" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="input-field h-10 text-body-sm" />
+                </div>
               </div>
 
               {/* Categories */}
@@ -181,10 +188,7 @@ export default function ShopPage() {
                     </button>
                   ))}
                 </div>
-                <div className="hidden md:flex items-center gap-2">
-                  <button className="w-8 h-8 flex items-center justify-center rounded bg-surface-container-high text-primary"><span className="material-symbols-outlined text-[18px]">grid_view</span></button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container"><span className="material-symbols-outlined text-[18px]">view_list</span></button>
-                </div>
+
               </div>
 
               {/* Grid */}
@@ -193,7 +197,7 @@ export default function ShopPage() {
                   <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">search_off</span>
                   <h3 className="text-headline-sm font-semibold text-primary mb-space-sm">No products found</h3>
                   <p className="text-body-md text-on-surface-variant mb-space-lg">Try adjusting your filters or search term</p>
-                  <button onClick={() => { setCategory(''); setSort(''); setSearch(''); }} className="btn-primary">Clear Filters</button>
+                  <button onClick={() => { setCategory(''); setSort(''); setSearch(''); setMinPrice(''); setMaxPrice(''); }} className="btn-primary">Clear Filters</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-space-md md:gap-space-lg">
@@ -215,16 +219,14 @@ export default function ShopPage() {
                 </div>
               )}
 
-              {/* Members CTA */}
-              <div className="mt-space-xl bg-gradient-to-r from-primary to-primary-container rounded-lg p-space-xl flex flex-col md:flex-row md:items-center justify-between gap-space-lg">
+              <div className="mt-space-xl rounded-lg bg-gradient-to-r from-primary to-primary-container p-space-xl flex flex-col gap-space-lg md:flex-row md:items-center md:justify-between">
                 <div>
-                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-primary-fixed block mb-1">Members Priority Drop</span>
-                  <h3 className="text-headline-sm font-semibold text-on-primary mb-1">Custom Lacing &amp; Insoles Included</h3>
-                  <p className="text-body-sm text-on-primary/80">Free express shipping &amp; 30-day trial on all orders over ₹599.</p>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-primary-fixed block mb-1">Find your fit</span>
+                  <h3 className="text-headline-sm font-semibold text-on-primary mb-1">Not sure where to start?</h3>
+                  <p className="text-body-sm text-on-primary/80">Share your preferences and explore products from the current catalogue.</p>
                 </div>
-                <Link to="/register" className="shrink-0 inline-flex items-center justify-center gap-space-sm bg-on-primary text-primary px-8 py-3.5 rounded-full text-label-md font-semibold hover:bg-primary-fixed transition-all">
-                  <span className="material-symbols-outlined text-[20px]">stars</span>
-                  Join StepUp Club
+                <Link to="/find-your-fit" className="shrink-0 inline-flex items-center justify-center gap-space-sm bg-on-primary text-primary px-8 py-3.5 rounded-full text-label-md font-semibold hover:bg-primary-fixed transition-all">
+                  Find your fit <span aria-hidden="true">→</span>
                 </Link>
               </div>
             </div>

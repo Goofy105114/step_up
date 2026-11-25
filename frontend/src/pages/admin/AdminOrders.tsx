@@ -20,6 +20,7 @@ export default function AdminOrders() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/admin/orders/${id}/status`, { status }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'orders'] }); toast.success('Status updated'); setUpdating(null); },
+    onError: (error: any) => { toast.error(error.response?.data?.message || 'Unable to update order status'); setUpdating(null); },
   });
 
   return (

@@ -27,6 +27,7 @@ export default function CartPage() {
   const total = subtotal - discount + shipping + tax;
   const freeShipLeft = Math.max(0, 599 - subtotal);
   const freeShipPct = Math.min((subtotal / 599) * 100, 100);
+  const hasUnavailableItems = items.some((item: any) => !item.is_active);
 
   const handleUpdate = async (itemId: string, qty: number) => {
     setUpdatingId(itemId);
@@ -58,7 +59,7 @@ export default function CartPage() {
       <div className="text-center max-w-md">
         <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">shopping_bag</span>
         <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Sign in to view your cart</h2>
-        <p className="text-body-md text-on-surface-variant mb-space-lg">Your orthopedic footwear selections are waiting for you.</p>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Sign in to view and manage your saved cart items.</p>
         <Link to="/login" className="btn-primary px-10 py-4 text-title-md font-semibold">Sign In</Link>
       </div>
     </div>
@@ -68,10 +69,10 @@ export default function CartPage() {
     <div className="bg-surface min-h-screen flex items-center justify-center p-6">
       <div className="text-center max-w-md">
         <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">shopping_bag</span>
-        <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Your Relief Bag is Empty</h2>
-        <p className="text-body-md text-on-surface-variant mb-space-lg">Discover orthopedic footwear calibrated for your arch profile.</p>
+        <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Your shopping bag is empty</h2>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Browse the current collection and add items to your bag.</p>
         <Link to="/shop" className="btn-primary px-10 py-4 text-title-md font-semibold">
-          Browse Relief Collection
+          Browse footwear
           <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
         </Link>
       </div>
@@ -85,14 +86,13 @@ export default function CartPage() {
         <div className="max-w-site mx-auto flex flex-wrap items-center justify-between text-on-surface-variant text-body-sm">
           <div className="flex items-center gap-space-sm">
             <span className="material-symbols-outlined text-[18px] text-secondary">verified_user</span>
-            <span>Cart items verified compliant with APMA biomechanical criteria</span>
+            <span>Your selected items are ready for review</span>
           </div>
           <div className="flex items-center gap-space-md text-label-md font-semibold">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" /> Medical Inventory Reserved
+              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" /> Stock is checked when you place your order
             </span>
-            <span className="text-on-surface-variant">•</span>
-            <span>HSA/FSA Pre-Certified</span>
+            
           </div>
         </div>
       </div>
@@ -120,14 +120,14 @@ export default function CartPage() {
           <div className="lg:col-span-7 flex flex-col gap-space-lg">
             <div className="pb-space-sm">
               <div className="flex items-baseline justify-between mb-space-xs">
-                <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Your Relief Bag</h1>
+                <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Your shopping bag</h1>
                 <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-md py-space-xs rounded-full">
-                  {items.length} Medical Item{items.length > 1 ? 's' : ''}
+                  {items.length} item{items.length !== 1 ? 's' : ''}
                 </span>
               </div>
               <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs">
                 <span className="material-symbols-outlined text-[18px] text-secondary">verified</span>
-                60-Day Pain-Free Walking Guarantee applies automatically to all orders.
+                Review product details and order information before checkout.
               </p>
             </div>
 
@@ -152,14 +152,15 @@ export default function CartPage() {
                       ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-DEFAULT" />
                       : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-[40px] text-outline">photo</span></div>
                     }
-                    <span className="absolute top-2 left-2 bg-primary-container text-on-primary text-label-badge font-bold px-space-xs py-0.5 rounded-full uppercase tracking-[0.06em]">APMA</span>
+                    <span className="absolute top-2 left-2 bg-primary-container text-on-primary text-label-badge font-bold px-space-xs py-0.5 rounded-full uppercase tracking-[0.06em]">STEPUP</span>
                   </div>
                   <div className="flex-1 flex flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between gap-space-sm mb-space-xs">
                         <div>
-                          <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Biomechanical Recovery</span>
+                          <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Selected footwear</span>
                           <h2 className="text-title-md font-semibold text-primary">{item.name}</h2>
+                          {!item.is_active && <p className="mt-1 text-xs font-semibold text-error">This product is no longer available. Remove it to continue.</p>}
                         </div>
                         <span className="text-title-md font-semibold text-primary shrink-0">{formatPrice(item.unit_price)}</span>
                       </div>
@@ -169,7 +170,7 @@ export default function CartPage() {
                       </div>
                       <div className="inline-flex items-center gap-1 bg-surface-container px-space-sm py-space-xs rounded-full text-label-badge font-bold text-primary-container mb-space-sm">
                         <span className="material-symbols-outlined text-[13px] text-secondary">health_and_safety</span>
-                        HSA/FSA Auto-Reimbursable
+                        Order details
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-space-sm">
@@ -187,7 +188,14 @@ export default function CartPage() {
                         </button>
                       </div>
                       <div className="flex items-center gap-space-md text-on-surface-variant text-body-sm">
-                        <button className="hover:text-primary transition-colors flex items-center gap-1">
+                        <button onClick={async () => {
+                          try {
+                            await api.post('/wishlist', { product_id: item.product_id });
+                            toast.success('Saved to wishlist');
+                          } catch (error: any) {
+                            toast.error(error.response?.data?.message || 'Unable to save item');
+                          }
+                        }} className="hover:text-primary transition-colors flex items-center gap-1">
                           <span className="material-symbols-outlined text-[16px]">favorite</span>
                           <span className="hidden sm:inline">Save</span>
                         </button>
@@ -254,22 +262,26 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <Link to="/checkout" className="mt-space-lg flex items-center justify-center gap-space-sm w-full bg-primary-container text-on-primary py-4 rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all duration-200 group">
-                <span className="material-symbols-outlined text-[18px]">lock</span>
-                Proceed to Checkout {formatPrice(total)}
-                <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-              </Link>
+              {hasUnavailableItems ? (
+                <p className="mt-space-lg rounded-xl bg-error-container/40 p-4 text-center text-sm font-medium text-error">Remove unavailable products before proceeding to checkout.</p>
+              ) : (
+                <Link to="/checkout" className="mt-space-lg flex items-center justify-center gap-space-sm w-full bg-primary-container text-on-primary py-4 rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all duration-200 group">
+                  <span className="material-symbols-outlined text-[18px]">lock</span>
+                  Proceed to Checkout {formatPrice(total)}
+                  <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </Link>
+              )}
 
               <p className="text-body-sm text-on-surface-variant text-center mt-space-sm">
-                🔒 256-bit SSL encrypted secure checkout
+                Checkout details are confirmed before you place your order.
               </p>
             </div>
 
             {/* Trust badges */}
             <div className="grid grid-cols-2 gap-space-sm">
               {[
-                { icon: 'verified', label: '100% Authenticity', desc: 'APMA Verified' },
-                { icon: 'replay', label: '30-Day Returns', desc: 'Hassle-free' },
+                { icon: 'verified', label: 'Product listing', desc: 'Catalogue details' },
+                { icon: 'receipt_long', label: 'Order details', desc: 'Shown at checkout' },
               ].map(({ icon, label, desc }) => (
                 <div key={label} className="card p-space-md flex items-center gap-space-sm">
                   <span className="material-symbols-outlined text-[22px] text-secondary shrink-0">{icon}</span>

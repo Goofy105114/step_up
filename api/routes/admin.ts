@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../db/pool';
+import pool, { query } from '../db/pool';
 import { authenticate, authorize } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
@@ -52,30 +52,51 @@ router.get('/orders', async (req: Request, res: Response) => {
 
 router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   const { status, note, tracking_number } = req.body;
-  const orderRes = await query('SELECT * FROM orders WHERE id=$1', [req.params.id]);
-  const order = orderRes.rows[0];
-  if (!order) throw new AppError('Order not found', 404);
+  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
+  if (!allowedStatuses.includes(status)) throw new AppError('Invalid order status', 400);
 
-  const updates = ['status=$1', 'updated_at=NOW()'];
-  const params: unknown[] = [status];
-  let pIdx = 2;
-  if (tracking_number) { updates.push(`tracking_number=$${pIdx++}`); params.push(tracking_number); }
-  if (status === 'delivered') updates.push('delivered_at=NOW()');
-  params.push(req.params.id);
-  await query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
-  await query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-    [req.params.id, status, note || null, req.user!.userId]);
-
-  // Restore stock when admin cancels an order
-  if (status === 'cancelled' && order.status !== 'cancelled') {
-    const items = await query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
-    for (const item of items.rows) {
-      await query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
-        [item.quantity, item.variant_id]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
+    const order = orderRes.rows[0];
+    if (!order) throw new AppError('Order not found', 404);
+    if (status === 'cancelled' && order.payment_status === 'paid') {
+      throw new AppError('Refund the payment through the payment provider before cancelling this order.', 409);
     }
-  }
+    if (status === 'refunded') {
+      throw new AppError('Refund status must be confirmed by the payment provider integration.', 409);
+    }
 
-  return res.json({ success: true, message: 'Order status updated' });
+    const updates = ['status=$1', 'updated_at=NOW()'];
+    const params: unknown[] = [status];
+    let pIdx = 2;
+    if (tracking_number !== undefined) {
+      updates.push(`tracking_number=$${pIdx++}`);
+      params.push(tracking_number || null);
+    }
+    if (status === 'delivered') updates.push('delivered_at=COALESCE(delivered_at,NOW())');
+    params.push(req.params.id);
+    await client.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
+    await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
+      [req.params.id, status, note || null, req.user!.userId]);
+
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      const items = await client.query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
+      for (const item of items.rows) {
+        await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
+          [item.quantity, item.variant_id]);
+      }
+    }
+
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Order status updated' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 /* ── Products ────────────────────────────────────────────────────────── */
@@ -105,28 +126,38 @@ router.get('/products/:id', async (req: Request, res: Response) => {
 });
 
 router.post('/products', async (req: Request, res: Response) => {
-  const { name, slug, description, short_description, category_id, base_price, sale_price,
-          material, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
+  const { name, slug, description, short_description, category_id, base_price, sale_price, sku,
+          material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a,
+          calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
   if (!name || !slug || !base_price) throw new AppError('Name, slug and base_price required', 400);
+  if (arch_support_level && !['low', 'medium', 'high'].includes(arch_support_level)) throw new AppError('Invalid arch support level', 400);
+  if (arch_height_mm !== undefined && arch_height_mm !== null && arch_height_mm !== '' && (!Number.isFinite(Number(arch_height_mm)) || Number(arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
+  if (durometer_shore_a !== undefined && durometer_shore_a !== null && durometer_shore_a !== '' && (!Number.isFinite(Number(durometer_shore_a)) || Number(durometer_shore_a) < 0 || Number(durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
   const result = await query(
-    `INSERT INTO products (name,slug,description,short_description,category_id,base_price,sale_price,
-                           material,tags,is_featured,is_new_arrival,is_bestseller)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    `INSERT INTO products (name,slug,description,short_description,category_id,base_price,sale_price,sku,
+                           material,care_instructions,arch_support_level,arch_height_mm,durometer_shore_a,
+                           calibration_reference,calibrated_at,calibration_notes,tags,is_featured,is_new_arrival,is_bestseller)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
     [name, slug, description || null, short_description || null, category_id || null,
-     base_price, sale_price || null, material || null, tags || [],
+     base_price, sale_price || null, sku || null, material || null, care_instructions || null,
+     arch_support_level || null, arch_height_mm === '' ? null : arch_height_mm ?? null, durometer_shore_a === '' ? null : durometer_shore_a ?? null,
+     calibration_reference || null, calibrated_at || null, calibration_notes || null, tags || [],
      is_featured || false, is_new_arrival || false, is_bestseller || false]);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
 router.patch('/products/:id', async (req: Request, res: Response) => {
   const fields = ['name','slug','description','short_description','category_id','base_price',
-                  'sale_price','is_active','is_featured','is_new_arrival','is_bestseller','material','tags'];
+                  'sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
   const updates: string[] = [];
   const params: unknown[] = [];
   let pIdx = 1;
   for (const f of fields) {
     if (req.body[f] !== undefined) { updates.push(`${f}=$${pIdx++}`); params.push(req.body[f]); }
   }
+  if (req.body.arch_support_level !== undefined && req.body.arch_support_level !== null && !['low', 'medium', 'high'].includes(req.body.arch_support_level)) throw new AppError('Invalid arch support level', 400);
+  if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
+  if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
   if (!updates.length) throw new AppError('No fields to update', 400);
   params.push(req.params.id);
   const result = await query(
@@ -199,6 +230,161 @@ router.get('/users', authorize('admin'), async (_req: Request, res: Response) =>
      FROM users u LEFT JOIN orders o ON o.user_id=u.id AND o.payment_status='paid'
      GROUP BY u.id ORDER BY u.created_at DESC`);
   return res.json({ success: true, data: result.rows });
+});
+
+/* ── Clinical source library ───────────────────────────────────────── */
+const isHttpsUrl = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+};
+
+router.get('/clinical-studies', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query(
+    'SELECT * FROM clinical_studies ORDER BY created_at DESC');
+  return res.json({ success: true, data: result.rows });
+});
+
+router.post('/clinical-studies', authorize('admin'), async (req: Request, res: Response) => {
+  const { title, authors, publication, publication_date, doi, source_url, document_url,
+    summary, source_verified = false, is_published = false } = req.body;
+  if (!String(title || '').trim()) throw new AppError('Study title is required', 400);
+  if (!isHttpsUrl(source_url)) throw new AppError('A valid HTTPS source URL is required', 400);
+  if (document_url && !isHttpsUrl(document_url)) throw new AppError('Document URL must use HTTPS', 400);
+  if (is_published && !source_verified) {
+    throw new AppError('Verify the original source before publishing this entry', 400);
+  }
+  const result = await query(
+    `INSERT INTO clinical_studies
+      (title,authors,publication,publication_date,doi,source_url,document_url,summary,source_verified,is_published,created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [String(title).trim(), authors || null, publication || null, publication_date || null, doi || null,
+      source_url, document_url || null, summary || null, Boolean(source_verified), Boolean(is_published), req.user!.userId]);
+  return res.status(201).json({ success: true, data: result.rows[0] });
+});
+
+router.patch('/clinical-studies/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const current = await query('SELECT * FROM clinical_studies WHERE id=$1', [req.params.id]);
+  if (!current.rows[0]) throw new AppError('Clinical study not found', 404);
+  const merged = { ...current.rows[0], ...req.body };
+  if (!String(merged.title || '').trim()) throw new AppError('Study title is required', 400);
+  if (!isHttpsUrl(merged.source_url)) throw new AppError('A valid HTTPS source URL is required', 400);
+  if (merged.document_url && !isHttpsUrl(merged.document_url)) throw new AppError('Document URL must use HTTPS', 400);
+  if (merged.is_published && !merged.source_verified) {
+    throw new AppError('Verify the original source before publishing this entry', 400);
+  }
+  const fields = ['title','authors','publication','publication_date','doi','source_url','document_url','summary','source_verified','is_published'];
+  const updates: string[] = [];
+  const params: unknown[] = [];
+  let pIdx = 1;
+  for (const field of fields) {
+    if (req.body[field] !== undefined) {
+      updates.push(`${field}=${pIdx++}`);
+      params.push(req.body[field]);
+    }
+  }
+  if (!updates.length) throw new AppError('No fields to update', 400);
+  updates.push('updated_at=NOW()');
+  params.push(req.params.id);
+  const result = await query(
+    `UPDATE clinical_studies SET ${updates.join(',')} WHERE id=${pIdx} RETURNING *`, params);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
+router.delete('/clinical-studies/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const result = await query('DELETE FROM clinical_studies WHERE id=$1 RETURNING id', [req.params.id]);
+  if (!result.rows[0]) throw new AppError('Clinical study not found', 404);
+  return res.json({ success: true });
+});
+
+/* ── Laboratory settings ────────────────────────────────────────────── */
+const validSettingKey = (value: unknown) =>
+  typeof value === 'string' && /^[a-zA-Z0-9_.-]{2,120}$/.test(value);
+
+router.get('/lab-settings', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query('SELECT * FROM lab_settings ORDER BY setting_key ASC');
+  return res.json({ success: true, data: result.rows });
+});
+
+router.post('/lab-settings', authorize('admin'), async (req: Request, res: Response) => {
+  const { setting_key, setting_value, description } = req.body;
+  if (!validSettingKey(setting_key)) throw new AppError('Setting key must be 2–120 letters, numbers, dots, underscores or hyphens', 400);
+  if (!setting_value || typeof setting_value !== 'object' || Array.isArray(setting_value)) {
+    throw new AppError('Setting value must be a JSON object', 400);
+  }
+  const result = await query(
+    `INSERT INTO lab_settings (setting_key,setting_value,description,updated_by)
+     VALUES ($1,$2,$3,$4) RETURNING *`,
+    [setting_key, JSON.stringify(setting_value), description || null, req.user!.userId]);
+  return res.status(201).json({ success: true, data: result.rows[0] });
+});
+
+router.patch('/lab-settings/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const fields = ['setting_value','description'];
+  const updates: string[] = [];
+  const params: unknown[] = [];
+  let pIdx = 1;
+  if (req.body.setting_value !== undefined) {
+    if (!req.body.setting_value || typeof req.body.setting_value !== 'object' || Array.isArray(req.body.setting_value)) {
+      throw new AppError('Setting value must be a JSON object', 400);
+    }
+    updates.push(`setting_value=${pIdx++}`);
+    params.push(JSON.stringify(req.body.setting_value));
+  }
+  if (req.body.description !== undefined) {
+    updates.push(`description=${pIdx++}`);
+    params.push(req.body.description || null);
+  }
+  if (!updates.length) throw new AppError('No fields to update', 400);
+  updates.push('updated_at=NOW()');
+  updates.push(`updated_by=${pIdx++}`);
+  params.push(req.user!.userId);
+  params.push(req.params.id);
+  const result = await query(
+    `UPDATE lab_settings SET ${updates.join(',')} WHERE id=${pIdx} RETURNING *`, params);
+  if (!result.rows[0]) throw new AppError('Lab setting not found', 404);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
+router.delete('/lab-settings/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const result = await query('DELETE FROM lab_settings WHERE id=$1 RETURNING id', [req.params.id]);
+  if (!result.rows[0]) throw new AppError('Lab setting not found', 404);
+  return res.json({ success: true });
+});
+
+/* ── Self-reported fit profiles ─────────────────────────────────────── */
+router.get('/patient-fit-profiles', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT p.id,p.user_id,p.foot_length_mm,p.usual_size,p.arch_preference,p.comfort_focus,
+       p.daily_activity,p.consent_at,p.updated_at,u.first_name,u.last_name,u.email
+     FROM patient_fit_profiles p
+     JOIN users u ON u.id=p.user_id
+     ORDER BY p.updated_at DESC`);
+  return res.json({ success: true, data: result.rows });
+});
+
+/* ── Fit profile operations summary ─────────────────────────────────── */
+router.get('/fit-operations', authorize('admin'), async (_req: Request, res: Response) => {
+  const [totals, archPreferences, comfortFocus, recent] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS total_profiles,
+             COUNT(foot_length_mm)::int AS profiles_with_measurements
+           FROM patient_fit_profiles`),
+    query(`SELECT arch_preference AS label, COUNT(*)::int AS count
+           FROM patient_fit_profiles WHERE arch_preference IS NOT NULL
+           GROUP BY arch_preference ORDER BY count DESC`),
+    query(`SELECT comfort_focus AS label, COUNT(*)::int AS count
+           FROM patient_fit_profiles WHERE comfort_focus IS NOT NULL
+           GROUP BY comfort_focus ORDER BY count DESC`),
+    query(`SELECT p.id,p.foot_length_mm,p.usual_size,p.arch_preference,p.comfort_focus,p.updated_at,
+             u.first_name,u.last_name
+           FROM patient_fit_profiles p JOIN users u ON u.id=p.user_id
+           ORDER BY p.updated_at DESC LIMIT 8`)
+  ]);
+  return res.json({ success: true, data: {
+    totals: totals.rows[0],
+    arch_preferences: archPreferences.rows,
+    comfort_focus: comfortFocus.rows,
+    recent_profiles: recent.rows
+  }});
 });
 
 export default router;
