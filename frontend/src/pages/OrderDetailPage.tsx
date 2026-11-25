@@ -74,7 +74,7 @@ export default function OrderDetailPage() {
                 {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Order'}
               </button>
             )}
-            {order.status === 'delivered' && (
+            {order.status === 'delivered' && !order.return_request && (
               <button onClick={() => setShowReturnModal(true)}
                 className="text-xs text-gray-600 hover:text-gray-900 font-semibold uppercase tracking-wider border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
                 <RotateCcw size={12} /> Return / Refund
