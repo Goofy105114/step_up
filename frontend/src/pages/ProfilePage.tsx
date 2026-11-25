@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 export default function ProfilePage() {
   const { user, logout } = useAuthStore();
   const queryClient = useQueryClient();
-  const [fitForm, setFitForm] = useState({ foot_length_mm: '', usual_size: '', arch_preference: 'unknown', comfort_focus: 'general', daily_activity: 'moderate', consent: false });
+  const [fitForm, setFitForm] = useState({ foot_length_mm: '', usual_size: '', arch_preference: '', comfort_focus: '', daily_activity: '', consent: false });
 
   const { data: ordersData } = useQuery({
     queryKey: ['orders'],
@@ -33,9 +33,9 @@ export default function ProfilePage() {
     setFitForm({
       foot_length_mm: profile.foot_length_mm ? String(profile.foot_length_mm) : '',
       usual_size: profile.usual_size || '',
-      arch_preference: profile.arch_preference || 'unknown',
-      comfort_focus: profile.comfort_focus || 'general',
-      daily_activity: profile.daily_activity || 'moderate',
+      arch_preference: profile.arch_preference || '',
+      comfort_focus: profile.comfort_focus || '',
+      daily_activity: profile.daily_activity || '',
       consent: false,
     });
   }, [fitProfileData]);
@@ -45,9 +45,9 @@ export default function ProfilePage() {
       consent: true,
       foot_length_mm: fitForm.foot_length_mm === '' ? null : Number(fitForm.foot_length_mm),
       usual_size: fitForm.usual_size,
-      arch_preference: fitForm.arch_preference,
-      comfort_focus: fitForm.comfort_focus,
-      daily_activity: fitForm.daily_activity,
+      arch_preference: fitForm.arch_preference || null,
+      comfort_focus: fitForm.comfort_focus || null,
+      daily_activity: fitForm.daily_activity || null,
     }),
     onSuccess: () => {
       toast.success('Fit preferences saved');
@@ -62,7 +62,7 @@ export default function ProfilePage() {
     mutationFn: () => api.delete('/patient-profile'),
     onSuccess: () => {
       toast.success('Fit profile deleted');
-      setFitForm({ foot_length_mm: '', usual_size: '', arch_preference: 'unknown', comfort_focus: 'general', daily_activity: 'moderate', consent: false });
+      setFitForm({ foot_length_mm: '', usual_size: '', arch_preference: '', comfort_focus: '', daily_activity: '', consent: false });
       queryClient.invalidateQueries({ queryKey: ['patient-fit-profile'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'patient-fit-profiles'] });
     },
@@ -149,7 +149,7 @@ export default function ProfilePage() {
               Save measurements and comfort preferences you choose to share. This is self-reported shopping information, not a medical record, diagnosis or gait analysis.
             </p>
           </div>
-          <form onSubmit={(event) => { event.preventDefault(); if (!fitForm.consent) { toast.error('Please provide consent before saving'); return; } saveFitProfile.mutate(); }} className="space-y-space-md">
+          <form onSubmit={(event) => { event.preventDefault(); if (!fitForm.consent) { toast.error('Please provide consent before saving'); return; } if (!fitForm.foot_length_mm && !fitForm.usual_size.trim() && !fitForm.arch_preference && !fitForm.comfort_focus && !fitForm.daily_activity) { toast.error('Add at least one fit preference before saving'); return; } saveFitProfile.mutate(); }} className="space-y-space-md">
             <div className="grid gap-space-md sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label className="label">Foot length (mm)</label>
@@ -162,19 +162,19 @@ export default function ProfilePage() {
               <div>
                 <label className="label">Arch preference</label>
                 <select value={fitForm.arch_preference} onChange={event => setFitForm(current => ({ ...current, arch_preference: event.target.value }))} className="input-field">
-                  <option value="unknown">Not sure</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                  <option value="">Not specified</option><option value="unknown">Not sure</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
                 </select>
               </div>
               <div>
                 <label className="label">Comfort focus</label>
                 <select value={fitForm.comfort_focus} onChange={event => setFitForm(current => ({ ...current, comfort_focus: event.target.value }))} className="input-field">
-                  <option value="general">General comfort</option><option value="heel">Heel area</option><option value="arch">Arch area</option><option value="forefoot">Forefoot</option><option value="stability">Stability</option>
+                  <option value="">Not specified</option><option value="general">General comfort</option><option value="heel">Heel area</option><option value="arch">Arch area</option><option value="forefoot">Forefoot</option><option value="stability">Stability</option>
                 </select>
               </div>
               <div>
                 <label className="label">Daily activity</label>
                 <select value={fitForm.daily_activity} onChange={event => setFitForm(current => ({ ...current, daily_activity: event.target.value }))} className="input-field">
-                  <option value="low">Mostly seated / light activity</option><option value="moderate">Mixed activity</option><option value="high">Frequent standing or walking</option>
+                  <option value="">Not specified</option><option value="low">Mostly seated / light activity</option><option value="moderate">Mixed activity</option><option value="high">Frequent standing or walking</option>
                 </select>
               </div>
             </div>
