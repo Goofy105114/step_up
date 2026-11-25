@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { useState } from 'react';
 
 function formatPrice(n: number) {
-  return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
 export default function CartPage() {
