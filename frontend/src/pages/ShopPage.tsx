@@ -4,17 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
 
-const CATEGORIES = [
-  { slug: '', label: 'All Footwear' },
-  { slug: 'mens', label: "Men's" },
-  { slug: 'womens', label: "Women's" },
-  { slug: 'kids', label: "Kids'" },
-  { slug: 'sports', label: 'Sports' },
-  { slug: 'casual', label: 'Casual' },
-  { slug: 'formal', label: 'Formal' },
-  { slug: 'sandals', label: 'Sandals' },
-];
-
 const SORT_OPTIONS = [
   { value: '', label: 'Sort: Popularity ▾' },
   { value: 'price_asc', label: 'Price: Low to High' },
@@ -25,6 +14,11 @@ const SORT_OPTIONS = [
 export default function ShopPage() {
   const { category: paramCategory } = useParams<{ category?: string }>();
   const [searchParams] = useSearchParams();
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/categories').then(response => response.data),
+  });
+  const CATEGORIES = [{ slug: '', label: 'All Footwear' }, ...(categoriesData?.data || []).map((category: any) => ({ slug: category.slug, label: category.name }))];
   const [category, setCategory] = useState(paramCategory || '');
   const [sort, setSort] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -76,16 +70,16 @@ export default function ShopPage() {
                 Explore the collection
               </div>
               <h1 className="text-headline-lg font-semibold text-primary tracking-tight">{pageTitle}</h1>
-              {total > 0 && <p className="text-body-md text-on-surface-variant mt-space-xs">Showing {allProducts.length} of {total} curated releases</p>}
+              {total > 0 && <p className="text-body-md text-on-surface-variant mt-space-xs">Showing {allProducts.length} of {total} products</p>}
             </div>
             <div className="flex items-center gap-space-sm bg-surface-container-lowest p-space-sm rounded-lg shadow-sm">
               <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-primary">
-                <span className="material-symbols-outlined text-[18px]">verified</span>
-                <span className="text-label-badge font-bold uppercase"></span>
+                <span className="material-symbols-outlined text-[18px]">tune</span>
+                <span className="text-label-badge font-bold uppercase">Filters</span>
               </div>
               <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-secondary">
-                <span className="material-symbols-outlined text-[18px]">health_and_safety</span>
-                <span className="text-label-badge font-bold uppercase"></span>
+                <span className="material-symbols-outlined text-[18px]">category</span>
+                <span className="text-label-badge font-bold uppercase">Categories</span>
               </div>
             </div>
           </div>
@@ -128,7 +122,7 @@ export default function ShopPage() {
                 <form onSubmit={e => { e.preventDefault(); setPage(1); setAllProducts([]); }}>
                   <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">search</span>
-                    <input type="text" placeholder="Search 240+ styles..." value={search} onChange={e => setSearch(e.target.value)}
+                    <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)}
                       className="input-field pl-10 h-11 text-body-sm" />
                   </div>
                 </form>
