@@ -141,6 +141,9 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
     if (!['pending', 'confirmed'].includes(order.status)) {
       throw new AppError('Order cannot be cancelled', 400);
     }
+    if (order.payment_status === 'paid') {
+      throw new AppError('This order has a recorded payment. Contact support to arrange a refund before cancellation.', 409);
+    }
 
     await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2', ['cancelled', order.id]);
     await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
