@@ -32,7 +32,7 @@ const getOrCreateCartForUpdate = async (client: any, userId: string) => {
 
 const getCartData = (cartId: string) => query(
   `SELECT ci.id, ci.quantity, ci.variant_id, ci.product_id,
-    p.name, p.slug, COALESCE(p.sale_price,p.base_price)+pv.price_adj AS unit_price,
+    p.name, p.slug, p.is_active, COALESCE(p.sale_price,p.base_price)+pv.price_adj AS unit_price,
     pv.size, pv.color, pv.color_hex, pv.stock_qty,
     (SELECT url FROM product_images WHERE product_id=p.id AND is_primary=true LIMIT 1) AS image_url
    FROM cart_items ci
