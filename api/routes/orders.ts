@@ -18,9 +18,9 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   if (payment_method !== 'cod') {
     throw new AppError('Online payments are not enabled. Choose Cash on Delivery.', 400);
   }
-  const phone = String(shipping_address.phone || '').replace(/[()\\s-]/g, '').replace(/^\\+91/, '');
-  if (!/^[6-9]\\d{9}$/.test(phone)) throw new AppError('Enter a valid Indian mobile number', 400);
-  if (!/^\\d{6}$/.test(String(shipping_address.postal_code || '').trim())) throw new AppError('Enter a valid 6-digit Indian PIN code', 400);
+  const phone = String(shipping_address.phone || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(phone)) throw new AppError('Enter a valid Indian mobile number', 400);
+  if (!/^\d{6}$/.test(String(shipping_address.postal_code || '').trim())) throw new AppError('Enter a valid 6-digit Indian PIN code', 400);
   if (String(shipping_address.country || 'India').trim().toLowerCase() !== 'india') throw new AppError('STEPUP currently delivers within India only', 400);
 
   const client = await pool.connect();
