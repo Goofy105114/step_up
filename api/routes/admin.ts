@@ -296,4 +296,59 @@ router.delete('/clinical-studies/:id', authorize('admin'), async (req: Request, 
   return res.json({ success: true });
 });
 
+/* ── Laboratory settings ────────────────────────────────────────────── */
+const validSettingKey = (value: unknown) =>
+  typeof value === 'string' && /^[a-zA-Z0-9_.-]{2,120}$/.test(value);
+
+router.get('/lab-settings', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query('SELECT * FROM lab_settings ORDER BY setting_key ASC');
+  return res.json({ success: true, data: result.rows });
+});
+
+router.post('/lab-settings', authorize('admin'), async (req: Request, res: Response) => {
+  const { setting_key, setting_value, description } = req.body;
+  if (!validSettingKey(setting_key)) throw new AppError('Setting key must be 2–120 letters, numbers, dots, underscores or hyphens', 400);
+  if (!setting_value || typeof setting_value !== 'object' || Array.isArray(setting_value)) {
+    throw new AppError('Setting value must be a JSON object', 400);
+  }
+  const result = await query(
+    `INSERT INTO lab_settings (setting_key,setting_value,description,updated_by)
+     VALUES ($1,$2,$3,$4) RETURNING *`,
+    [setting_key, JSON.stringify(setting_value), description || null, req.user!.userId]);
+  return res.status(201).json({ success: true, data: result.rows[0] });
+});
+
+router.patch('/lab-settings/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const fields = ['setting_value','description'];
+  const updates: string[] = [];
+  const params: unknown[] = [];
+  let pIdx = 1;
+  if (req.body.setting_value !== undefined) {
+    if (!req.body.setting_value || typeof req.body.setting_value !== 'object' || Array.isArray(req.body.setting_value)) {
+      throw new AppError('Setting value must be a JSON object', 400);
+    }
+    updates.push(`setting_value=${pIdx++}`);
+    params.push(JSON.stringify(req.body.setting_value));
+  }
+  if (req.body.description !== undefined) {
+    updates.push(`description=${pIdx++}`);
+    params.push(req.body.description || null);
+  }
+  if (!updates.length) throw new AppError('No fields to update', 400);
+  updates.push('updated_at=NOW()');
+  updates.push(`updated_by=${pIdx++}`);
+  params.push(req.user!.userId);
+  params.push(req.params.id);
+  const result = await query(
+    `UPDATE lab_settings SET ${updates.join(',')} WHERE id=${pIdx} RETURNING *`, params);
+  if (!result.rows[0]) throw new AppError('Lab setting not found', 404);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
+router.delete('/lab-settings/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const result = await query('DELETE FROM lab_settings WHERE id=$1 RETURNING id', [req.params.id]);
+  if (!result.rows[0]) throw new AppError('Lab setting not found', 404);
+  return res.json({ success: true });
+});
+
 export default router;
