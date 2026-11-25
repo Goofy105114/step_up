@@ -69,7 +69,7 @@ export default function CartPage() {
       <div className="text-center max-w-md">
         <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">shopping_bag</span>
         <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Your shopping bag is empty</h2>
-        <p className="text-body-md text-on-surface-variant mb-space-lg">Discover orthopedic footwear calibrated for your arch profile.</p>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Browse the current collection and add items to your bag.</p>
         <Link to="/shop" className="btn-primary px-10 py-4 text-title-md font-semibold">
           Browse footwear
           <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
