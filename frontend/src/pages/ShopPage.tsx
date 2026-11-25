@@ -5,7 +5,7 @@ import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
 
 const SORT_OPTIONS = [
-  { value: '', label: 'Sort: Popularity ▾' },
+  { value: '', label: 'Newest' },
   { value: 'price_asc', label: 'Price: Low to High' },
   { value: 'price_desc', label: 'Price: High to Low' },
   { value: 'rating', label: 'Rating ▾' },
@@ -209,16 +209,14 @@ export default function ShopPage() {
                 </div>
               )}
 
-              {/* Members CTA */}
-              <div className="mt-space-xl bg-gradient-to-r from-primary to-primary-container rounded-lg p-space-xl flex flex-col md:flex-row md:items-center justify-between gap-space-lg">
+              <div className="mt-space-xl rounded-lg bg-gradient-to-r from-primary to-primary-container p-space-xl flex flex-col gap-space-lg md:flex-row md:items-center md:justify-between">
                 <div>
-                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-primary-fixed block mb-1">Members Priority Drop</span>
-                  <h3 className="text-headline-sm font-semibold text-on-primary mb-1">Custom Lacing &amp; Insoles Included</h3>
-                  <p className="text-body-sm text-on-primary/80">Free express shipping &amp; 30-day trial on all orders over ₹599.</p>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-primary-fixed block mb-1">Find your fit</span>
+                  <h3 className="text-headline-sm font-semibold text-on-primary mb-1">Not sure where to start?</h3>
+                  <p className="text-body-sm text-on-primary/80">Share your preferences and explore products from the current catalogue.</p>
                 </div>
-                <Link to="/register" className="shrink-0 inline-flex items-center justify-center gap-space-sm bg-on-primary text-primary px-8 py-3.5 rounded-full text-label-md font-semibold hover:bg-primary-fixed transition-all">
-                  <span className="material-symbols-outlined text-[20px]">stars</span>
-                  Join StepUp Club
+                <Link to="/find-your-fit" className="shrink-0 inline-flex items-center justify-center gap-space-sm bg-on-primary text-primary px-8 py-3.5 rounded-full text-label-md font-semibold hover:bg-primary-fixed transition-all">
+                  Find your fit <span aria-hidden="true">→</span>
                 </Link>
               </div>
             </div>
