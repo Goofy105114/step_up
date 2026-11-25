@@ -195,7 +195,7 @@ export default function ProductPage() {
                 <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">{(product.brand || 'StepUp').toUpperCase()} PERFORMANCE</span>
                 {product.is_bestseller && (
                   <span className="inline-flex items-center gap-1 bg-tertiary-fixed text-tertiary px-space-sm py-0.5 rounded-full text-label-badge font-bold">
-                    <span className="material-symbols-outlined text-[13px]">verified_user</span>Top Rated
+                    <span className="material-symbols-outlined text-[13px]">verified_user</span>Bestseller
                   </span>
                 )}
               </div>
@@ -209,7 +209,7 @@ export default function ProductPage() {
                     ))}
                   </div>
                   <span className="text-title-md font-semibold text-primary">{parseFloat(product.avg_rating).toFixed(1)}</span>
-                  <span className="text-body-sm text-on-surface-variant">({product.review_count} verified reviews)</span>
+                  <span className="text-body-sm text-on-surface-variant">({product.review_count} customer reviews)</span>
                 </div>
               )}
 
@@ -268,7 +268,7 @@ export default function ProductPage() {
                   <p className={`text-body-sm font-semibold mt-space-sm flex items-center gap-1 ${selectedVariant.stock_qty > 10 ? 'text-secondary' : selectedVariant.stock_qty > 0 ? 'text-tertiary' : 'text-error'}`}>
                     <span className="material-symbols-outlined text-[16px]">{selectedVariant.stock_qty > 0 ? 'check_circle' : 'cancel'}</span>
                     {selectedVariant.stock_qty > 10 ? 'In Stock — Ready to Ship'
-                      : selectedVariant.stock_qty > 0 ? `⚡ Only ${selectedVariant.stock_qty} Left — Limited Clinical Batch`
+                      : selectedVariant.stock_qty > 0 ? `⚡ Only ${selectedVariant.stock_qty} Left — Limited stock`
                       : 'Out of Stock'}
                   </p>
                 )}
@@ -326,9 +326,9 @@ export default function ProductPage() {
             {/* Trust row */}
             <div className="grid grid-cols-3 gap-space-sm">
               {[
-                { icon: 'verified', label: '100% Authentic', desc: 'APMA Verified' },
-                { icon: 'replay', label: '30-Day Returns', desc: 'Hassle-free' },
-                { icon: 'local_shipping', label: 'Free Delivery', desc: 'Orders over ₹599' },
+                { icon: 'verified', label: 'Product details', desc: 'Catalogue information' },
+                { icon: 'replay', label: 'Returns', desc: 'See checkout details' },
+                { icon: 'local_shipping', label: 'Delivery', desc: 'See checkout details' },
               ].map(({ icon, label, desc }) => (
                 <div key={label} className="card p-space-sm text-center">
                   <span className="material-symbols-outlined text-[22px] text-secondary block mb-1">{icon}</span>
