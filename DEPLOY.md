@@ -36,7 +36,7 @@ Create the repo first at github.com → New repository → `stepup-footwear` →
    ```
 
 3. Go to **SQL Editor** (left sidebar) → **New query**
-   Paste the entire contents of `api/db/schema.sql` → Click **Run**. This creates missing tables and applies additive product metadata columns without deleting existing records.
+   Paste the entire contents of `api/db/schema.sql` → Click **Run**. This creates missing tables and applies additive product metadata columns without deleting existing records. The updated schema includes optional arch-support/durometer fields, the verified research library and laboratory settings.
 
 4. Verify the tables and columns in **Table Editor**. Add your real product catalogue, images, variants, stock, categories and coupons through the admin panel or an approved import.
 
