@@ -59,10 +59,10 @@ export default function Navbar() {
             <span className="material-symbols-outlined text-[13px] text-primary-fixed shrink-0">verified</span>
             <div className="ticker-inner flex whitespace-nowrap gap-16 w-max">
               {Array(2).fill([
-                '30-Day Hassle-Free Returns',
-                '⭐ 50,000+ Happy Customers',
-                '🚚 Free Shipping on Orders above ₹599',
-                '🎉 Use code WELCOME10 for 10% off',
+                'Thoughtful footwear for everyday movement',
+                'Explore the STEPUP collection',
+                'Find your fit with STEPUP',
+                'Comfort-led design, everyday style',
               ]).flat().map((t, i) => (
                 <span key={i}>{t}</span>
               ))}
@@ -87,7 +87,7 @@ export default function Navbar() {
           <Link to="/" className="flex items-center gap-space-sm shrink-0">
             <div className="flex flex-col">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight leading-none">StepUp</span>
-              <span className="font-label-badge text-label-badge text-secondary tracking-widest uppercase leading-none mt-0.5">Premium Footwear</span>
+              <span className="font-label-badge text-label-badge text-secondary tracking-widest uppercase leading-none mt-0.5">Supportive Footwear</span>
             </div>
           </Link>
 
@@ -175,7 +175,7 @@ export default function Navbar() {
               {cartCount > 0 && (
                 <span className="font-label-badge text-label-badge text-on-secondary-container bg-secondary-container px-space-xs py-0.5 rounded-full">{cartCount}</span>
               )}
-              <span className="hidden 2xl:inline font-label-badge text-label-badge text-on-surface-variant">30D Trial</span>
+              <span className="hidden 2xl:inline font-label-badge text-label-badge text-on-surface-variant">Bag</span>
             </button>
 
             {/* Account */}

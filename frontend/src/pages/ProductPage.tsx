@@ -89,9 +89,9 @@ export default function ProductPage() {
   const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
 
   const SPECS = [
-    { icon: 'arrow_upload_progress', title: 'Carbon Fiber Plate Propulsion', desc: 'Full-length dual-density energy rebound system engineered for calcaneal load distribution.' },
-    { icon: 'layers', title: 'Breathable Engineered FlyWeave', desc: 'Zonal support with zero-chafing lock-down system and moisture management.' },
-    { icon: 'local_shipping', title: 'Free Express Delivery & 30-Day Trial', desc: 'From top exchange program. HSA/FSA auto-itemized receipt included.' },
+    { icon: 'arrow_upload_progress', title: 'Product construction', desc: 'See the product description and materials listed for this item.' },
+    { icon: 'layers', title: 'Materials & care', desc: 'Refer to the product details for material and care information.' },
+    { icon: 'local_shipping', title: 'Delivery & returns', desc: 'Review the current delivery and return information at checkout.' },
   ];
 
   return (
@@ -111,7 +111,7 @@ export default function ProductPage() {
               <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse" />
               In Stock
             </span>
-            <span className="hidden md:inline text-on-surface-variant text-body-sm">Prescription-Grade Contours without Rx</span>
+            <span className="hidden md:inline text-on-surface-variant text-body-sm">Product details and available variants</span>
           </div>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function ProductPage() {
                 {product.is_new_arrival && (
                   <span className="inline-flex items-center gap-1 bg-surface-container-high/90 backdrop-blur-md px-space-md py-1 rounded-full text-primary text-label-badge font-bold uppercase tracking-[0.06em] shadow-sm">
                     <span className="material-symbols-outlined text-[14px] text-tertiary">verified_user</span>
-                    APMA Accepted
+                    Product highlight
                   </span>
                 )}
                 {discount > 0 && (
@@ -147,7 +147,7 @@ export default function ProductPage() {
               </div>
 
               {!heatmap ? (
-                <img src={images[activeImg] || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800'}
+                <img src={images[activeImg] || ''}
                   alt={product.name}
                   className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
               ) : (
@@ -156,21 +156,21 @@ export default function ProductPage() {
                     <path d="M60 20 C110 15, 145 40, 145 90 C145 140, 150 170, 140 210 C130 250, 125 310, 95 325 C65 330, 45 305, 45 250 C45 200, 35 150, 38 100 C40 60, 45 25, 60 20 Z" fill="#E4E2DF" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2"/>
                     <circle cx="85" cy="275" fill="#8ed4c4" fillOpacity="0.45" r="28"/>
                     <circle cx="85" cy="275" fill="#006b5f" fillOpacity="0.8" r="16"/>
-                    <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="85" y="278">68% RELIEF</text>
+                    <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="85" y="278">ILLUSTRATIVE</text>
                     <path d="M48 140 C52 110, 75 120, 85 145 C95 170, 70 210, 52 200 Z" fill="#6df5e1" fillOpacity="0.6"/>
                     <text fill="#004339" fontSize="7" fontWeight="700" textAnchor="middle" x="75" y="170">ARCH REST</text>
                     <ellipse cx="95" cy="85" fill="#8ed4c4" fillOpacity="0.5" rx="35" ry="25"/>
                     <ellipse cx="95" cy="85" fill="#006b5f" fillOpacity="0.75" rx="20" ry="14"/>
                     <text fill="#FFFFFF" fontSize="8" fontWeight="700" textAnchor="middle" x="95" y="88">LOAD BALANCE</text>
                   </svg>
-                  <p className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary mt-space-sm">Clinical Baropodometric Gait Data: Heel Peak Load Shifted</p>
+                  <p className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary mt-space-sm">Illustrative graphic only — no measured gait data is available for this product.</p>
                 </div>
               )}
 
               <div className="absolute bottom-space-md left-1/2 -translate-x-1/2 bg-surface-container-lowest/90 backdrop-blur-md px-space-md py-1.5 rounded-full shadow-sm flex items-center gap-space-md text-on-surface-variant text-label-badge font-bold uppercase tracking-[0.06em]">
-                <span className="flex items-center gap-1 text-primary"><span className="material-symbols-outlined text-[14px]">360</span> {images.length} Medically Scanned Angles</span>
+                <span className="flex items-center gap-1 text-primary"><span className="material-symbols-outlined text-[14px]">360</span> {images.length} Product Images</span>
                 <span className="opacity-30">|</span>
-                <span className="text-tertiary font-bold">HSA/FSA Eligible</span>
+                <span className="text-tertiary font-bold"></span>
               </div>
             </div>
 
