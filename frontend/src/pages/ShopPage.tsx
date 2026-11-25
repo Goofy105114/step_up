@@ -175,10 +175,7 @@ export default function ShopPage() {
                     </button>
                   ))}
                 </div>
-                <div className="hidden md:flex items-center gap-2">
-                  <button className="w-8 h-8 flex items-center justify-center rounded bg-surface-container-high text-primary"><span className="material-symbols-outlined text-[18px]">grid_view</span></button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container"><span className="material-symbols-outlined text-[18px]">view_list</span></button>
-                </div>
+
               </div>
 
               {/* Grid */}
