@@ -6,11 +6,11 @@ import toast from 'react-hot-toast';
 import { useState } from 'react';
 
 function formatPrice(n: number) {
-  return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
+  const { items, removeItem, updateItem, subtotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
@@ -32,13 +32,8 @@ export default function CartPage() {
   const handleUpdate = async (itemId: string, qty: number) => {
     setUpdatingId(itemId);
     try {
-      if (qty < 1) {
-        await api.delete(`/cart/items/${itemId}`);
-        removeItem(itemId);
-      } else {
-        await api.patch(`/cart/items/${itemId}`, { quantity: qty });
-        updateQuantity(itemId, qty);
-      }
+      if (qty < 1) await removeItem(itemId);
+      else await updateItem(itemId, qty);
     } catch { toast.error('Failed to update'); }
     finally { setUpdatingId(null); }
   };
