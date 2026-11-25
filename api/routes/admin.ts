@@ -387,4 +387,53 @@ router.get('/fit-operations', authorize('admin'), async (_req: Request, res: Res
   }});
 });
 
+
+router.get('/return-requests', async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT rr.*,o.order_number,o.total_amount,o.status AS order_status,
+       u.email,u.first_name,u.last_name
+     FROM return_requests rr
+     JOIN orders o ON o.id=rr.order_id
+     LEFT JOIN users u ON u.id=rr.user_id
+     ORDER BY rr.created_at DESC`);
+  return res.json({ success: true, data: result.rows });
+});
+
+router.patch('/return-requests/:id', async (req: Request, res: Response) => {
+  const { status, admin_note } = req.body;
+  if (!['approved','rejected','received'].includes(status)) {
+    throw new AppError('Choose approved, rejected or received', 400);
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const current = await client.query('SELECT * FROM return_requests WHERE id=$1 FOR UPDATE', [req.params.id]);
+    const request = current.rows[0];
+    if (!request) throw new AppError('Return request not found', 404);
+    const transitions: Record<string, string[]> = {
+      requested: ['approved','rejected'],
+      approved: ['received'],
+      received: [],
+      rejected: [],
+    };
+    if (!transitions[request.status]?.includes(status)) {
+      throw new AppError('This return request cannot move to that status', 409);
+    }
+    const updated = await client.query(
+      `UPDATE return_requests SET status=$1,admin_note=$2,reviewed_by=$3,reviewed_at=NOW(),updated_at=NOW()
+       WHERE id=$4 RETURNING *`,
+      [status, admin_note || null, req.user!.userId, req.params.id]);
+    await client.query(
+      'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
+      [request.order_id, request.order_status || 'delivered', `Return request ${status}: ${admin_note || 'No additional note'}`, req.user!.userId]);
+    await client.query('COMMIT');
+    return res.json({ success: true, data: updated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
 export default router;
