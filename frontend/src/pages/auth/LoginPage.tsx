@@ -21,7 +21,7 @@ export default function LoginPage() {
       const { user } = useAuthStore.getState();
       if (user?.role === 'admin' || user?.role === 'staff') navigate('/admin', { replace: true });
       else navigate(from === '/login' ? '/' : from, { replace: true });
-    } catch {}
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to sign in. Please try again.'); }
   };
 
   return (
