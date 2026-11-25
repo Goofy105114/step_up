@@ -1,24 +1,24 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
 const STEPS = [
   {
-    id: 1, label: 'Primary Biomechanical Pathology',
-    question: 'Where does discomfort or fatigue concentrate during daily standing?',
-    sub: 'Select the primary focal stress trigger. Our clinical algorithm calculates the ideal arch support profile.',
+    id: 1, label: 'Comfort preferences',
+    question: 'Where would you most like extra comfort or support?',
+    sub: 'Choose the area that best matches your own experience. This questionnaire is for product discovery, not diagnosis or clinical assessment.',
     options: [
-      { id: 'heel', icon: 'arrow_upload_progress', title: 'Heel Strike & Plantar Fascia', desc: 'Sharp morning stabbing pain, calcaneal micro-tears, severe heel cup bone spur tenderness.', zone: 'Zone H-01 • Deep Calcaneal Cradle', category: 'sports' },
-      { id: 'arch', icon: 'timeline', title: 'Medial Longitudinal Arch', desc: 'Aching fallen arch, structural mid-day collapse, high rigid instep friction and tendon strain.', zone: 'Zone A-02 • 34mm Dynamic Lift', category: 'casual' },
-      { id: 'metatarsal', icon: 'lens_blur', title: 'Metatarsal & Ball of Foot', desc: 'Burning sensation, numbness under forefoot pads, Morton\'s neuroma, and nerve compression.', zone: 'Zone M-03 • Transverse Met Dome', category: 'formal' },
-      { id: 'pronation', icon: 'swap_driving_apps', title: 'Overpronation & Ankle Roll', desc: 'Inward ankle collapse leading to tibial torque, patellofemoral knee ache, and lower lumbar stress.', zone: 'Zone P-04 • Subtalar Stabilizer', category: 'sports' },
+      { id: 'heel', icon: 'arrow_upload_progress', title: 'Heel Strike & Plantar Fascia', desc: 'Heel-area comfort for everyday standing and walking.', zone: 'Heel comfort', category: 'sports' },
+      { id: 'arch', icon: 'timeline', title: 'Medial Longitudinal Arch', desc: 'Arch-area comfort and support for daily movement.', zone: 'Arch comfort', category: 'casual' },
+      { id: 'metatarsal', icon: 'lens_blur', title: 'Metatarsal & Ball of Foot', desc: 'Forefoot cushioning and room for everyday movement.', zone: 'Forefoot comfort', category: 'formal' },
+      { id: 'pronation', icon: 'swap_driving_apps', title: 'Overpronation & Ankle Roll', desc: 'A steadier-feeling fit for your usual walking routine.', zone: 'Stability preference', category: 'sports' },
     ],
   },
   {
-    id: 2, label: 'Biomechanics Variable 02',
+    id: 2, label: 'Daily routine',
     question: 'Daily standing & occupational load',
-    sub: 'Affects foam rebound density and arch rigidity selection.',
+    sub: 'Tell us roughly how much time you spend standing or walking on a typical day.',
     options: [
       { id: 'light', icon: 'weekend', title: 'Under 2 hours', desc: 'Sedentary desk with light walking', zone: 'Low Impact', category: 'casual' },
       { id: 'moderate', icon: 'directions_walk', title: '2 to 6 hours', desc: 'Retail, teaching, home movement', zone: 'Moderate', category: 'casual' },
@@ -26,9 +26,9 @@ const STEPS = [
     ],
   },
   {
-    id: 3, label: 'Arch Profile Variable 03',
+    id: 3, label: 'Activity preference',
     question: 'What is your primary footwear activity?',
-    sub: 'Determines outsole tread pattern and lateral stability requirements.',
+    sub: 'Choose the kind of footwear you are shopping for.',
     options: [
       { id: 'running', icon: 'directions_run', title: 'Running & Sports', desc: 'High impact, pronation control, energy return', zone: 'Kinetic Load', category: 'sports' },
       { id: 'formal', icon: 'business_center', title: 'Formal & Office', desc: 'All-day comfort, leather upper, professional look', zone: 'Low Impact', category: 'formal' },
@@ -43,7 +43,6 @@ export default function FindYourFitPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [selected, setSelected] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const navigate = useNavigate();
 
   const currentStep = STEPS[step];
   const progress = ((step) / STEPS.length) * 100;
@@ -92,19 +91,19 @@ export default function FindYourFitPage() {
             </div>
             <div className="inline-flex items-center gap-2 bg-surface-container px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary mb-space-md">
               <span className="material-symbols-outlined text-[15px] text-secondary">biotech</span>
-              Arch Calibration Complete
+              Preferences saved
             </div>
             <h1 className="text-display-hero-mobile md:text-headline-lg font-semibold text-primary tracking-tight mb-space-md">
-              Your Orthopedic Profile is Ready
+              Your shopping preferences are ready
             </h1>
             <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto">
-              Based on your biomechanical assessment, we've curated StepUp footwear calibrated to your specific arch load distribution and activity profile.
+              Based on the options you selected, here are products from the current catalogue. These suggestions are not a medical recommendation or diagnosis.
             </p>
           </div>
 
           {/* Profile summary */}
           <div className="card p-space-xl mb-space-xl max-w-3xl mx-auto">
-            <h2 className="text-headline-sm font-semibold text-primary mb-space-lg">Your Clinical Arch Profile</h2>
+            <h2 className="text-headline-sm font-semibold text-primary mb-space-lg">Your selected preferences</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
               {answers.map((answerId, idx) => {
                 const opt = STEPS[idx].options.find(o => o.id === answerId);
@@ -123,7 +122,7 @@ export default function FindYourFitPage() {
           {products.length > 0 && (
             <div>
               <h2 className="text-headline-md font-semibold text-primary text-center mb-space-lg">
-                Recommended for Your Profile
+                Products to explore
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md md:gap-space-lg mb-space-xl">
                 {products.map((p: any) => (
@@ -156,7 +155,7 @@ export default function FindYourFitPage() {
 
           <div className="flex flex-col sm:flex-row gap-space-md justify-center">
             <Link to={`/shop/${category}`} className="btn-primary px-10 py-4 text-title-md font-semibold">
-              View All Recommended
+              Browse products by support need
               <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </Link>
             <button onClick={() => { setStep(0); setAnswers([]); setSelected(''); setShowResult(false); }} className="btn-outline px-10 py-4 text-title-md font-semibold">
