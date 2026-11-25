@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../db/pool';
+import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
@@ -9,6 +9,16 @@ const getOrCreateCart = async (userId: string) => {
   let cart = await query('SELECT id FROM carts WHERE user_id=$1', [userId]);
   if (!cart.rows[0]) cart = await query('INSERT INTO carts (user_id) VALUES ($1) RETURNING id', [userId]);
   return cart.rows[0].id;
+};
+
+const getOrCreateCartForUpdate = async (client: any, userId: string) => {
+  await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [userId]);
+  const existing = await client.query(
+    'SELECT id FROM carts WHERE user_id=$1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE',
+    [userId]);
+  if (existing.rows[0]) return existing.rows[0].id;
+  const created = await client.query('INSERT INTO carts (user_id) VALUES ($1) RETURNING id', [userId]);
+  return created.rows[0].id;
 };
 
 const getCartData = (cartId: string) => query(
@@ -36,67 +46,116 @@ router.post('/items', authenticate, async (req: Request, res: Response) => {
     throw new AppError('Quantity must be a positive whole number', 400);
   }
 
-  const variant = await query(
-    `SELECT pv.stock_qty,pv.product_id FROM product_variants pv
-     JOIN products p ON p.id=pv.product_id
-     WHERE pv.id=$1 AND pv.product_id=$2 AND p.is_active=true`,
-    [variant_id, product_id]);
-  if (!variant.rows[0]) throw new AppError('Product variant not found or unavailable', 404);
+  const client = await pool.connect();
+  let cartId: string;
+  try {
+    await client.query('BEGIN');
+    cartId = await getOrCreateCartForUpdate(client, req.user!.userId);
+    const variant = await client.query(
+      `SELECT pv.stock_qty FROM product_variants pv
+       JOIN products p ON p.id=pv.product_id
+       WHERE pv.id=$1 AND pv.product_id=$2 AND p.is_active=true
+       FOR UPDATE OF pv`,
+      [variant_id, product_id]);
+    if (!variant.rows[0]) throw new AppError('Product variant not found or unavailable', 404);
 
-  const cartId = await getOrCreateCart(req.user!.userId);
-  const existing = await query(
-    'SELECT quantity FROM cart_items WHERE cart_id=$1 AND variant_id=$2',
-    [cartId, variant_id]);
-  const totalQuantity = Number(existing.rows[0]?.quantity || 0) + requestedQuantity;
-  if (totalQuantity > Number(variant.rows[0].stock_qty)) {
-    throw new AppError('Requested quantity exceeds available stock', 400);
+    const existing = await client.query(
+      'SELECT quantity FROM cart_items WHERE cart_id=$1 AND variant_id=$2 FOR UPDATE',
+      [cartId, variant_id]);
+    const totalQuantity = Number(existing.rows[0]?.quantity || 0) + requestedQuantity;
+    if (totalQuantity > Number(variant.rows[0].stock_qty)) {
+      throw new AppError('Requested quantity exceeds available stock', 400);
+    }
+
+    await client.query(
+      `INSERT INTO cart_items (cart_id,product_id,variant_id,quantity) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (cart_id,variant_id) DO UPDATE SET quantity=cart_items.quantity+EXCLUDED.quantity`,
+      [cartId, product_id, variant_id, requestedQuantity]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 
-  await query(
-    `INSERT INTO cart_items (cart_id,product_id,variant_id,quantity) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (cart_id,variant_id) DO UPDATE SET quantity=cart_items.quantity+EXCLUDED.quantity`,
-    [cartId, product_id, variant_id, requestedQuantity]);
-  const items = await getCartData(cartId);
+  const items = await getCartData(cartId!);
   return res.json({ success: true, data: items.rows });
 });
 
 router.patch('/items/:id', authenticate, async (req: Request, res: Response) => {
   const quantity = Number(req.body.quantity);
-  const cartId = await getOrCreateCart(req.user!.userId);
-  const existing = await query(
-    `SELECT ci.id,pv.stock_qty FROM cart_items ci
-     JOIN product_variants pv ON pv.id=ci.variant_id
-     WHERE ci.id=$1 AND ci.cart_id=$2`,
-    [req.params.id, cartId]);
-  if (!existing.rows[0]) throw new AppError('Cart item not found', 404);
-
   if (!Number.isInteger(quantity)) throw new AppError('Quantity must be a whole number', 400);
-  if (quantity < 1) {
-    await query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2', [req.params.id, cartId]);
-  } else {
-    if (quantity > Number(existing.rows[0].stock_qty)) {
-      throw new AppError('Requested quantity exceeds available stock', 400);
+
+  const client = await pool.connect();
+  let cartId: string;
+  try {
+    await client.query('BEGIN');
+    cartId = await getOrCreateCartForUpdate(client, req.user!.userId);
+    const existing = await client.query(
+      `SELECT ci.id,pv.stock_qty FROM cart_items ci
+       JOIN product_variants pv ON pv.id=ci.variant_id
+       WHERE ci.id=$1 AND ci.cart_id=$2
+       FOR UPDATE OF ci,pv`,
+      [req.params.id, cartId]);
+    if (!existing.rows[0]) throw new AppError('Cart item not found', 404);
+
+    if (quantity < 1) {
+      await client.query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2', [req.params.id, cartId]);
+    } else {
+      if (quantity > Number(existing.rows[0].stock_qty)) {
+        throw new AppError('Requested quantity exceeds available stock', 400);
+      }
+      await client.query('UPDATE cart_items SET quantity=$1 WHERE id=$2 AND cart_id=$3',
+        [quantity, req.params.id, cartId]);
     }
-    await query('UPDATE cart_items SET quantity=$1 WHERE id=$2 AND cart_id=$3',
-      [quantity, req.params.id, cartId]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-  const items = await getCartData(cartId);
+
+  const items = await getCartData(cartId!);
   return res.json({ success: true, data: items.rows });
 });
 
 router.delete('/items/:id', authenticate, async (req: Request, res: Response) => {
-  const cartId = await getOrCreateCart(req.user!.userId);
-  const result = await query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2 RETURNING id',
-    [req.params.id, cartId]);
-  if (!result.rows[0]) throw new AppError('Cart item not found', 404);
-  const items = await getCartData(cartId);
+  const client = await pool.connect();
+  let cartId: string;
+  try {
+    await client.query('BEGIN');
+    cartId = await getOrCreateCartForUpdate(client, req.user!.userId);
+    const result = await client.query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2 RETURNING id',
+      [req.params.id, cartId]);
+    if (!result.rows[0]) throw new AppError('Cart item not found', 404);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  const items = await getCartData(cartId!);
   return res.json({ success: true, data: items.rows });
 });
 
 router.delete('/', authenticate, async (req: Request, res: Response) => {
-  const cartId = await getOrCreateCart(req.user!.userId);
-  await query('DELETE FROM cart_items WHERE cart_id=$1', [cartId]);
-  return res.json({ success: true, message: 'Cart cleared' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cartId = await getOrCreateCartForUpdate(client, req.user!.userId);
+    await client.query('DELETE FROM cart_items WHERE cart_id=$1', [cartId]);
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Cart cleared' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 router.post('/apply-coupon', authenticate, async (req: Request, res: Response) => {
