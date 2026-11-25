@@ -28,7 +28,7 @@ export default function OrderDetailPage() {
   const returnMutation = useMutation({
     mutationFn: (reason: string) => api.post(`/orders/${id}/return`, { reason }),
     onSuccess: () => {
-      toast.success('Return request submitted! Refund in 5–7 business days.');
+      toast.success('Return request submitted for review. No refund has been issued yet.');
       qc.invalidateQueries({ queryKey: ['order', id] });
       setShowReturnModal(false);
       setReturnReason('');
@@ -74,7 +74,7 @@ export default function OrderDetailPage() {
                 {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Order'}
               </button>
             )}
-            {order.status === 'delivered' && (
+            {order.status === 'delivered' && !order.return_request && (
               <button onClick={() => setShowReturnModal(true)}
                 className="text-xs text-gray-600 hover:text-gray-900 font-semibold uppercase tracking-wider border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
                 <RotateCcw size={12} /> Return / Refund
@@ -115,7 +115,7 @@ export default function OrderDetailPage() {
             <X size={16} className={order.status === 'cancelled' ? 'text-red-500' : 'text-yellow-600'} />
             <p className={`text-sm font-medium ${order.status === 'cancelled' ? 'text-red-700' : 'text-yellow-700'}`}>
               {order.status === 'cancelled' && 'This order has been cancelled.'}
-              {order.status === 'returned' && 'Return requested. Refund will be processed in 5–7 business days.'}
+              {order.status === 'returned' && 'Return request recorded. Our team will review it and contact you about the next steps.'}
               {order.status === 'refunded' && 'This order has been refunded.'}
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function OrderDetailPage() {
               </div>
               <div className="p-6 space-y-4">
                 <div className="bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-700">
-                  Returns accepted within 30 days of delivery. Refund processed in 5–7 business days.
+                  Return requests are reviewed by our team. Refunds are not automatic and are processed only after approval.
                 </div>
                 <div>
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-700 mb-2 block">

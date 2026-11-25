@@ -20,6 +20,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminReturns from './pages/admin/AdminReturns';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminClinicalStudies from './pages/admin/AdminClinicalStudies';
 import AdminLabSettings from './pages/admin/AdminLabSettings';
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/admin/products/new" element={<AdminProductForm />} />
           <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />
           <Route path="/admin/orders" element={<AdminOrders />} />
+          <Route path="/admin/returns" element={<AdminReturns />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/clinical-studies" element={<AdminClinicalStudies />} />
           <Route path="/admin/lab-settings" element={<AdminLabSettings />} />

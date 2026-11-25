@@ -129,7 +129,9 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
       (SELECT json_agg(json_build_object('id',oi.id,'product_name',oi.product_name,'size',oi.size,'color',oi.color,'quantity',oi.quantity,'unit_price',oi.unit_price,'total_price',oi.total_price,'image_url',oi.image_url))
        FROM order_items oi WHERE oi.order_id=o.id) AS items,
       (SELECT json_agg(json_build_object('status',osh.status,'note',osh.note,'created_at',osh.created_at) ORDER BY osh.created_at)
-       FROM order_status_history osh WHERE osh.order_id=o.id) AS history
+       FROM order_status_history osh WHERE osh.order_id=o.id) AS history,
+      (SELECT json_build_object('id',rr.id,'reason',rr.reason,'status',rr.status,'created_at',rr.created_at)
+       FROM return_requests rr WHERE rr.order_id=o.id) AS return_request
      FROM orders o WHERE o.id=$1 AND o.user_id=$2`, [req.params.id, req.user!.userId]);
   if (!result.rows[0]) throw new AppError('Order not found', 404);
   return res.json({ success: true, data: result.rows[0] });
@@ -162,6 +164,40 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
 
     await client.query('COMMIT');
     return res.json({ success: true, message: 'Order cancelled' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
+
+router.post('/:id/return', authenticate, async (req: Request, res: Response) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (reason.length < 5 || reason.length > 1000) {
+    throw new AppError('Please provide a return reason between 5 and 1000 characters', 400);
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderResult = await client.query(
+      'SELECT * FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE',
+      [req.params.id, req.user!.userId]);
+    const order = orderResult.rows[0];
+    if (!order) throw new AppError('Order not found', 404);
+    if (order.status !== 'delivered') throw new AppError('A return can only be requested for a delivered order', 409);
+    const existing = await client.query('SELECT id FROM return_requests WHERE order_id=$1', [order.id]);
+    if (existing.rows[0]) throw new AppError('A return request already exists for this order', 409);
+    const inserted = await client.query(
+      `INSERT INTO return_requests (order_id,user_id,reason,status)
+       VALUES ($1,$2,$3,'requested') RETURNING id,reason,status,created_at`,
+      [order.id, req.user!.userId, reason]);
+    await client.query(
+      'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
+      [order.id, order.status, 'Customer submitted a return request for review', req.user!.userId]);
+    await client.query('COMMIT');
+    return res.status(201).json({ success: true, data: inserted.rows[0], message: 'Return request submitted for review. No refund has been issued.' });
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

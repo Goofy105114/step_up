@@ -20,6 +20,8 @@ import reviewRoutes from './routes/reviews';
 import paymentRoutes from './routes/payments';
 import adminRoutes from './routes/admin';
 import wishlistRoutes from './routes/wishlist';
+import clinicalStudiesRoutes from './routes/clinical-studies';
+import patientProfileRoutes from './routes/patient-profile';
 
 dotenv.config();
 
@@ -67,6 +69,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/clinical-studies', clinicalStudiesRoutes);
+app.use('/api/patient-profile', patientProfileRoutes);
 
 // Error Handling
 app.use(notFound);
