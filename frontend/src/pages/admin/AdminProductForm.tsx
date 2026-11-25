@@ -95,6 +95,7 @@ export default function AdminProductForm() {
       qc.invalidateQueries({ queryKey: ['admin', 'products'] });
       navigate('/admin/products');
     },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to save product'),
   });
 
   const updateVariantMutation = useMutation({
