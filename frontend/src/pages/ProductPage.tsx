@@ -22,7 +22,6 @@ export default function ProductPage() {
     queryFn: () => api.get('/wishlist').then(response => response.data),
     enabled: !!user,
   });
-  const wishlisted = wishlistData?.data?.some((item: any) => item.product_id === product?.id) || false;
   const [openSpec, setOpenSpec] = useState<number | null>(null);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
@@ -32,6 +31,7 @@ export default function ProductPage() {
   });
 
   const product = data;
+  const wishlisted = wishlistData?.data?.some((item: any) => item.product_id === product?.id) || false;
 
   useEffect(() => {
     if (product?.variants?.length) {
@@ -100,9 +100,11 @@ export default function ProductPage() {
   const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
 
   const SPECS = [
-    { icon: 'layers', title: 'Material', desc: product.material || 'Material information has not been added to this listing.' },
-    { icon: 'info', title: 'Product details', desc: product.short_description || product.description || 'Additional product details have not been added to this listing.' },
-    { icon: 'hand', title: 'Care instructions', desc: product.care_instructions || 'Care instructions have not been added to this listing.' },
+    ...(product.material ? [{ icon: 'layers', title: 'Material', desc: product.material }] : []),
+    ...(product.arch_support_level ? [{ icon: 'footprint', title: 'Arch support', desc: `${product.arch_support_level} support` }] : []),
+    ...(product.arch_height_mm ? [{ icon: 'straighten', title: 'Arch height', desc: `${product.arch_height_mm} mm` }] : []),
+    ...(product.durometer_shore_a !== null && product.durometer_shore_a !== undefined ? [{ icon: 'tune', title: 'Cushion firmness', desc: `${product.durometer_shore_a} Shore A` }] : []),
+    ...(product.care_instructions ? [{ icon: 'hand', title: 'Care instructions', desc: product.care_instructions }] : []),
   ];
 
   return (
