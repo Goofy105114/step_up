@@ -27,6 +27,7 @@ export default function CartPage() {
   const total = subtotal - discount + shipping + tax;
   const freeShipLeft = Math.max(0, 599 - subtotal);
   const freeShipPct = Math.min((subtotal / 599) * 100, 100);
+  const hasUnavailableItems = items.some((item: any) => !item.is_active);
 
   const handleUpdate = async (itemId: string, qty: number) => {
     setUpdatingId(itemId);
@@ -159,6 +160,7 @@ export default function CartPage() {
                         <div>
                           <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Selected footwear</span>
                           <h2 className="text-title-md font-semibold text-primary">{item.name}</h2>
+                          {!item.is_active && <p className="mt-1 text-xs font-semibold text-error">This product is no longer available. Remove it to continue.</p>}
                         </div>
                         <span className="text-title-md font-semibold text-primary shrink-0">{formatPrice(item.unit_price)}</span>
                       </div>
@@ -260,14 +262,18 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <Link to="/checkout" className="mt-space-lg flex items-center justify-center gap-space-sm w-full bg-primary-container text-on-primary py-4 rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all duration-200 group">
-                <span className="material-symbols-outlined text-[18px]">lock</span>
-                Proceed to Checkout {formatPrice(total)}
-                <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-              </Link>
+              {hasUnavailableItems ? (
+                <p className="mt-space-lg rounded-xl bg-error-container/40 p-4 text-center text-sm font-medium text-error">Remove unavailable products before proceeding to checkout.</p>
+              ) : (
+                <Link to="/checkout" className="mt-space-lg flex items-center justify-center gap-space-sm w-full bg-primary-container text-on-primary py-4 rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all duration-200 group">
+                  <span className="material-symbols-outlined text-[18px]">lock</span>
+                  Proceed to Checkout {formatPrice(total)}
+                  <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </Link>
+              )}
 
               <p className="text-body-sm text-on-surface-variant text-center mt-space-sm">
-                🔒 256-bit SSL encrypted secure checkout
+                Checkout details are confirmed before you place your order.
               </p>
             </div>
 
@@ -275,7 +281,7 @@ export default function CartPage() {
             <div className="grid grid-cols-2 gap-space-sm">
               {[
                 { icon: 'verified', label: 'Product listing', desc: 'Catalogue details' },
-                { icon: 'replay', label: '30-Day Returns', desc: 'Hassle-free' },
+                { icon: 'receipt_long', label: 'Order details', desc: 'Shown at checkout' },
               ].map(({ icon, label, desc }) => (
                 <div key={label} className="card p-space-md flex items-center gap-space-sm">
                   <span className="material-symbols-outlined text-[22px] text-secondary shrink-0">{icon}</span>
