@@ -6,9 +6,18 @@ import { AppError } from '../middleware/errorHandler';
 const router = Router();
 
 const getOrCreateCart = async (userId: string) => {
-  let cart = await query('SELECT id FROM carts WHERE user_id=$1', [userId]);
-  if (!cart.rows[0]) cart = await query('INSERT INTO carts (user_id) VALUES ($1) RETURNING id', [userId]);
-  return cart.rows[0].id;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cartId = await getOrCreateCartForUpdate(client, userId);
+    await client.query('COMMIT');
+    return cartId;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const getOrCreateCartForUpdate = async (client: any, userId: string) => {
