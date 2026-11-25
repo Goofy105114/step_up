@@ -127,27 +127,37 @@ router.get('/products/:id', async (req: Request, res: Response) => {
 
 router.post('/products', async (req: Request, res: Response) => {
   const { name, slug, description, short_description, category_id, base_price, sale_price, sku,
-          material, care_instructions, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
+          material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a,
+          calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
   if (!name || !slug || !base_price) throw new AppError('Name, slug and base_price required', 400);
+  if (arch_support_level && !['low', 'medium', 'high'].includes(arch_support_level)) throw new AppError('Invalid arch support level', 400);
+  if (arch_height_mm !== undefined && arch_height_mm !== null && arch_height_mm !== '' && (!Number.isFinite(Number(arch_height_mm)) || Number(arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
+  if (durometer_shore_a !== undefined && durometer_shore_a !== null && durometer_shore_a !== '' && (!Number.isFinite(Number(durometer_shore_a)) || Number(durometer_shore_a) < 0 || Number(durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
   const result = await query(
     `INSERT INTO products (name,slug,description,short_description,category_id,base_price,sale_price,sku,
-                           material,care_instructions,tags,is_featured,is_new_arrival,is_bestseller)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+                           material,care_instructions,arch_support_level,arch_height_mm,durometer_shore_a,
+                           calibration_reference,calibrated_at,calibration_notes,tags,is_featured,is_new_arrival,is_bestseller)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
     [name, slug, description || null, short_description || null, category_id || null,
-     base_price, sale_price || null, sku || null, material || null, care_instructions || null, tags || [],
+     base_price, sale_price || null, sku || null, material || null, care_instructions || null,
+     arch_support_level || null, arch_height_mm || null, durometer_shore_a || null,
+     calibration_reference || null, calibrated_at || null, calibration_notes || null, tags || [],
      is_featured || false, is_new_arrival || false, is_bestseller || false]);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
 router.patch('/products/:id', async (req: Request, res: Response) => {
   const fields = ['name','slug','description','short_description','category_id','base_price',
-                  'sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','tags'];
+                  'sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
   const updates: string[] = [];
   const params: unknown[] = [];
   let pIdx = 1;
   for (const f of fields) {
     if (req.body[f] !== undefined) { updates.push(`${f}=$${pIdx++}`); params.push(req.body[f]); }
   }
+  if (req.body.arch_support_level !== undefined && req.body.arch_support_level !== null && !['low', 'medium', 'high'].includes(req.body.arch_support_level)) throw new AppError('Invalid arch support level', 400);
+  if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
+  if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
   if (!updates.length) throw new AppError('No fields to update', 400);
   params.push(req.params.id);
   const result = await query(
