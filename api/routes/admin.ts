@@ -232,4 +232,68 @@ router.get('/users', authorize('admin'), async (_req: Request, res: Response) =>
   return res.json({ success: true, data: result.rows });
 });
 
+/* ── Clinical source library ───────────────────────────────────────── */
+const isHttpsUrl = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+};
+
+router.get('/clinical-studies', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query(
+    'SELECT * FROM clinical_studies ORDER BY created_at DESC');
+  return res.json({ success: true, data: result.rows });
+});
+
+router.post('/clinical-studies', authorize('admin'), async (req: Request, res: Response) => {
+  const { title, authors, publication, publication_date, doi, source_url, document_url,
+    summary, source_verified = false, is_published = false } = req.body;
+  if (!String(title || '').trim()) throw new AppError('Study title is required', 400);
+  if (!isHttpsUrl(source_url)) throw new AppError('A valid HTTPS source URL is required', 400);
+  if (document_url && !isHttpsUrl(document_url)) throw new AppError('Document URL must use HTTPS', 400);
+  if (is_published && !source_verified) {
+    throw new AppError('Verify the original source before publishing this entry', 400);
+  }
+  const result = await query(
+    `INSERT INTO clinical_studies
+      (title,authors,publication,publication_date,doi,source_url,document_url,summary,source_verified,is_published,created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [String(title).trim(), authors || null, publication || null, publication_date || null, doi || null,
+      source_url, document_url || null, summary || null, Boolean(source_verified), Boolean(is_published), req.user!.userId]);
+  return res.status(201).json({ success: true, data: result.rows[0] });
+});
+
+router.patch('/clinical-studies/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const current = await query('SELECT * FROM clinical_studies WHERE id=$1', [req.params.id]);
+  if (!current.rows[0]) throw new AppError('Clinical study not found', 404);
+  const merged = { ...current.rows[0], ...req.body };
+  if (!String(merged.title || '').trim()) throw new AppError('Study title is required', 400);
+  if (!isHttpsUrl(merged.source_url)) throw new AppError('A valid HTTPS source URL is required', 400);
+  if (merged.document_url && !isHttpsUrl(merged.document_url)) throw new AppError('Document URL must use HTTPS', 400);
+  if (merged.is_published && !merged.source_verified) {
+    throw new AppError('Verify the original source before publishing this entry', 400);
+  }
+  const fields = ['title','authors','publication','publication_date','doi','source_url','document_url','summary','source_verified','is_published'];
+  const updates: string[] = [];
+  const params: unknown[] = [];
+  let pIdx = 1;
+  for (const field of fields) {
+    if (req.body[field] !== undefined) {
+      updates.push(`${field}=${pIdx++}`);
+      params.push(req.body[field]);
+    }
+  }
+  if (!updates.length) throw new AppError('No fields to update', 400);
+  updates.push('updated_at=NOW()');
+  params.push(req.params.id);
+  const result = await query(
+    `UPDATE clinical_studies SET ${updates.join(',')} WHERE id=${pIdx} RETURNING *`, params);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
+router.delete('/clinical-studies/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const result = await query('DELETE FROM clinical_studies WHERE id=$1 RETURNING id', [req.params.id]);
+  if (!result.rows[0]) throw new AppError('Clinical study not found', 404);
+  return res.json({ success: true });
+});
+
 export default router;
