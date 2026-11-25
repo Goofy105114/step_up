@@ -269,7 +269,7 @@ export default function ProductPage() {
 
             {/* CTA buttons */}
             <div className="flex gap-space-sm">
-              <button onClick={addToCart} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
+              <button onClick={() => addToCart()} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
                 className="flex-1 h-14 bg-surface-container-high text-on-surface rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs hover:bg-surface-container-highest transition-all border border-outline-variant disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 {addingCart ? 'Adding...' : 'Add to Bag'}
