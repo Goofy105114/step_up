@@ -9,6 +9,8 @@ interface ProductForm {
   name: string; slug: string; sku: string; description: string; short_description: string;
   category_id: string; base_price: string; sale_price: string;
   material: string; care_instructions: string; tags: string;
+  arch_support_level: string; arch_height_mm: string; durometer_shore_a: string;
+  calibration_reference: string; calibrated_at: string; calibration_notes: string;
   is_featured: boolean; is_new_arrival: boolean; is_bestseller: boolean; is_active: boolean;
 }
 
@@ -23,6 +25,8 @@ const emptyForm: ProductForm = {
   name: '', slug: '', sku: '', description: '', short_description: '',
   category_id: '', base_price: '', sale_price: '',
   material: '', care_instructions: '', tags: '',
+  arch_support_level: '', arch_height_mm: '', durometer_shore_a: '',
+  calibration_reference: '', calibrated_at: '', calibration_notes: '',
   is_featured: false, is_new_arrival: false, is_bestseller: false, is_active: true,
 };
 
@@ -66,6 +70,12 @@ export default function AdminProductForm() {
       sale_price: productData.sale_price || '',
       material: productData.material || '',
       care_instructions: productData.care_instructions || '',
+      arch_support_level: productData.arch_support_level || '',
+      arch_height_mm: productData.arch_height_mm ?? '',
+      durometer_shore_a: productData.durometer_shore_a ?? '',
+      calibration_reference: productData.calibration_reference || '',
+      calibrated_at: productData.calibrated_at ? String(productData.calibrated_at).slice(0, 10) : '',
+      calibration_notes: productData.calibration_notes || '',
       tags: (productData.tags || []).join(', '),
       is_featured: productData.is_featured ?? false,
       is_new_arrival: productData.is_new_arrival ?? false,
@@ -127,6 +137,12 @@ export default function AdminProductForm() {
       ...form,
       sku: form.sku.trim() || null,
       care_instructions: form.care_instructions.trim() || null,
+      arch_support_level: form.arch_support_level || null,
+      arch_height_mm: form.arch_height_mm === '' ? null : Number(form.arch_height_mm),
+      durometer_shore_a: form.durometer_shore_a === '' ? null : Number(form.durometer_shore_a),
+      calibration_reference: form.calibration_reference.trim() || null,
+      calibrated_at: form.calibrated_at || null,
+      calibration_notes: form.calibration_notes.trim() || null,
       base_price: parseFloat(form.base_price),
       sale_price: form.sale_price ? parseFloat(form.sale_price) : null,
       tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
@@ -222,6 +238,45 @@ export default function AdminProductForm() {
             <label className="label">Catalogue Tags (comma separated)</label>
             <input value={form.tags} onChange={(e) => setField('tags', e.target.value)}
               className="input-field" placeholder="Add tags from your product catalogue" />
+          </div>
+        </div>
+
+        {/* Product support profile and calibration */}
+        <div className="bg-white border border-gray-200 p-6 space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700 pb-3 border-b border-gray-100">Support Profile & Calibration</h2>
+          <p className="text-xs leading-5 text-gray-500">Enter measurements only from the product specification or a recorded calibration. Leave fields blank when the information has not been verified.</p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <label className="label">Arch Support Level</label>
+              <select value={form.arch_support_level} onChange={(e) => setField('arch_support_level', e.target.value)} className="input-field">
+                <option value="">Not specified</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Arch Height (mm)</label>
+              <input type="number" min="0.1" step="0.1" value={form.arch_height_mm} onChange={(e) => setField('arch_height_mm', e.target.value)} className="input-field" placeholder="Measured value" />
+            </div>
+            <div>
+              <label className="label">Durometer (Shore A)</label>
+              <input type="number" min="0" max="100" step="0.1" value={form.durometer_shore_a} onChange={(e) => setField('durometer_shore_a', e.target.value)} className="input-field" placeholder="Measured value" />
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Calibration Reference</label>
+              <input value={form.calibration_reference} onChange={(e) => setField('calibration_reference', e.target.value)} className="input-field" placeholder="Lab or instrument reference" />
+            </div>
+            <div>
+              <label className="label">Calibration Date</label>
+              <input type="date" value={form.calibrated_at} onChange={(e) => setField('calibrated_at', e.target.value)} className="input-field" />
+            </div>
+          </div>
+          <div>
+            <label className="label">Calibration Notes</label>
+            <textarea rows={3} value={form.calibration_notes} onChange={(e) => setField('calibration_notes', e.target.value)} className="input-field resize-y" placeholder="Optional notes from the verified measurement record" />
           </div>
         </div>
 
