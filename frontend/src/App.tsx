@@ -20,6 +20,8 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
+import FindYourFitPage from './pages/FindYourFitPage';
+import ClinicalStudiesPage from './pages/ClinicalStudiesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -44,6 +46,8 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/find-your-fit" element={<FindYourFitPage />} />
+        <Route path="/clinical-studies" element={<ClinicalStudiesPage />} />
 
         {/* Protected customer routes */}
         <Route element={<ProtectedRoute />}>

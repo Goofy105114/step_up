@@ -1,399 +1,236 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import ProductCard from '../components/products/ProductCard';
 
-const sortOptions = [
-  { label: 'Newest', value: 'created_at:desc' },
-  { label: 'Price: Low → High', value: 'price:asc' },
-  { label: 'Price: High → Low', value: 'price:desc' },
-  { label: 'Top Rated', value: 'rating:desc' },
+const CATEGORIES = [
+  { slug: '', label: 'All Footwear' },
+  { slug: 'mens', label: "Men's" },
+  { slug: 'womens', label: "Women's" },
+  { slug: 'kids', label: "Kids'" },
+  { slug: 'sports', label: 'Sports' },
+  { slug: 'casual', label: 'Casual' },
+  { slug: 'formal', label: 'Formal' },
+  { slug: 'sandals', label: 'Sandals' },
 ];
 
-const priceRanges = [
-  { label: 'All Prices', min: '', max: '' },
-  { label: 'Under ₹1,000', min: '0', max: '1000' },
-  { label: '₹1,000 – ₹2,500', min: '1000', max: '2500' },
-  { label: '₹2,500 – ₹5,000', min: '2500', max: '5000' },
-  { label: 'Above ₹5,000', min: '5000', max: '999999' },
+const SORT_OPTIONS = [
+  { value: '', label: 'Sort: Popularity ▾' },
+  { value: 'price_asc', label: 'Price: Low to High' },
+  { value: 'price_desc', label: 'Price: High to Low' },
+  { value: 'rating', label: 'Rating ▾' },
 ];
-
-const categories = [
-  { label: "Men's", value: 'mens' },
-  { label: "Women's", value: 'womens' },
-  { label: "Kids'", value: 'kids' },
-  { label: 'Sports', value: 'sports' },
-  { label: 'Casual', value: 'casual' },
-  { label: 'Formal', value: 'formal' },
-  { label: 'Sandals', value: 'sandals' },
-];
-
-const catLabels: Record<string, string> = {
-  mens: "Men's Footwear", womens: "Women's Footwear", kids: "Kids' Footwear",
-  sports: 'Sports & Athletic', casual: 'Casual', formal: 'Formal', sandals: 'Sandals & Slippers',
-};
 
 export default function ShopPage() {
-  const { category } = useParams();
-  const [sp, setSp] = useSearchParams();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { category: paramCategory } = useParams<{ category?: string }>();
+  const [searchParams] = useSearchParams();
+  const [category, setCategory] = useState(paramCategory || '');
+  const [sort, setSort] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [page, setPage] = useState(1);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
 
-  const page = parseInt(sp.get('page') || '1');
-  const sort = sp.get('sort') || 'created_at:desc';
-  const search = sp.get('search') || '';
-  const minPrice = sp.get('min_price') || '';
-  const maxPrice = sp.get('max_price') || '';
-  const featured = sp.get('featured') || '';
-  const newArrival = sp.get('new_arrival') || '';
-  const bestseller = sp.get('bestseller') || '';
-  const [sortKey, sortOrder] = sort.split(':');
+  useEffect(() => { setCategory(paramCategory || ''); setPage(1); setAllProducts([]); }, [paramCategory]);
+  useEffect(() => { setPage(1); setAllProducts([]); }, [category, sort, search]);
 
-  const LIMIT = 12;
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['products', category, page, sort, search, minPrice, maxPrice, featured, newArrival, bestseller],
-    queryFn: () => {
-      const p = new URLSearchParams({
-        limit: String(LIMIT), page: String(page), sort: sortKey, order: sortOrder,
-        ...(category && { category }),
-        ...(search && { search }),
-        ...(minPrice && { min_price: minPrice }),
-        ...(maxPrice && { max_price: maxPrice }),
-        ...(featured && { featured }),
-        ...(newArrival && { new_arrival: newArrival }),
-        ...(bestseller && { bestseller }),
-      });
-      return api.get(`/products?${p}`).then((r) => r.data);
-    },
-  });
-
-  const setParam = (key: string, val: string | null) => {
-    const next = new URLSearchParams(sp);
-    if (val) next.set(key, val); else next.delete(key);
-    next.delete('page');
-    setSp(next);
+  const buildQuery = (p = page) => {
+    const params: Record<string, string> = { limit: '12', page: String(p) };
+    if (category) params.category = category;
+    if (search) params.search = search;
+    if (sort === 'price_asc') { params.sort = 'price'; params.order = 'asc'; }
+    if (sort === 'price_desc') { params.sort = 'price'; params.order = 'desc'; }
+    if (sort === 'rating') { params.sort = 'rating'; params.order = 'desc'; }
+    return new URLSearchParams(params).toString();
   };
 
-  const title = category ? catLabels[category] || category
-    : search ? `Results for "${search}"`
-    : featured === 'true' ? 'Featured Products'
-    : newArrival === 'true' ? 'New Arrivals'
-    : bestseller === 'true' ? 'Bestsellers'
-    : 'All Products';
+  const { data, isFetching } = useQuery({
+    queryKey: ['products', 'shop', category, sort, search, page],
+    queryFn: () => api.get(`/products?${buildQuery()}`).then(r => r.data),
+  } as any);
 
-  const totalPages = data?.pagination?.pages || 1;
-  const totalProducts = data?.pagination?.total || 0;
+  useEffect(() => {
+    if (!data?.data) return;
+    setAllProducts(prev => page === 1 ? data.data : [...prev, ...data.data]);
+  }, [data]);
 
-  // Active filter chips
-  const activeFilters: { label: string; clear: () => void }[] = [];
-  if (minPrice || maxPrice) {
-    const rangeLabel = priceRanges.find(r => r.min === minPrice && r.max === maxPrice)?.label || 'Custom price';
-    activeFilters.push({ label: rangeLabel, clear: () => { setParam('min_price', null); setParam('max_price', null); } });
-  }
-  if (featured === 'true') activeFilters.push({ label: 'Featured', clear: () => setParam('featured', null) });
-  if (newArrival === 'true') activeFilters.push({ label: 'New Arrivals', clear: () => setParam('new_arrival', null) });
-  if (bestseller === 'true') activeFilters.push({ label: 'Bestsellers', clear: () => setParam('bestseller', null) });
-  if (search) activeFilters.push({ label: `"${search}"`, clear: () => setParam('search', null) });
+  const hasMore = data?.pagination && page < data.pagination.pages;
+  const total = data?.pagination?.total ?? 0;
+  const pageTitle = category ? CATEGORIES.find(c => c.slug === category)?.label || category : 'Explore Collection';
 
   return (
     <div className="bg-surface min-h-screen">
-      {/* Breadcrumb */}
-      <div className="bg-surface-container-low border-b border-outline/10">
-        <div className="container-site py-space-md">
-          <nav className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+      {/* Hero header */}
+      <section className="relative w-full overflow-hidden pb-space-lg">
+        <div className="absolute -top-24 right-1/4 w-96 h-96 rounded-full bg-secondary-container/20 blur-3xl pointer-events-none" />
+        <div className="container-site">
+          <div className="flex items-center gap-space-xs text-on-surface-variant text-body-sm mb-space-sm pt-space-xs">
+            <Link to="/" className="hover:text-primary transition-colors">StepUp Lab</Link>
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            {category && (
-              <>
-                <Link to="/shop" className="hover:text-primary transition-colors">Shop</Link>
-                <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-              </>
-            )}
-            <span className="text-on-surface font-semibold">{title}</span>
-          </nav>
-        </div>
-      </div>
-
-      <div className="container-site py-space-xl">
-        {/* Header row */}
-        <div className="flex flex-wrap items-start justify-between gap-space-md mb-space-lg">
-          <div>
-            <h1 className="text-headline-sm text-on-surface">{title}</h1>
-            {!isLoading && (
-              <p className="text-body-sm text-on-surface-variant mt-space-xs">
-                {totalProducts} {totalProducts === 1 ? 'product' : 'products'} found
-              </p>
-            )}
+            <span className="text-primary font-semibold">{pageTitle}</span>
+          </div>
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md mb-space-lg">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-full text-label-badge font-bold uppercase tracking-[0.06em] text-primary mb-space-sm">
+                <span className="material-symbols-outlined text-[15px] text-secondary">vital_signs</span>
+                Clinical Biomechanical Matrix
+              </div>
+              <h1 className="text-headline-lg font-semibold text-primary tracking-tight">{pageTitle}</h1>
+              {total > 0 && <p className="text-body-md text-on-surface-variant mt-space-xs">Showing {allProducts.length} of {total} curated releases</p>}
+            </div>
+            <div className="flex items-center gap-space-sm bg-surface-container-lowest p-space-sm rounded-lg shadow-sm">
+              <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-primary">
+                <span className="material-symbols-outlined text-[18px]">verified</span>
+                <span className="text-label-badge font-bold uppercase">APMA Approved</span>
+              </div>
+              <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded-DEFAULT text-secondary">
+                <span className="material-symbols-outlined text-[18px]">health_and_safety</span>
+                <span className="text-label-badge font-bold uppercase">HSA/FSA Eligible</span>
+              </div>
+            </div>
           </div>
 
-          {/* Mobile filter toggle */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden btn-outline gap-space-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">tune</span>
-            Filters
-          </button>
-        </div>
-
-        {/* Active filter chips */}
-        {activeFilters.length > 0 && (
-          <div className="flex flex-wrap items-center gap-space-sm mb-space-lg">
-            <span className="text-label-md text-on-surface-variant">Active:</span>
-            {activeFilters.map((f) => (
-              <button
-                key={f.label}
-                onClick={f.clear}
-                className="inline-flex items-center gap-1 px-space-md py-1 rounded-full bg-primary-container text-on-primary text-label-badge hover:bg-primary transition-colors"
-              >
-                {f.label}
-                <span className="material-symbols-outlined text-[14px]">close</span>
+          {/* Category chips */}
+          <div className="flex items-center gap-space-xs overflow-x-auto pb-space-sm no-scrollbar">
+            {CATEGORIES.map(cat => (
+              <button key={cat.slug} onClick={() => setCategory(cat.slug)}
+                className={`shrink-0 px-space-lg py-space-sm rounded-full text-label-md font-semibold tracking-[0.04em] transition-all ${
+                  category === cat.slug
+                    ? 'bg-primary-container text-on-primary shadow-primary'
+                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
+                }`}>
+                {cat.label}
+                {category === cat.slug && data?.pagination?.total ? ` (${data.pagination.total})` : ''}
               </button>
             ))}
-            <button
-              onClick={() => setSp({})}
-              className="text-body-sm text-on-surface-variant hover:text-error transition-colors underline"
-            >
-              Clear all
-            </button>
           </div>
-        )}
+        </div>
+      </section>
 
-        <div className="flex gap-space-xl">
-          {/* ── Sidebar ── */}
-          <aside className={`w-64 shrink-0 ${sidebarOpen ? 'block' : 'hidden'} lg:block`}>
-            <div className="sticky top-24 space-y-space-md">
-              {/* Sort */}
-              <div className="card p-space-lg">
-                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-[18px] text-primary">swap_vert</span>
-                  Sort By
-                </h3>
-                <div className="flex flex-wrap gap-space-sm">
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setParam('sort', opt.value)}
-                      className={`px-space-md py-1.5 rounded-full text-label-badge transition-all ${
-                        sort === opt.value
-                          ? 'bg-primary-container text-on-primary'
-                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-                      }`}
-                    >
-                      {opt.label}
+      {/* Main layout */}
+      <section className="w-full pb-space-xl">
+        <div className="container-site">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+
+            {/* Sidebar */}
+            <aside className="lg:col-span-3 bg-surface-container-low rounded-lg p-space-md shadow-sm sticky top-32">
+              <div className="flex items-center justify-between pb-space-sm mb-space-sm">
+                <div className="flex items-center gap-space-xs">
+                  <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
+                  <h2 className="text-title-md font-semibold text-primary">Filters &amp; Specs</h2>
+                </div>
+                <button onClick={() => { setCategory(''); setSort(''); setSearch(''); }} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
+              </div>
+
+              {/* Search */}
+              <div className="mb-space-md">
+                <label className="label">Search</label>
+                <form onSubmit={e => { e.preventDefault(); setPage(1); setAllProducts([]); }}>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">search</span>
+                    <input type="text" placeholder="Search 240+ styles..." value={search} onChange={e => setSearch(e.target.value)}
+                      className="input-field pl-10 h-11 text-body-sm" />
+                  </div>
+                </form>
+              </div>
+
+              {/* Categories */}
+              <div className="mb-space-md">
+                <label className="label">Category</label>
+                <div className="space-y-1">
+                  {CATEGORIES.map(cat => (
+                    <button key={cat.slug} onClick={() => setCategory(cat.slug)}
+                      className={`w-full flex items-center justify-between px-space-md py-space-xs rounded-full text-body-md transition-all ${
+                        category === cat.slug ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                      }`}>
+                      <span>{cat.label}</span>
+                      {category === cat.slug && <span className="material-symbols-outlined text-[16px]">check</span>}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Categories */}
-              <div className="card p-space-lg">
-                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-[18px] text-primary">category</span>
-                  Category
-                </h3>
-                <div className="space-y-space-sm">
-                  <label className="flex items-center gap-space-sm cursor-pointer group">
-                    <input
-                      type="radio" name="cat" checked={!category}
-                      onChange={() => setSp({})}
-                      className="sr-only"
-                    />
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      !category ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'
-                    }`}>
-                      {!category && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </span>
-                    <span className={`text-body-sm transition-colors ${!category ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
-                      All Products
-                    </span>
-                  </label>
-                  {categories.map((cat) => (
-                    <label key={cat.value} className="flex items-center gap-space-sm cursor-pointer group">
-                      <input
-                        type="radio" name="cat" checked={category === cat.value}
-                        onChange={() => window.location.href = `/shop/${cat.value}`}
-                        className="sr-only"
-                      />
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        category === cat.value ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'
+              {/* Sort */}
+              <div>
+                <label className="label">Sort By</label>
+                <div className="space-y-1">
+                  {SORT_OPTIONS.map(opt => (
+                    <button key={opt.value} onClick={() => setSort(opt.value)}
+                      className={`w-full flex items-center justify-between px-space-md py-space-xs rounded-full text-body-md transition-all ${
+                        sort === opt.value ? 'bg-secondary-container text-on-secondary-container font-semibold' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                       }`}>
-                        {category === cat.value && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                      </span>
-                      <span className={`text-body-sm transition-colors ${category === cat.value ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
-                        {cat.label}
-                      </span>
-                    </label>
+                      <span>{opt.label}</span>
+                      {sort === opt.value && <span className="material-symbols-outlined text-[16px]">check</span>}
+                    </button>
                   ))}
                 </div>
               </div>
+            </aside>
 
-              {/* Price Range */}
-              <div className="card p-space-lg">
-                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-[18px] text-primary">sell</span>
-                  Price Range
-                </h3>
-                <div className="space-y-space-sm">
-                  {priceRanges.map((r) => (
-                    <label key={r.label} className="flex items-center gap-space-sm cursor-pointer group">
-                      <input
-                        type="radio" name="price"
-                        checked={minPrice === r.min && maxPrice === r.max}
-                        onChange={() => { setParam('min_price', r.min || null); setParam('max_price', r.max || null); }}
-                        className="sr-only"
-                      />
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        minPrice === r.min && maxPrice === r.max
-                          ? 'border-primary bg-primary'
-                          : 'border-outline-variant group-hover:border-primary'
+            {/* Product grid */}
+            <div className="lg:col-span-9">
+              {/* Sort bar */}
+              <div className="flex items-center justify-between mb-space-md">
+                <div className="flex items-center gap-space-xs overflow-x-auto no-scrollbar">
+                  {SORT_OPTIONS.map(opt => (
+                    <button key={opt.value} onClick={() => setSort(opt.value)}
+                      className={`shrink-0 px-space-md py-space-xs rounded-full text-label-md font-semibold tracking-[0.04em] transition-all ${
+                        sort === opt.value ? 'bg-primary-container text-on-primary' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                       }`}>
-                        {minPrice === r.min && maxPrice === r.max && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                      </span>
-                      <span className={`text-body-sm transition-colors ${
-                        minPrice === r.min && maxPrice === r.max ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'
-                      }`}>
-                        {r.label}
-                      </span>
-                    </label>
+                      {opt.label}
+                    </button>
                   ))}
+                </div>
+                <div className="hidden md:flex items-center gap-2">
+                  <button className="w-8 h-8 flex items-center justify-center rounded bg-surface-container-high text-primary"><span className="material-symbols-outlined text-[18px]">grid_view</span></button>
+                  <button className="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container"><span className="material-symbols-outlined text-[18px]">view_list</span></button>
                 </div>
               </div>
 
-              {/* Collections */}
-              <div className="card p-space-lg">
-                <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-[18px] text-primary">collections_bookmark</span>
-                  Collections
-                </h3>
-                <div className="space-y-space-sm">
-                  {([
-                    ['Featured', 'featured', 'star'],
-                    ['New Arrivals', 'new_arrival', 'new_releases'],
-                    ['Bestsellers', 'bestseller', 'trending_up'],
-                  ] as [string, string, string][]).map(([label, key, icon]) => (
-                    <label key={key} className="flex items-center gap-space-sm cursor-pointer group">
-                      <input
-                        type="checkbox" checked={sp.get(key) === 'true'}
-                        onChange={(e) => setParam(key, e.target.checked ? 'true' : null)}
-                        className="sr-only"
-                      />
-                      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                        sp.get(key) === 'true' ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'
-                      }`}>
-                        {sp.get(key) === 'true' && (
-                          <span className="material-symbols-outlined text-white text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
-                        )}
-                      </span>
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">{icon}</span>
-                      <span className={`text-body-sm transition-colors ${sp.get(key) === 'true' ? 'text-primary font-semibold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
-                        {label}
-                      </span>
-                    </label>
-                  ))}
+              {/* Grid */}
+              {allProducts.length === 0 && !isFetching ? (
+                <div className="text-center py-24">
+                  <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">search_off</span>
+                  <h3 className="text-headline-sm font-semibold text-primary mb-space-sm">No products found</h3>
+                  <p className="text-body-md text-on-surface-variant mb-space-lg">Try adjusting your filters or search term</p>
+                  <button onClick={() => { setCategory(''); setSort(''); setSearch(''); }} className="btn-primary">Clear Filters</button>
                 </div>
-              </div>
-
-              {/* Clear */}
-              {activeFilters.length > 0 && (
-                <button
-                  onClick={() => setSp({})}
-                  className="w-full btn-outline text-label-badge gap-space-xs"
-                >
-                  <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
-                  Clear All Filters
-                </button>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-space-md md:gap-space-lg">
+                  {allProducts.map((product: any) => <ProductCard key={product.id} product={product} />)}
+                </div>
               )}
-            </div>
-          </aside>
 
-          {/* ── Main content ── */}
-          <div className="flex-1 min-w-0">
-            {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-lg">
-                {Array(9).fill(0).map((_, i) => (
-                  <div key={i} className="card overflow-hidden animate-pulse">
-                    <div className="aspect-[4/5] bg-surface-container" />
-                    <div className="p-space-md space-y-space-sm">
-                      <div className="h-3 w-1/2 rounded-full bg-surface-container" />
-                      <div className="h-4 w-3/4 rounded-full bg-surface-container" />
-                      <div className="h-4 w-1/4 rounded-full bg-surface-container" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : !data?.data?.length ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-24 h-24 rounded-full bg-surface-container flex items-center justify-center mb-space-lg">
-                  <span className="material-symbols-outlined text-[48px] text-on-surface-variant">search_off</span>
+              {isFetching && allProducts.length === 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-space-md md:gap-space-lg">
+                  {Array(6).fill(0).map((_, i) => <div key={i} className="rounded-DEFAULT bg-surface-container-low animate-pulse aspect-[4/5]" />)}
                 </div>
-                <h3 className="text-headline-sm text-on-surface mb-space-sm">No Products Found</h3>
-                <p className="text-body-md text-on-surface-variant mb-space-xl max-w-sm">
-                  Try adjusting your filters or search term to discover more products.
-                </p>
-                <Link to="/shop" className="btn-primary">
-                  <span className="material-symbols-outlined text-[18px]">storefront</span>
-                  Browse All Products
+              )}
+
+              {hasMore && (
+                <div className="text-center mt-space-xl">
+                  <button onClick={() => setPage(p => p + 1)} disabled={isFetching} className="btn-outline px-12 py-space-md text-title-md font-semibold">
+                    {isFetching ? 'Loading...' : 'Load More Products'}
+                  </button>
+                </div>
+              )}
+
+              {/* Members CTA */}
+              <div className="mt-space-xl bg-gradient-to-r from-primary to-primary-container rounded-lg p-space-xl flex flex-col md:flex-row md:items-center justify-between gap-space-lg">
+                <div>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-primary-fixed block mb-1">Members Priority Drop</span>
+                  <h3 className="text-headline-sm font-semibold text-on-primary mb-1">Custom Lacing &amp; Insoles Included</h3>
+                  <p className="text-body-sm text-on-primary/80">Free express shipping &amp; 30-day trial on all orders over ₹599.</p>
+                </div>
+                <Link to="/register" className="shrink-0 inline-flex items-center justify-center gap-space-sm bg-on-primary text-primary px-8 py-3.5 rounded-full text-label-md font-semibold hover:bg-primary-fixed transition-all">
+                  <span className="material-symbols-outlined text-[20px]">stars</span>
+                  Join StepUp Club
                 </Link>
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-lg">
-                  {data.data.map((p: any) => <ProductCard key={p.id} product={p} />)}
-                </div>
-
-                {/* Load more / Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-space-xl flex flex-col items-center gap-space-md">
-                    {page < totalPages && (
-                      <button
-                        onClick={() => setParam('page', String(page + 1))}
-                        className="btn-primary gap-space-sm"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                        Load More Products
-                      </button>
-                    )}
-                    <div className="flex items-center gap-space-xs">
-                      <button
-                        onClick={() => setParam('page', String(page - 1))}
-                        disabled={page === 1}
-                        className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => setParam('page', String(p))}
-                          className={`w-9 h-9 rounded-full text-label-md transition-colors ${
-                            page === p
-                              ? 'bg-primary-container text-on-primary'
-                              : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setParam('page', String(page + 1))}
-                        disabled={page === totalPages}
-                        className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                      </button>
-                    </div>
-                    <p className="text-body-sm text-on-surface-variant">
-                      Page {page} of {totalPages}
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

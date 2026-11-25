@@ -3,16 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 
-const features = [
-  { icon: 'local_shipping', text: 'Free shipping on orders above ₹599' },
-  { icon: 'replay', text: '30-day hassle-free returns' },
-  { icon: 'verified_user', text: '100% authentic products, guaranteed' },
-];
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [tab, setTab] = useState<'patient' | 'order'>('patient');
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,178 +19,155 @@ export default function LoginPage() {
       await login(email, password);
       toast.success('Welcome back!');
       const { user } = useAuthStore.getState();
-      if (user?.role === 'admin' || user?.role === 'staff') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate(from === '/login' ? '/' : from, { replace: true });
-      }
-    } catch { /* handled by axios interceptor */ }
+      if (user?.role === 'admin' || user?.role === 'staff') navigate('/admin', { replace: true });
+      else navigate(from === '/login' ? '/' : from, { replace: true });
+    } catch {}
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* ── Left panel (desktop only) ── */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: 'linear-gradient(145deg, #004339 0%, #0a5c50 100%)' }}
-      >
-        {/* Background decorative circles */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/5" />
-        <div className="absolute bottom-12 -left-16 w-56 h-56 rounded-full bg-white/5" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-white/[0.03]" />
+    <div className="bg-background min-h-screen flex flex-col justify-between">
+      <header className="w-full py-space-lg px-margin-mobile md:px-margin flex items-center justify-between">
+        <Link to="/" className="inline-flex items-center gap-space-xs text-headline-sm font-semibold text-primary tracking-tight">
+          <span className="material-symbols-outlined text-secondary text-2xl">healing</span>
+          <span>StepUp</span>
+          <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-outline px-space-xs py-0.5 rounded-full bg-surface-container-high ml-1.5">Clinical</span>
+        </Link>
+        <Link to="/" className="inline-flex items-center gap-space-xs text-label-md font-semibold text-on-surface-variant hover:text-primary transition-colors">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back to Store
+        </Link>
+      </header>
 
-        {/* Logo */}
-        <div className="relative z-10">
-          <Link to="/" className="inline-flex items-center gap-space-md group">
-            <div className="w-12 h-12 rounded-DEFAULT bg-white/15 flex items-center justify-center backdrop-blur-sm border border-white/20">
-              <span className="material-symbols-outlined text-white text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                footprint
-              </span>
-            </div>
-            <span className="text-headline-sm text-white font-bold tracking-tight">StepUp</span>
-          </Link>
-          <p className="text-body-md text-white/60 mt-space-sm ml-16">India's favourite footwear store</p>
-        </div>
+      <main className="w-full flex-1 flex items-center justify-center p-gutter-mobile md:p-gutter">
+        <div className="w-full max-w-4xl mx-auto py-space-sm md:py-space-md">
+          <div className="relative w-full">
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative bg-surface-container-lowest rounded-lg shadow-card-hover p-6 sm:p-10 md:p-12">
 
-        {/* Centre copy */}
-        <div className="relative z-10">
-          <h2 className="text-headline-lg text-white mb-space-md leading-tight">
-            Step into something<br />
-            <span className="text-secondary-container">extraordinary.</span>
-          </h2>
-          <p className="text-body-lg text-white/70 mb-space-xl max-w-sm">
-            Thousands of styles, unbeatable prices, and free delivery — all in one place.
-          </p>
-
-          {/* Feature bullets */}
-          <div className="space-y-space-md">
-            {features.map((f) => (
-              <div key={f.icon} className="flex items-center gap-space-md">
-                <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-secondary-container text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    {f.icon}
-                  </span>
+              {/* Top credential badge */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="inline-flex items-center gap-2 bg-surface-container-low px-3.5 py-1.5 rounded-full">
+                  <span className="material-symbols-outlined text-secondary text-[16px]">verified_user</span>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Podiatrist Verified Access • v3.8</span>
                 </div>
-                <span className="text-body-md text-white/80">{f.text}</span>
+                <div className="flex items-center gap-1.5 text-on-surface-variant text-label-md font-semibold">
+                  <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                  <span>Encrypted Portal</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Bottom quote */}
-        <div className="relative z-10">
-          <p className="text-body-sm text-white/40 italic">
-            "Comfort meets style — StepUp delivers both."
-          </p>
-        </div>
-      </div>
-
-      {/* ── Right panel (form) ── */}
-      <div className="flex-1 flex items-center justify-center bg-surface-container-lowest px-6 py-12">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-space-xl">
-            <Link to="/" className="inline-flex items-center gap-space-sm">
-              <div className="w-10 h-10 rounded-DEFAULT bg-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>footprint</span>
+              <div className="max-w-2xl mb-10">
+                <h1 className="text-headline-lg font-semibold text-primary tracking-tight mb-3">
+                  Access Your Orthopedic Profile &amp; Order Data
+                </h1>
+                <p className="text-body-md text-on-surface-variant leading-relaxed">
+                  Manage active footwear orders, view your size calibrations, and download itemized receipts.
+                </p>
               </div>
-              <span className="text-headline-sm text-on-surface font-bold">StepUp</span>
-            </Link>
-          </div>
 
-          <div className="mb-space-xl">
-            <h1 className="text-headline-md text-on-surface">Welcome back</h1>
-            <p className="text-body-md text-on-surface-variant mt-space-xs">Sign in to continue to your account</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-space-md">
-            {/* Email */}
-            <div>
-              <label className="label">Email address</label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[20px]">mail</span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input-field pl-11"
-                  placeholder="you@example.com"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <div className="flex justify-between items-center mb-space-xs">
-                <label className="label mb-0">Password</label>
-                <a href="/forgot-password" className="text-body-sm text-primary hover:text-primary-container transition-colors">
-                  Forgot password?
-                </a>
-              </div>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[20px]">lock</span>
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-11 pr-11"
-                  placeholder="••••••••"
-                />
+              {/* Tab switcher */}
+              <div className="flex items-center p-1.5 bg-surface-container rounded-full max-w-md mb-8">
                 <button
-                  type="button"
-                  onClick={() => setShowPw(!showPw)}
-                  className="absolute right-space-md top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
+                  onClick={() => setTab('patient')}
+                  className={`flex-1 py-2.5 px-4 rounded-full text-label-md font-semibold text-center transition-all flex items-center justify-center gap-2 ${tab === 'patient' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
                 >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {showPw ? 'visibility_off' : 'visibility'}
-                  </span>
+                  <span className="material-symbols-outlined text-[18px]">account_circle</span>
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setTab('order')}
+                  className={`flex-1 py-2.5 px-4 rounded-full text-label-md font-semibold text-center transition-all flex items-center justify-center gap-2 ${tab === 'order' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                  Track Order
                 </button>
               </div>
-            </div>
 
-            {/* CTA */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full h-[52px] text-label-md mt-space-sm"
-            >
-              {isLoading ? (
-                <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                  Signing in…
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                </>
+              {tab === 'patient' && (
+                <div className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="label" htmlFor="email">Clinical Account Email</label>
+                      <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">mail</span>
+                        <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                          placeholder="patient@example.com"
+                          className="input-field pl-12 pr-10" />
+                        {email && <span className="material-symbols-outlined absolute right-4 text-secondary text-[20px]">check_circle</span>}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="label mb-0" htmlFor="password">Security Passcode</label>
+                        <Link to="/forgot-password" className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">Forgot Password?</Link>
+                      </div>
+                      <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">lock</span>
+                        <input id="password" type={showPw ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)}
+                          placeholder="••••••••••••"
+                          className="input-field pl-12 pr-12" />
+                        <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 p-1 text-outline hover:text-primary transition-colors rounded-full">
+                          <span className="material-symbols-outlined text-[20px]">{showPw ? 'visibility_off' : 'visibility'}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <label className="flex items-center gap-3 cursor-pointer select-none">
+                        <input type="checkbox" className="w-4 h-4 rounded accent-primary" />
+                        <span className="text-body-sm text-on-surface-variant">Keep me authenticated on this device</span>
+                      </label>
+                      <div className="hidden sm:flex items-center gap-1 text-label-badge font-bold uppercase tracking-[0.06em] text-outline">
+                        <span>HSA / FSA eligible</span>
+                      </div>
+                    </div>
+                    <button type="submit" disabled={isLoading}
+                      className="w-full h-[52px] bg-primary text-on-primary rounded-full text-label-md font-semibold tracking-[0.04em] uppercase shadow-md hover:bg-primary-container transition-all flex items-center justify-center gap-2 group mt-2 disabled:opacity-50">
+                      {isLoading ? 'Signing in...' : (
+                        <><span>Sign In to Portal</span><span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="pt-4 space-y-3">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-px bg-surface-container-high" />
+                      <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-outline">or</span>
+                      <div className="flex-1 h-px bg-surface-container-high" />
+                    </div>
+                    <p className="text-center text-body-sm text-on-surface-variant">
+                      New to StepUp?{' '}
+                      <Link to="/register" className="font-semibold text-primary hover:text-secondary transition-colors">Create Account</Link>
+                    </p>
+                    <div className="mt-4 p-4 bg-secondary-container/30 rounded-DEFAULT">
+                      <p className="text-body-sm text-on-secondary-container text-center">
+                        🎁 Use code <strong>WELCOME10</strong> for 10% off your first order!
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* Divider */}
-          <div className="relative my-space-lg">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-outline/15" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-surface-container-lowest px-space-md text-body-sm text-on-surface-variant">
-                or continue with
-              </span>
+              {tab === 'order' && (
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="label">Order Number / ID</label>
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">tag</span>
+                      <input type="text" placeholder="e.g. ORD-1748382748-291" className="input-field pl-12 uppercase" />
+                    </div>
+                    <p className="text-body-sm text-outline">Located on your order confirmation email.</p>
+                  </div>
+                  <Link to="/orders" className="w-full h-[52px] bg-primary text-on-primary rounded-full text-label-md font-semibold flex items-center justify-center gap-2 hover:bg-primary-container transition-all shadow-md">
+                    <span className="material-symbols-outlined text-[18px]">search</span>
+                    Track My Order
+                  </Link>
+                </div>
+              )}
+
             </div>
           </div>
-
-          {/* Register link */}
-          <p className="text-center text-body-sm text-on-surface-variant">
-            New to StepUp?{' '}
-            <Link to="/register" className="text-primary font-semibold hover:text-primary-container transition-colors">
-              Create an account
-            </Link>
-          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

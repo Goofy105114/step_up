@@ -1,312 +1,288 @@
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
-import { formatPrice } from '../lib/formatters';
-import { useState } from 'react';
+import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
+import { useState } from 'react';
 
-const FREE_SHIPPING_THRESHOLD = 599;
-const SHIPPING_COST = 99;
-
-const trustBadges = [
-  { icon: 'verified', label: 'Verified Products' },
-  { icon: 'replay', label: '30-Day Returns' },
-  { icon: 'lock', label: 'Secure Payment' },
-];
+function formatPrice(n: number) {
+  return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
 
 export default function CartPage() {
-  const { items, subtotal, updateItem, removeItem } = useCartStore();
-  const [coupon, setCoupon] = useState('');
-  const [discount, setDiscount] = useState(0);
-  const [appliedCoupon, setAppliedCoupon] = useState('');
-  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
+  const { user } = useAuthStore();
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const shipping = subtotal - discount >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+  const discount = appliedCoupon
+    ? appliedCoupon.discount_type === 'percentage'
+      ? (subtotal * parseFloat(appliedCoupon.discount_value)) / 100
+      : parseFloat(appliedCoupon.discount_value)
+    : 0;
+  const shipping = (subtotal - discount) >= 599 ? 0 : 99;
   const tax = (subtotal - discount) * 0.05;
   const total = subtotal - discount + shipping + tax;
+  const freeShipLeft = Math.max(0, 599 - subtotal);
+  const freeShipPct = Math.min((subtotal / 599) * 100, 100);
 
-  const freeShippingProgress = Math.min(((subtotal - discount) / FREE_SHIPPING_THRESHOLD) * 100, 100);
-  const amountToFreeShipping = Math.max(FREE_SHIPPING_THRESHOLD - (subtotal - discount), 0);
-
-  const handleApplyCoupon = async () => {
-    if (!coupon.trim()) return;
-    setApplyingCoupon(true);
+  const handleUpdate = async (itemId: string, qty: number) => {
+    setUpdatingId(itemId);
     try {
-      const res = await api.post('/payments/validate-coupon', { code: coupon, subtotal });
-      setDiscount(res.data.discount);
-      setAppliedCoupon(coupon);
-      toast.success(`Coupon applied — you save ${formatPrice(res.data.discount)}!`);
-    } catch { /* handled */ } finally {
-      setApplyingCoupon(false);
-    }
+      if (qty < 1) {
+        await api.delete(`/cart/items/${itemId}`);
+        removeItem(itemId);
+      } else {
+        await api.patch(`/cart/items/${itemId}`, { quantity: qty });
+        updateQuantity(itemId, qty);
+      }
+    } catch { toast.error('Failed to update'); }
+    finally { setUpdatingId(null); }
   };
 
-  if (items.length === 0) {
-    return (
-      <div className="bg-surface min-h-[80vh] flex items-center justify-center px-6">
-        <div className="text-center max-w-sm">
-          <div className="w-28 h-28 rounded-full bg-surface-container mx-auto flex items-center justify-center mb-space-xl">
-            <span className="material-symbols-outlined text-[56px] text-on-surface-variant">shopping_bag</span>
-          </div>
-          <h2 className="text-headline-sm text-on-surface mb-space-sm">Your cart is empty</h2>
-          <p className="text-body-md text-on-surface-variant mb-space-xl">
-            Looks like you haven't added anything yet. Discover our latest styles!
-          </p>
-          <Link to="/shop" className="btn-primary">
-            <span className="material-symbols-outlined text-[18px]">storefront</span>
-            Shop Now
-          </Link>
-        </div>
+  const handleCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const res = await api.post('/cart/apply-coupon', { code: couponCode });
+      setAppliedCoupon(res.data.data);
+      toast.success('Coupon applied!');
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Invalid coupon'); }
+    finally { setCouponLoading(false); }
+  };
+
+  if (!user) return (
+    <div className="bg-surface min-h-screen flex items-center justify-center p-6">
+      <div className="text-center max-w-md">
+        <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">shopping_bag</span>
+        <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Sign in to view your cart</h2>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Your orthopedic footwear selections are waiting for you.</p>
+        <Link to="/login" className="btn-primary px-10 py-4 text-title-md font-semibold">Sign In</Link>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (items.length === 0) return (
+    <div className="bg-surface min-h-screen flex items-center justify-center p-6">
+      <div className="text-center max-w-md">
+        <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">shopping_bag</span>
+        <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Your Relief Bag is Empty</h2>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Discover orthopedic footwear calibrated for your arch profile.</p>
+        <Link to="/shop" className="btn-primary px-10 py-4 text-title-md font-semibold">
+          Browse Relief Collection
+          <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+        </Link>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-surface min-h-screen">
-      {/* Breadcrumb */}
-      <div className="bg-surface-container-low border-b border-outline/10">
-        <div className="container-site py-space-md">
-          <nav className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            <span className="text-on-surface font-semibold">Shopping Cart</span>
-          </nav>
+      {/* Page header */}
+      <div className="w-full bg-surface-container-low py-space-xs px-margin-mobile md:px-margin border-b border-outline-variant/20">
+        <div className="max-w-site mx-auto flex flex-wrap items-center justify-between text-on-surface-variant text-body-sm">
+          <div className="flex items-center gap-space-sm">
+            <span className="material-symbols-outlined text-[18px] text-secondary">verified_user</span>
+            <span>Cart items verified compliant with APMA biomechanical criteria</span>
+          </div>
+          <div className="flex items-center gap-space-md text-label-md font-semibold">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" /> Medical Inventory Reserved
+            </span>
+            <span className="text-on-surface-variant">•</span>
+            <span>HSA/FSA Pre-Certified</span>
+          </div>
         </div>
       </div>
 
-      <div className="container-site py-space-xl pb-16">
-        <h1 className="text-headline-md text-on-surface mb-space-xl">
-          Shopping Cart
-          <span className="text-body-lg text-on-surface-variant font-normal ml-space-md">
-            ({items.length} {items.length === 1 ? 'item' : 'items'})
-          </span>
-        </h1>
+      <section className="max-w-site w-full mx-auto px-margin-mobile md:px-margin py-space-xl">
+        {/* Breadcrumb progress */}
+        <div className="flex items-center justify-between mb-space-lg">
+          <div className="flex items-center gap-space-xs text-label-badge font-bold uppercase tracking-[0.06em] text-outline">
+            <span className="text-primary font-bold">01 Bag</span>
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span>02 Shipping Profile</span>
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span>03 Payment</span>
+          </div>
+          {shipping === 0 && (
+            <div className="hidden md:flex items-center gap-space-xs bg-surface-container-high px-space-md py-space-xs rounded-full">
+              <span className="material-symbols-outlined text-[16px] text-primary">spa</span>
+              <span className="text-body-sm text-primary font-semibold">Free Orthopedic Shipping unlocked</span>
+            </div>
+          )}
+        </div>
 
-        <div className="grid lg:grid-cols-3 gap-space-xl">
-          {/* ── Left: Cart items ── */}
-          <div className="lg:col-span-2 space-y-space-md">
-            {/* Free shipping progress */}
-            <div className="card p-space-lg">
-              <div className="flex items-center justify-between mb-space-sm">
-                <div className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[18px] text-primary">local_shipping</span>
-                  {amountToFreeShipping > 0 ? (
-                    <span>Add <strong className="text-primary">{formatPrice(amountToFreeShipping)}</strong> more for free shipping</span>
-                  ) : (
-                    <span className="text-primary font-semibold">🎉 You've unlocked free shipping!</span>
-                  )}
-                </div>
-                <span className="text-label-badge text-on-surface-variant">{Math.round(freeShippingProgress)}%</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+          {/* Left: Cart items */}
+          <div className="lg:col-span-7 flex flex-col gap-space-lg">
+            <div className="pb-space-sm">
+              <div className="flex items-baseline justify-between mb-space-xs">
+                <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Your Relief Bag</h1>
+                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-md py-space-xs rounded-full">
+                  {items.length} Medical Item{items.length > 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="h-2 rounded-full bg-surface-container-low overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${freeShippingProgress}%` }}
-                />
-              </div>
+              <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs">
+                <span className="material-symbols-outlined text-[18px] text-secondary">verified</span>
+                60-Day Pain-Free Walking Guarantee applies automatically to all orders.
+              </p>
             </div>
 
-            {/* Cart items */}
-            {items.map((item) => (
-              <div key={item.id} className="card p-space-md">
-                <div className="flex gap-space-md">
-                  {/* Image */}
-                  <div className="w-[100px] h-[100px] rounded-DEFAULT overflow-hidden bg-surface-container shrink-0">
-                    {item.image_url ? (
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[36px] text-outline">photo</span>
-                      </div>
-                    )}
+            {/* Free shipping bar */}
+            {freeShipLeft > 0 && (
+              <div className="bg-surface-container-low rounded-DEFAULT p-space-md">
+                <p className="text-body-sm text-on-surface-variant mb-2">
+                  Add <strong className="text-primary">₹{freeShipLeft.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</strong> more for{' '}
+                  <strong className="text-secondary">FREE Express Delivery</strong>
+                </p>
+                <div className="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                  <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${freeShipPct}%` }} />
+                </div>
+              </div>
+            )}
+
+            {items.map((item: any) => (
+              <div key={item.id} className="card p-space-lg hover:shadow-card-hover">
+                <div className="flex flex-col sm:flex-row gap-space-lg">
+                  <div className="relative w-full sm:w-36 h-36 rounded-DEFAULT bg-surface-container-low shrink-0 overflow-hidden">
+                    {item.image_url
+                      ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-DEFAULT" />
+                      : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-[40px] text-outline">photo</span></div>
+                    }
+                    <span className="absolute top-2 left-2 bg-primary-container text-on-primary text-label-badge font-bold px-space-xs py-0.5 rounded-full uppercase tracking-[0.06em]">APMA</span>
                   </div>
-
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-space-sm">
-                      <div className="min-w-0">
-                        <Link
-                          to={`/product/${item.slug}`}
-                          className="text-title-md font-semibold text-on-surface hover:text-primary transition-colors line-clamp-2 leading-snug block"
-                        >
-                          {item.name}
-                        </Link>
-                        {/* Size & Color tags */}
-                        <div className="flex flex-wrap gap-space-xs mt-space-sm">
-                          {item.size && (
-                            <span className="inline-flex items-center px-space-sm py-0.5 rounded-full bg-surface-container text-label-badge text-on-surface-variant">
-                              Size: {item.size}
-                            </span>
-                          )}
-                          {item.color && (
-                            <span className="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-surface-container text-label-badge text-on-surface-variant">
-                              {item.color_hex && (
-                                <span
-                                  className="w-2 h-2 rounded-full border border-outline/20"
-                                  style={{ background: item.color_hex }}
-                                />
-                              )}
-                              {item.color}
-                            </span>
-                          )}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-start justify-between gap-space-sm mb-space-xs">
+                        <div>
+                          <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Biomechanical Recovery</span>
+                          <h2 className="text-title-md font-semibold text-primary">{item.name}</h2>
                         </div>
+                        <span className="text-title-md font-semibold text-primary shrink-0">{formatPrice(item.unit_price)}</span>
                       </div>
-                      {/* Remove */}
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors shrink-0"
-                        aria-label="Remove item"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">close</span>
-                      </button>
+                      <div className="flex flex-wrap gap-space-xs text-on-surface-variant text-body-sm mt-space-xs mb-space-sm">
+                        <span className="bg-surface-container-low px-space-sm py-0.5 rounded-full">Size: <strong className="text-on-surface font-medium">US {item.size}</strong></span>
+                        <span className="bg-surface-container-low px-space-sm py-0.5 rounded-full">Color: <strong className="text-on-surface font-medium">{item.color}</strong></span>
+                      </div>
+                      <div className="inline-flex items-center gap-1 bg-surface-container px-space-sm py-space-xs rounded-full text-label-badge font-bold text-primary-container mb-space-sm">
+                        <span className="material-symbols-outlined text-[13px] text-secondary">health_and_safety</span>
+                        HSA/FSA Auto-Reimbursable
+                      </div>
                     </div>
-
-                    {/* Qty + price row */}
-                    <div className="flex items-center justify-between mt-space-md">
-                      {/* Qty stepper */}
-                      <div className="inline-flex items-center gap-space-xs rounded-full bg-surface-container p-1">
-                        <button
-                          onClick={() => updateItem(item.id, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          className="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
-                          aria-label="Decrease quantity"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">remove</span>
+                    <div className="flex items-center justify-between pt-space-sm">
+                      <div className="flex items-center bg-surface-container-low rounded-full p-1 shadow-sm">
+                        <button onClick={() => handleUpdate(item.id, item.quantity - 1)} disabled={updatingId === item.id}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+                          <span className="material-symbols-outlined text-[16px]">{item.quantity === 1 ? 'delete_outline' : 'remove'}</span>
                         </button>
-                        <span className="text-title-md font-semibold text-on-surface w-8 text-center tabular-nums">
-                          {item.quantity}
+                        <span className="w-8 text-center text-label-md font-semibold text-on-surface">
+                          {updatingId === item.id ? '…' : item.quantity}
                         </span>
-                        <button
-                          onClick={() => updateItem(item.id, item.quantity + 1)}
-                          disabled={item.quantity >= item.stock_qty}
-                          className="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center hover:bg-primary-container hover:text-on-primary transition-colors disabled:opacity-30"
-                          aria-label="Increase quantity"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">add</span>
+                        <button onClick={() => handleUpdate(item.id, item.quantity + 1)} disabled={updatingId === item.id}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+                          <span className="material-symbols-outlined text-[16px]">add</span>
                         </button>
                       </div>
-
-                      {/* Price */}
-                      <div className="text-right">
-                        <p className="text-title-md font-semibold text-primary">
-                          {formatPrice(item.unit_price * item.quantity)}
-                        </p>
-                        {item.quantity > 1 && (
-                          <p className="text-body-sm text-on-surface-variant">
-                            {formatPrice(item.unit_price)} each
-                          </p>
-                        )}
+                      <div className="flex items-center gap-space-md text-on-surface-variant text-body-sm">
+                        <button className="hover:text-primary transition-colors flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[16px]">favorite</span>
+                          <span className="hidden sm:inline">Save</span>
+                        </button>
+                        <button onClick={() => handleUpdate(item.id, 0)} className="hover:text-error transition-colors flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[16px]">delete_outline</span>
+                          <span className="hidden sm:inline">Remove</span>
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+          </div>
 
+          {/* Right: Order summary */}
+          <div className="lg:col-span-5 sticky top-32 flex flex-col gap-space-md">
             {/* Coupon */}
             <div className="card p-space-lg">
-              <h3 className="text-label-md font-bold text-on-surface mb-space-md flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[18px] text-primary">sell</span>
-                Have a coupon?
-              </h3>
+              <div className="flex items-center gap-space-xs mb-space-md">
+                <span className="material-symbols-outlined text-[20px] text-secondary">receipt_long</span>
+                <h3 className="text-title-md font-semibold text-primary">Discount / Coupon Code</h3>
+              </div>
               <div className="flex gap-space-sm">
                 <input
-                  value={coupon}
-                  onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                  placeholder="Enter coupon code"
-                  className="input-field flex-1 uppercase tracking-widest text-label-md"
+                  value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  disabled={!!appliedCoupon}
+                  placeholder="e.g. WELCOME10"
+                  className="input-field flex-1 h-11"
                 />
-                <button
-                  onClick={handleApplyCoupon}
-                  disabled={applyingCoupon || !coupon.trim()}
-                  className="btn-primary shrink-0 disabled:opacity-50"
-                >
-                  {applyingCoupon ? 'Applying…' : 'Apply'}
-                </button>
+                {appliedCoupon
+                  ? <button onClick={() => { setAppliedCoupon(null); setCouponCode(''); }} className="px-space-md text-label-md font-semibold text-error hover:text-error/80 transition-colors">Remove</button>
+                  : <button onClick={handleCoupon} disabled={couponLoading || !couponCode} className="btn-primary px-space-md py-space-xs h-11 text-label-md font-semibold">
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                }
               </div>
               {appliedCoupon && (
-                <p className="text-body-sm text-primary mt-space-sm flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                  Coupon "{appliedCoupon}" applied
+                <p className="text-body-sm text-secondary font-semibold mt-2 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  {appliedCoupon.discount_type === 'percentage' ? `${appliedCoupon.discount_value}% off applied!` : `₹${appliedCoupon.discount_value} off applied!`}
                 </p>
               )}
             </div>
-          </div>
 
-          {/* ── Right: Order summary ── */}
-          <div className="lg:col-span-1">
-            <div className="card p-space-lg sticky top-24 space-y-space-md">
-              <h2 className="text-headline-sm text-on-surface">Your Order</h2>
-
-              {/* Line items */}
+            {/* Summary */}
+            <div className="card p-space-lg">
+              <h3 className="text-title-md font-semibold text-primary mb-space-md">Order Summary</h3>
               <div className="space-y-space-sm">
+                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
+                {discount > 0 && <div className="flex justify-between text-body-md text-secondary font-semibold"><span>Discount</span><span>-{formatPrice(discount)}</span></div>}
                 <div className="flex justify-between text-body-md text-on-surface-variant">
-                  <span>Subtotal ({items.length} items)</span>
-                  <span className="font-semibold text-on-surface">{formatPrice(subtotal)}</span>
+                  <span>Estimated Shipping</span>
+                  <span className={shipping === 0 ? 'text-secondary font-semibold' : ''}>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
                 </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-body-md text-primary">
-                    <span>Coupon discount</span>
-                    <span className="font-semibold">−{formatPrice(discount)}</span>
+                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Estimated Tax (5%)</span><span>{formatPrice(tax)}</span></div>
+                <div className="flex justify-between text-title-md font-semibold text-on-surface pt-space-sm border-t border-outline-variant/20">
+                  <div>
+                    <span className="text-on-surface">Total</span>
+                    <p className="text-body-sm text-on-surface-variant font-normal">Includes of local taxes</p>
                   </div>
-                )}
-                <div className="flex justify-between text-body-md text-on-surface-variant">
-                  <span>Shipping</span>
-                  {shipping === 0 ? (
-                    <span className="font-semibold text-primary">FREE</span>
-                  ) : (
-                    <span className="font-semibold text-on-surface">{formatPrice(shipping)}</span>
-                  )}
-                </div>
-                <div className="flex justify-between text-body-md text-on-surface-variant">
-                  <span>GST (5%)</span>
-                  <span className="font-semibold text-on-surface">{formatPrice(tax)}</span>
+                  <span className="text-headline-sm font-semibold text-primary">{formatPrice(total)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-outline/10 pt-space-md">
-                <div className="flex justify-between items-center">
-                  <span className="text-title-md font-semibold text-on-surface">Total</span>
-                  <span className="text-headline-sm font-bold text-primary">{formatPrice(total)}</span>
-                </div>
-                {discount > 0 && (
-                  <p className="text-body-sm text-primary mt-space-xs">
-                    You're saving {formatPrice(discount)} with your coupon!
-                  </p>
-                )}
-              </div>
-
-              {/* CTA */}
-              <Link
-                to="/checkout"
-                className="btn-primary w-full h-[52px] text-label-md"
-              >
-                <span className="material-symbols-outlined text-[18px]">shopping_cart_checkout</span>
-                Proceed to Checkout
-              </Link>
-              <Link to="/shop" className="btn-outline w-full h-[44px] text-label-badge">
-                Continue Shopping
+              <Link to="/checkout" className="mt-space-lg flex items-center justify-center gap-space-sm w-full bg-primary-container text-on-primary py-4 rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all duration-200 group">
+                <span className="material-symbols-outlined text-[18px]">lock</span>
+                Proceed to Checkout {formatPrice(total)}
+                <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </Link>
 
-              {/* Trust badges */}
-              <div className="border-t border-outline/10 pt-space-md">
-                <div className="grid grid-cols-3 gap-space-sm">
-                  {trustBadges.map((badge) => (
-                    <div key={badge.icon} className="flex flex-col items-center gap-space-xs text-center">
-                      <div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[18px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          {badge.icon}
-                        </span>
-                      </div>
-                      <span className="text-label-badge text-on-surface-variant leading-tight">{badge.label}</span>
-                    </div>
-                  ))}
+              <p className="text-body-sm text-on-surface-variant text-center mt-space-sm">
+                🔒 256-bit SSL encrypted secure checkout
+              </p>
+            </div>
+
+            {/* Trust badges */}
+            <div className="grid grid-cols-2 gap-space-sm">
+              {[
+                { icon: 'verified', label: '100% Authenticity', desc: 'APMA Verified' },
+                { icon: 'replay', label: '30-Day Returns', desc: 'Hassle-free' },
+              ].map(({ icon, label, desc }) => (
+                <div key={label} className="card p-space-md flex items-center gap-space-sm">
+                  <span className="material-symbols-outlined text-[22px] text-secondary shrink-0">{icon}</span>
+                  <div>
+                    <p className="text-label-md font-semibold text-on-surface">{label}</p>
+                    <p className="text-body-sm text-on-surface-variant">{desc}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

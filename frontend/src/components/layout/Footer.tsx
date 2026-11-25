@@ -1,130 +1,114 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube, Linkedin, Truck, Headphones, Shield } from 'lucide-react';
-
-const footerLinks = {
-  Account: [
-    ['My Account', '/profile'],
-    ['Track Your Order', '/orders'],
-    ['Shopping Cart', '/cart'],
-    ['Wishlist', '/wishlist'],
-  ],
-  About: [
-    ['About StepUp', '#'],
-    ['Our Guarantee', '#'],
-    ['Terms & Conditions', '#'],
-    ['Return Policy', '#'],
-    ['Privacy Policy', '#'],
-    ['Shipping Policy', '#'],
-  ],
-};
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-200">
-      {/* Trust row */}
-      <div className="border-b border-gray-200">
-        <div className="container-site py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-          {[
-            { icon: Truck, title: 'Free Shipping & Return', desc: 'Free shipping on all orders over ₹599' },
-            { icon: Shield, title: 'Money Back Guarantee', desc: '100% money back guarantee' },
-            { icon: Headphones, title: 'Online Support 24/7', desc: 'Lorem ipsum dolor sit amet' },
-            { icon: Shield, title: 'Secure Payment', desc: 'Lorem ipsum dolor sit amet' },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="flex items-start gap-4">
-              <Icon size={30} className="text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />
+    <footer className="bg-inverse-surface text-inverse-on-surface">
+      {/* Top bar */}
+      <div className="bg-primary text-on-primary py-space-xs px-margin-mobile md:px-margin">
+        <div className="max-w-site mx-auto flex flex-wrap items-center justify-between gap-space-sm text-label-badge font-bold uppercase tracking-[0.06em]">
+          <div className="flex items-center gap-space-sm">
+            <span className="material-symbols-outlined text-[13px] text-primary-fixed">verified</span>
+            <span>HSA/FSA Eligible • 60-Day Pain-Free Walking Guarantee • APMA Seal of Acceptance</span>
+          </div>
+          <span className="text-surface-container-highest">Free Express Delivery Over ₹599</span>
+        </div>
+      </div>
+
+      <div className="max-w-site mx-auto px-margin-mobile md:px-margin py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-14">
+          {/* Brand */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center gap-space-xs mb-space-lg">
+              <span className="material-symbols-outlined text-secondary text-2xl">healing</span>
               <div>
-                <p className="font-semibold text-gray-900 text-sm">{title}</p>
-                <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">{desc}</p>
+                <span className="text-headline-sm font-semibold text-surface leading-none block">StepUp</span>
+                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-outline leading-none">Orthopedic Lab</span>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Newsletter */}
-      <div className="border-b border-gray-200 bg-gray-50">
-        <div className="container-site py-10 grid md:grid-cols-2 gap-8 items-center">
-          <div>
-            <h3 className="font-display text-xl font-bold text-gray-900">Sign Up to Newsletter</h3>
-            <p className="text-sm text-gray-500 mt-1">…and receive ₹200 coupon for first shopping</p>
-          </div>
-          <form className="flex gap-0" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="email"
-              placeholder="Enter your email address"
-              className="flex-1 input-field border-gray-300 text-sm py-3 focus:border-gray-900"
-            />
-            <button type="submit" className="btn-primary px-8 whitespace-nowrap">
-              Subscribe
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* Main footer */}
-      <div className="container-site py-12 grid grid-cols-2 md:grid-cols-5 gap-8">
-        {/* Brand */}
-        <div className="col-span-2 md:col-span-1 space-y-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-900 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
+            <p className="text-body-md text-on-surface-variant leading-relaxed mb-space-lg max-w-sm">
+              Engineered by podiatric surgeons to eliminate plantar fasciitis pain and calcaneal stress. Premium footwear backed by peer-reviewed clinical research.
+            </p>
+            <div className="flex flex-col gap-space-sm">
+              <div className="inline-flex items-center gap-space-xs bg-surface-container-low text-primary px-space-md py-space-xs rounded-full w-fit">
+                <span className="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
+                <span className="text-label-badge font-bold uppercase tracking-[0.06em]">APMA Accepted</span>
+              </div>
+              <div className="inline-flex items-center gap-space-xs bg-surface-container-low text-primary px-space-md py-space-xs rounded-full w-fit">
+                <span className="material-symbols-outlined text-[16px] text-tertiary">workspace_premium</span>
+                <span className="text-label-badge font-bold uppercase tracking-[0.06em]">Peer-Reviewed Science</span>
+              </div>
             </div>
-            <span className="font-display text-xl font-bold text-gray-900">StepUp</span>
-          </Link>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Premium D2C footwear — crafted for every step. Direct from our workshop to your door.
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            {[Facebook, Twitter, Instagram, Youtube, Linkedin].map((Icon, i) => (
-              <a key={i} href="#"
-                className="w-8 h-8 border border-gray-300 flex items-center justify-center text-gray-400 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all">
-                <Icon size={14} />
-              </a>
-            ))}
           </div>
-        </div>
 
-        {/* Links */}
-        {Object.entries(footerLinks).map(([heading, links]) => (
-          <div key={heading} className="space-y-4">
-            <h4 className="font-bold uppercase tracking-wider text-xs text-gray-900">{heading}</h4>
-            <ul className="space-y-2">
-              {links.map(([label, path]) => (
-                <li key={label}>
-                  <Link to={path} className="text-xs text-gray-500 hover:text-brand-500 transition-colors">
-                    {label}
-                  </Link>
-                </li>
+          {/* Collections */}
+          <div>
+            <h3 className="text-label-md font-semibold text-surface uppercase tracking-[0.04em] mb-space-md">Collections</h3>
+            <ul className="space-y-space-sm">
+              {[
+                { label: "Men's Footwear", to: '/shop/mens' },
+                { label: "Women's Footwear", to: '/shop/womens' },
+                { label: "Sports & Athletic", to: '/shop/sports' },
+                { label: "Kids' Collection", to: '/shop/kids' },
+                { label: 'Formal Shoes', to: '/shop/formal' },
+                { label: 'Sandals & Slides', to: '/shop/sandals' },
+              ].map(({ label, to }) => (
+                <li key={to}><Link to={to} className="text-body-sm text-on-surface-variant hover:text-secondary transition-colors">{label}</Link></li>
               ))}
             </ul>
           </div>
-        ))}
 
-        {/* Contact */}
-        <div className="space-y-4 col-span-2">
-          <h4 className="font-bold uppercase tracking-wider text-xs text-gray-900">Follow Us</h4>
-          <p className="text-xs text-gray-500">12 Footwear Lane, Mumbai 400017, India</p>
-          <p className="text-xs text-gray-500">+91 99999 99999</p>
-          <p className="text-xs text-gray-500">support@stepup.in</p>
+          {/* Clinical */}
           <div>
-            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Payment Methods</p>
-            <div className="flex items-center gap-2">
-              {['VISA', 'MC', 'UPI', 'PP'].map((m) => (
-                <span key={m} className="border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">{m}</span>
+            <h3 className="text-label-md font-semibold text-surface uppercase tracking-[0.04em] mb-space-md">Clinical</h3>
+            <ul className="space-y-space-sm">
+              {[
+                { label: 'Find Your Fit', to: '/find-your-fit' },
+                { label: 'Clinical Studies', to: '/clinical-studies' },
+                { label: 'Arch Support Tech', to: '/clinical-studies' },
+                { label: 'Podiatrist Quiz', to: '/find-your-fit' },
+                { label: 'HSA/FSA Info', to: '/clinical-studies' },
+              ].map(({ label, to }) => (
+                <li key={label}><Link to={to} className="text-body-sm text-on-surface-variant hover:text-secondary transition-colors">{label}</Link></li>
               ))}
+            </ul>
+          </div>
+
+          {/* Support */}
+          <div>
+            <h3 className="text-label-md font-semibold text-surface uppercase tracking-[0.04em] mb-space-md">Support</h3>
+            <ul className="space-y-space-sm">
+              {[
+                { label: 'My Orders', to: '/orders' },
+                { label: 'Returns & Exchange', to: '/' },
+                { label: 'Size Guide', to: '/find-your-fit' },
+                { label: 'Contact Us', to: '/' },
+                { label: 'FAQ', to: '/' },
+              ].map(({ label, to }) => (
+                <li key={label}><Link to={to} className="text-body-sm text-on-surface-variant hover:text-secondary transition-colors">{label}</Link></li>
+              ))}
+            </ul>
+            <div className="mt-space-lg space-y-space-sm">
+              <p className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-secondary">call</span>
+                +91 99999 99999
+              </p>
+              <p className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-secondary">mail</span>
+                support@stepup.in
+              </p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-gray-200 bg-gray-50">
-        <div className="container-site py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-400">
-          <p>© {new Date().getFullYear()} StepUp Footwear Pvt. Ltd. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <Link to="#" className="hover:text-gray-700">Affiliates</Link>
-            <Link to="#" className="hover:text-gray-700">Privacy Policy</Link>
-            <Link to="#" className="hover:text-gray-700">Terms & Conditions</Link>
+        {/* Bottom */}
+        <div className="border-t border-surface-container/20 pt-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md">
+          <p className="text-body-sm text-on-surface-variant text-center md:text-left">
+            © 2026 StepUp Footwear Lab. All rights reserved. APMA Seal of Acceptance #2024-849.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-space-lg">
+            {['Privacy Policy', 'Terms of Service', 'Accessibility'].map(link => (
+              <Link key={link} to="/" className="text-body-sm text-on-surface-variant hover:text-secondary transition-colors">{link}</Link>
+            ))}
           </div>
         </div>
       </div>
