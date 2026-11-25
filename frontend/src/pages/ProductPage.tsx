@@ -35,7 +35,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (product?.variants?.length) {
-      const first = product.variants[0];
+      const first = product.variants.find((variant: any) => Number(variant.stock_qty) > 0) || product.variants[0];
       setSelectedColor(first.color);
       setSelectedVariant(first);
     }
@@ -46,7 +46,8 @@ export default function ProductPage() {
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
-    const v = product.variants.find((v: any) => v.color === color);
+    const colorVariants = product.variants.filter((v: any) => v.color === color);
+    const v = colorVariants.find((variant: any) => Number(variant.stock_qty) > 0) || colorVariants[0];
     setSelectedVariant(v);
   };
 
