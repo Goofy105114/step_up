@@ -4,8 +4,6 @@ import { useCartStore } from '../store/cartStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
-const INDIAN_STATES = ['Andhra Pradesh','Delhi','Gujarat','Karnataka','Kerala','Maharashtra','Punjab','Rajasthan','Tamil Nadu','Telangana','Uttar Pradesh','West Bengal'];
-
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 
 export default function CheckoutPage() {
@@ -92,6 +90,17 @@ export default function CheckoutPage() {
     </div>
   );
 
+  if (items.length === 0 && step !== 3) return (
+    <div className="bg-surface min-h-screen flex items-center justify-center p-6">
+      <div className="max-w-md text-center">
+        <span className="material-symbols-outlined text-5xl text-outline-variant">shopping_bag</span>
+        <h1 className="mt-4 text-2xl font-semibold text-primary">Your shopping bag is empty</h1>
+        <p className="mt-3 text-sm leading-7 text-on-surface-variant">Add a product before continuing to checkout.</p>
+        <Link to="/shop" className="btn-primary mt-6 inline-flex px-7 py-3">Browse footwear</Link>
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-surface min-h-screen">
       <section className="max-w-site w-full mx-auto px-margin-mobile md:px-margin pt-space-md pb-space-lg">
@@ -167,10 +176,7 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label className="label">State *</label>
-                      <select value={addr.state} onChange={e => setA('state', e.target.value)} className="input-field">
-                        <option value="">Select State</option>
-                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <input type="text" placeholder="State or union territory" value={addr.state} onChange={e => setA('state', e.target.value)} className="input-field" />
                     </div>
                     <div>
                       <label className="label">Pincode *</label>
