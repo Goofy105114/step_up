@@ -186,7 +186,14 @@ export default function CartPage() {
                         </button>
                       </div>
                       <div className="flex items-center gap-space-md text-on-surface-variant text-body-sm">
-                        <button className="hover:text-primary transition-colors flex items-center gap-1">
+                        <button onClick={async () => {
+                          try {
+                            await api.post('/wishlist', { product_id: item.product_id });
+                            toast.success('Saved to wishlist');
+                          } catch (error: any) {
+                            toast.error(error.response?.data?.message || 'Unable to save item');
+                          }
+                        }} className="hover:text-primary transition-colors flex items-center gap-1">
                           <span className="material-symbols-outlined text-[16px]">favorite</span>
                           <span className="hidden sm:inline">Save</span>
                         </button>
