@@ -140,7 +140,7 @@ router.post('/products', async (req: Request, res: Response) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
     [name, slug, description || null, short_description || null, category_id || null,
      base_price, sale_price || null, sku || null, material || null, care_instructions || null,
-     arch_support_level || null, arch_height_mm || null, durometer_shore_a || null,
+     arch_support_level || null, arch_height_mm === '' ? null : arch_height_mm ?? null, durometer_shore_a === '' ? null : durometer_shore_a ?? null,
      calibration_reference || null, calibrated_at || null, calibration_notes || null, tags || [],
      is_featured || false, is_new_arrival || false, is_bestseller || false]);
   return res.status(201).json({ success: true, data: result.rows[0] });
