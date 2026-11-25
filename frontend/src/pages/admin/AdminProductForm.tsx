@@ -125,6 +125,8 @@ export default function AdminProductForm() {
     }
     saveMutation.mutate({
       ...form,
+      sku: form.sku.trim() || null,
+      care_instructions: form.care_instructions.trim() || null,
       base_price: parseFloat(form.base_price),
       sale_price: form.sale_price ? parseFloat(form.sale_price) : null,
       tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
