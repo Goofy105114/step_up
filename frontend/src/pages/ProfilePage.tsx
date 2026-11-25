@@ -24,8 +24,8 @@ export default function ProfilePage() {
         <div className="w-20 h-20 rounded-full bg-primary-container flex items-center justify-center mx-auto mb-space-lg">
           <span className="material-symbols-outlined text-[40px] text-on-primary">person</span>
         </div>
-        <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Access Your Orthopedic Profile</h2>
-        <p className="text-body-md text-on-surface-variant mb-space-lg">Manage active footwear orders, view your size calibrations, and download itemized receipts.</p>
+        <h2 className="text-headline-md font-semibold text-primary mb-space-sm">Access your STEPUP account</h2>
+        <p className="text-body-md text-on-surface-variant mb-space-lg">Manage your account, review your orders and keep track of saved products.</p>
         <div className="flex gap-space-md justify-center">
           <Link to="/login" className="btn-primary px-8 py-4 text-title-md font-semibold">Sign In</Link>
           <Link to="/register" className="btn-outline px-8 py-4 text-title-md font-semibold">Create Account</Link>
@@ -41,7 +41,7 @@ export default function ProfilePage() {
   const MENU = [
     { icon: 'footprint', label: 'My Foot Health &amp; Orders', href: '/orders', badge: orders.length > 0 ? `${orders.length} Active` : null },
     { icon: 'favorite', label: 'Saved Wishlist', href: '/wishlist', badge: wishlist.length > 0 ? `${wishlist.length} Items` : null },
-    { icon: 'receipt_long', label: 'HSA/FSA Receipts', href: '/orders', badge: null },
+    { icon: 'receipt_long', label: 'Order receipts', href: '/orders', badge: null },
     { icon: 'tune', label: 'Settings &amp; Sizing Specs', href: '/profile', badge: null },
   ];
 
@@ -65,8 +65,8 @@ export default function ProfilePage() {
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-space-xs mb-space-xs">
-                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-sm py-0.5 rounded-full">Verified Account</span>
-                  <span className="text-label-badge font-bold text-outline">HSA/FSA Member</span>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-sm py-0.5 rounded-full">Account overview</span>
+                  <span className="text-label-badge font-bold text-outline"></span>
                 </div>
                 <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Welcome back, {user.first_name} {user.last_name}</h1>
                 <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs mt-1">
@@ -78,7 +78,7 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-space-xs">
               <div className="inline-flex items-center gap-space-xs bg-surface-container-low px-space-md py-space-xs rounded-full">
                 <span className="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
-                <span className="text-label-badge font-bold text-primary uppercase tracking-[0.06em]">Verified Profile</span>
+                <span className="text-label-badge font-bold text-primary uppercase tracking-[0.06em]">Profile</span>
               </div>
               {user.role === 'admin' && (
                 <div className="inline-flex items-center gap-space-xs bg-tertiary-fixed text-tertiary px-space-md py-space-xs rounded-full">
@@ -114,9 +114,9 @@ export default function ProfilePage() {
             <div className="card bg-surface-container-high p-space-md">
               <div className="flex items-center gap-space-xs text-primary mb-space-xs">
                 <span className="material-symbols-outlined text-[18px]">verified</span>
-                <span className="text-label-badge font-bold uppercase tracking-[0.06em]">Pain-Free Guarantee</span>
+                <span className="text-label-badge font-bold uppercase tracking-[0.06em]">Shopping information</span>
               </div>
-              <p className="text-body-sm text-on-surface-variant">All active models maintain 60 days of risk-free daily rehabilitation wear. Full refunds or recalibrations honored.</p>
+              <p className="text-body-sm text-on-surface-variant">Review the product and order information shown at checkout for current terms.</p>
             </div>
 
             <button onClick={logout} className="card p-space-md text-error hover:bg-error-container/30 transition-colors flex items-center gap-space-sm">
