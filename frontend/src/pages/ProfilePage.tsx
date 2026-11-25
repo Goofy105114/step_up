@@ -93,7 +93,7 @@ export default function ProfilePage() {
     { icon: 'footprint', label: 'My Orders', href: '/orders', badge: orders.length > 0 ? `${orders.length} Active` : null },
     { icon: 'favorite', label: 'Saved Wishlist', href: '/wishlist', badge: wishlist.length > 0 ? `${wishlist.length} Items` : null },
     { icon: 'receipt_long', label: 'Order receipts', href: '/orders', badge: null },
-    { icon: 'tune', label: 'Settings &amp; Sizing Specs', href: '/profile', badge: null },
+    { icon: 'tune', label: 'Fit profile', href: '/profile#fit-profile', badge: null },
   ];
 
   return (
@@ -111,13 +111,13 @@ export default function ProfilePage() {
                   <span className="text-display-hero-mobile font-bold text-on-primary">{initials}</span>
                 </div>
                 <span className="absolute bottom-1 right-1 w-5 h-5 bg-secondary text-on-secondary rounded-full flex items-center justify-center shadow-sm">
-                  <span className="material-symbols-outlined text-[13px]">check</span>
+                  <span className="material-symbols-outlined text-[13px]">person</span>
                 </span>
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-space-xs mb-space-xs">
                   <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-sm py-0.5 rounded-full">Account overview</span>
-                  <span className="text-label-badge font-bold text-outline"></span>
+                  
                 </div>
                 <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Welcome back, {user.first_name} {user.last_name}</h1>
                 <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs mt-1">
@@ -128,7 +128,7 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-wrap gap-space-xs">
               <div className="inline-flex items-center gap-space-xs bg-surface-container-low px-space-md py-space-xs rounded-full">
-                <span className="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
+                <span className="material-symbols-outlined text-[16px] text-secondary">person</span>
                 <span className="text-label-badge font-bold text-primary uppercase tracking-[0.06em]">Profile</span>
               </div>
               {user.role === 'admin' && (
@@ -141,7 +141,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <section className="card mb-space-xl p-space-lg md:p-space-xl">
+        <section id="fit-profile" className="card mb-space-xl p-space-lg md:p-space-xl">
           <div className="mb-space-md">
             <p className="text-label-badge font-bold uppercase tracking-[0.14em] text-secondary">Optional fit information</p>
             <h2 className="mt-2 text-xl font-semibold text-primary">Your fit profile</h2>
@@ -202,7 +202,7 @@ export default function ProfilePage() {
                     className="flex items-center justify-between px-space-md py-space-sm rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-primary text-label-md font-semibold transition-all">
                     <div className="flex items-center gap-space-sm">
                       <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                      <span dangerouslySetInnerHTML={{ __html: label }} />
+                      <span>{label}</span>
                     </div>
                     {badge && <span className="text-label-badge font-bold bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full">{badge}</span>}
                   </Link>
