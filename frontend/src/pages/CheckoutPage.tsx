@@ -42,10 +42,11 @@ export default function CheckoutPage() {
     if (!addr.full_name.trim() || !addr.phone.trim() || !addr.line1.trim() || !addr.city.trim() || !addr.state.trim() || !addr.postal_code.trim()) {
       toast.error('Complete all required delivery fields'); return;
     }
-    if (!/^(?:\\+91[-\\s]?)?[6-9]\\d{9}$/.test(addr.phone.replace(/[()]/g, '').trim())) {
+    const phoneDigits = addr.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
       toast.error('Enter a valid 10-digit Indian mobile number'); return;
     }
-    if (!/^\\d{6}$/.test(addr.postal_code.trim())) {
+    if (!/^\d{6}$/.test(addr.postal_code.trim())) {
       toast.error('Enter a valid 6-digit Indian PIN code'); return;
     }
     if (addr.country !== 'India') {
