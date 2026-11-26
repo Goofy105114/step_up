@@ -34,7 +34,7 @@ const emptyForm = {
 export default function AdminClinicalStudies() {
   const [form, setForm] = useState(emptyForm);
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'clinical-studies'],
     queryFn: () => api.get('/admin/clinical-studies').then(response => response.data),
   });
@@ -146,7 +146,7 @@ export default function AdminClinicalStudies() {
             <span><strong>Publish to customer library</strong><span className="block text-xs text-gray-500">Available only when source checked is selected.</span></span>
           </label>
         </div>
-        <button type="submit" disabled={createMutation.isPending} className="btn-primary inline-flex items-center gap-2 px-6">
+        <button type="submit" disabled={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending} className="btn-primary inline-flex items-center gap-2 px-6">
           <Plus size={15} /> {createMutation.isPending ? 'Saving…' : 'Add source'}
         </button>
       </form>
@@ -156,7 +156,7 @@ export default function AdminClinicalStudies() {
           <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Research entries</h2>
         </div>
         {isLoading ? <p className="p-8 text-center text-sm text-gray-400">Loading sources…</p> : null}
-        {isError ? <p className="p-8 text-center text-sm text-red-600">Unable to load research entries.</p> : null}
+        {isError ? <div role="alert" className="p-8 text-center"><p className="text-sm text-red-600">Unable to load research entries.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div> : null}
         {!isLoading && !isError && studies.length === 0 ? (
           <p className="p-8 text-center text-sm text-gray-400">No sources have been added. Customer-facing research remains empty until verified records are published.</p>
         ) : null}
@@ -177,13 +177,13 @@ export default function AdminClinicalStudies() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => updateMutation.mutate({ id: study.id, payload: { source_verified: !study.source_verified, is_published: study.source_verified ? false : study.is_published } })} className="btn-outline px-3 py-2 text-xs">
+                  <button type="button" disabled={updateMutation.isPending || deleteMutation.isPending} onClick={() => updateMutation.mutate({ id: study.id, payload: { source_verified: !study.source_verified, is_published: study.source_verified ? false : study.is_published } })} className="btn-outline px-3 py-2 text-xs">
                     {study.source_verified ? 'Unverify' : 'Verify source'}
                   </button>
-                  <button type="button" disabled={!study.source_verified} onClick={() => updateMutation.mutate({ id: study.id, payload: { is_published: !study.is_published } })} className="btn-outline px-3 py-2 text-xs disabled:opacity-40">
+                  <button type="button" disabled={!study.source_verified || updateMutation.isPending || deleteMutation.isPending} onClick={() => updateMutation.mutate({ id: study.id, payload: { is_published: !study.is_published } })} className="btn-outline px-3 py-2 text-xs disabled:opacity-40">
                     {study.is_published ? 'Unpublish' : 'Publish'}
                   </button>
-                  <button type="button" onClick={() => {
+                  <button type="button" disabled={deleteMutation.isPending || updateMutation.isPending} onClick={() => {
                     if (window.confirm('Delete this research entry?')) deleteMutation.mutate(study.id);
                   }} className="rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label="Delete research entry">
                     <Trash2 size={15} />
