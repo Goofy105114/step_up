@@ -98,19 +98,9 @@ jobs:
       - name: Create Supabase API roles for local schema verification
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-              CREATE ROLE anon NOLOGIN;
-            END IF;
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-              CREATE ROLE authenticated NOLOGIN;
-            END IF;
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-              CREATE ROLE supabase_admin NOLOGIN;
-            END IF;
-          END
-          $;
+          SELECT 'CREATE ROLE anon NOLOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') \\gexec
+          SELECT 'CREATE ROLE authenticated NOLOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') \\gexec
+          SELECT 'CREATE ROLE supabase_admin NOLOGIN' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') \\gexec
           SQL
       - run: npm run db:migrate
       - run: npm run db:seed
