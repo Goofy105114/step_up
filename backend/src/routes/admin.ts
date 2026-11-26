@@ -284,6 +284,9 @@ router.post('/products/:id/variants', authorize('admin'), async (req: Request, r
   if (typeof size !== 'string' || typeof color !== 'string') throw new AppError('Size and color must be text', 400);
   if (color_hex !== undefined && color_hex !== null && typeof color_hex !== 'string') throw new AppError('Color must be text', 400);
   if (sku !== undefined && sku !== null && typeof sku !== 'string') throw new AppError('SKU must be text', 400);
+  const isNumericInput = (value: unknown) => typeof value === 'number' || (typeof value === 'string' && value.trim().length > 0);
+  if (stock_qty !== undefined && !isNumericInput(stock_qty)) throw new AppError('Stock quantity must be a number', 400);
+  if (price_adj !== undefined && !isNumericInput(price_adj)) throw new AppError('Price adjustment must be a number', 400);
   const normalizedSize = size.trim();
   const normalizedColor = String(color || '').trim();
   const parsedStock = stock_qty === undefined ? 0 : Number(stock_qty);
