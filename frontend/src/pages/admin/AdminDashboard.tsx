@@ -1,128 +1,36 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { formatPrice, formatDate } from '../../lib/formatters';
-import { ShoppingCart, Users, Package, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { ShoppingCart, Users, Package, TrendingUp, ArrowUpRight, RefreshCw, ArrowRight, Clock3, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function AdminDashboard() {
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['admin', 'dashboard'],
-    queryFn: () => api.get('/admin/dashboard').then((r) => r.data.data),
-    refetchInterval: 30000,
-  });
-  const { data: ordersData } = useQuery({
-    queryKey: ['admin', 'orders', 'recent'],
-    queryFn: () => api.get('/admin/orders?limit=5').then((r) => r.data),
-  });
-
-  if (isLoading) return (
-    <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5">
-        {Array(4).fill(0).map((_, i) => <div key={i} className="bg-white border border-gray-200 h-28" />)}
-      </div>
-      <div className="bg-white border border-gray-200 h-64" />
-    </div>
-  );
-
-  if (isError) return (
-    <section role="alert" className="bg-white border border-gray-200 p-8 text-center">
-      <h1 className="text-lg font-bold text-gray-900">Dashboard data is unavailable</h1>
-      <p className="mt-2 text-sm text-gray-500">The latest store metrics could not be loaded. Existing orders and products have not been changed.</p>
-      <button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-primary mt-5 px-5 py-3 disabled:opacity-60">{isFetching ? 'Retrying…' : 'Try again'}</button>
-    </section>
-  );
-
-  const kpis = [
-    { label: 'Total Orders', value: data?.orders?.total || 0, sub: `${data?.orders?.pending || 0} pending`, icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Revenue', value: formatPrice(parseFloat(data?.revenue?.total || 0)), sub: `${formatPrice(parseFloat(data?.revenue?.last_30d || 0))} / 30d`, icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-50' },
-    { label: 'Customers', value: data?.users?.total || 0, sub: `+${data?.users?.new_this_week || 0} this week`, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
-    { label: 'Products', value: data?.products?.total || 0, sub: `${data?.products?.active || 0} active`, icon: Package, color: 'text-orange-500', bg: 'bg-orange-50' },
-  ];
-
-  return (
-    <div className="space-y-5 sm:space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">Dashboard</h1>
-          <p className="text-xs text-gray-400 mt-1">Overview of your store performance</p>
-        </div>
-        <span className="text-xs text-gray-400">Auto-refreshes every 30s</span>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
-        {kpis.map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <div key={label} className="min-w-0 bg-white border border-gray-200 p-4 sm:p-5 hover:border-gray-400 transition-colors">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-widest font-semibold text-gray-500">{label}</p>
-                <p className="mt-2 break-words text-xl font-bold text-gray-900 sm:text-2xl">{value}</p>
-                <p className="text-xs text-gray-400 mt-1">{sub}</p>
-              </div>
-              <div className={`w-10 h-10 ${bg} flex items-center justify-center`}>
-                <Icon size={20} className={color} strokeWidth={1.5} />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid min-w-0 lg:grid-cols-3 gap-3 sm:gap-5">
-        {/* Recent orders */}
-        <div className="min-w-0 lg:col-span-2 bg-white border border-gray-200">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Recent Orders</h2>
-            <Link to="/admin/orders" className="text-xs text-brand-500 hover:text-brand-700 uppercase tracking-wider flex items-center gap-1">
-              View All <ArrowUpRight size={12} />
-            </Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {(ordersData?.data || []).slice(0, 5).map((o: any) => (
-              <div key={o.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50 transition-colors">
-                <div>
-                  <p className="text-xs font-semibold text-gray-900 font-mono">{o.order_number}</p>
-                  <p className="text-xs text-gray-400">{o.first_name} {o.last_name} · {formatDate(o.created_at)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-gray-900">{formatPrice(parseFloat(o.total_amount))}</p>
-                  <span className={`inline-block text-[10px] px-2 py-0.5 font-semibold uppercase tracking-wider mt-0.5 ${
-                    o.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                    o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    o.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                    'bg-blue-100 text-blue-700'}`}>
-                    {o.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {!ordersData?.data?.length && (
-              <div className="px-6 py-8 text-center text-xs text-gray-400">No orders yet</div>
-            )}
-          </div>
-        </div>
-
-        {/* Top products */}
-        <div className="min-w-0 bg-white border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Top Products</h2>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {(data?.top_products || []).map((p: any, i: number) => (
-              <div key={p.slug} className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors">
-                <span className="text-xs font-bold text-gray-300 w-5">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate">{p.name}</p>
-                  <p className="text-xs text-gray-400">{p.sold} sold</p>
-                </div>
-                <span className="text-xs font-bold text-gray-900 shrink-0">{formatPrice(parseFloat(p.revenue))}</span>
-              </div>
-            ))}
-            {!data?.top_products?.length && (
-              <div className="px-6 py-8 text-center text-xs text-gray-400">No sales data yet</div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+ const client=useQueryClient(); const [filter,setFilter]=useState('all');
+ const dashboard=useQuery({queryKey:['admin','dashboard'],queryFn:()=>api.get('/admin/dashboard').then(r=>r.data.data),refetchInterval:30000,refetchOnWindowFocus:true});
+ const recent=useQuery({queryKey:['admin','orders','recent'],queryFn:()=>api.get('/admin/orders?limit=8').then(r=>r.data),refetchInterval:30000,refetchOnWindowFocus:true});
+ const orders=useMemo(()=>{const rows=recent.data?.data||[];return filter==='all'?rows:rows.filter((row:any)=>row.status===filter);},[recent.data,filter]);
+ const refresh=()=>Promise.all([dashboard.refetch(),client.invalidateQueries({queryKey:['admin','orders','recent']})]);
+ if(dashboard.isLoading)return <div className="animate-pulse space-y-5"><div className="h-36 rounded-3xl bg-gray-200"/><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[1,2,3,4].map(x=><div key={x} className="h-36 rounded-2xl bg-white"/>)}<div className="h-72 rounded-2xl bg-white sm:col-span-2 xl:col-span-4"/></div></div>;
+ if(dashboard.isError)return <section role="alert" className="rounded-3xl border bg-white p-10 text-center"><Activity className="mx-auto text-rose-500" size={28}/><h1 className="mt-4 text-xl font-bold">Dashboard data unavailable</h1><p className="mt-2 text-sm text-gray-500">Live store metrics could not be retrieved.</p><button onClick={()=>refresh()} className="btn-primary mt-5">Retry</button></section>;
+ const d=dashboard.data||{}; const total=Number(d.products?.total||0),active=Number(d.products?.active||0);
+ const cards=[
+  {label:'Orders',value:Number(d.orders?.total||0).toLocaleString('en-IN'),note:`${Number(d.orders?.pending||0)} pending action`,icon:ShoppingCart,href:'/admin/orders',tone:'bg-amber-50 text-amber-700'},
+  {label:'Revenue',value:formatPrice(Number(d.revenue?.total||0)),note:formatPrice(Number(d.revenue?.last_30d||0))+' in last 30 days',icon:TrendingUp,href:'/admin/orders',tone:'bg-emerald-50 text-emerald-700'},
+  {label:'Customers',value:Number(d.users?.total||0).toLocaleString('en-IN'),note:`+${Number(d.users?.new_this_week||0)} this week`,icon:Users,href:'/admin/users',tone:'bg-violet-50 text-violet-700'},
+  {label:'Products',value:total.toLocaleString('en-IN'),note:`${active} active in catalogue`,icon:Package,href:'/admin/products',tone:'bg-sky-50 text-sky-700'}
+ ];
+ return <div className="min-w-0 space-y-7">
+  <section className="relative overflow-hidden rounded-3xl bg-[#1c2026] p-6 text-white shadow-xl sm:p-9"><div className="absolute -right-16 -top-24 h-64 w-64 rounded-full border-[35px] border-white/[.05]"/><div className="relative flex flex-wrap items-end justify-between gap-5"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-amber-300">STEPUP · Live store overview</p><h1 className="mt-3 text-2xl font-extrabold sm:text-3xl">Your control centre.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-gray-400">Monitor orders, revenue, customers and catalogue activity. Metrics refresh every 30 seconds.</p></div><button onClick={()=>refresh()} disabled={dashboard.isFetching||recent.isFetching} className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold hover:bg-white/15 disabled:opacity-50"><RefreshCw size={14} className={dashboard.isFetching?'animate-spin':''}/>Refresh live data</button></div></section>
+  <section aria-label="Store metrics" className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">{cards.map(({label,value,note,icon:Icon,href,tone})=><Link key={label} to={href} className="group min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold uppercase tracking-widest text-gray-500">{label}</span><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}><Icon size={19}/></span></div><p className="mt-5 break-words text-2xl font-extrabold text-gray-950 sm:text-3xl">{value}</p><p className="mt-1 min-h-5 text-xs text-gray-500">{note}</p><div className="mt-4 flex justify-between border-t border-gray-100 pt-3 text-xs font-bold text-gray-600"><span>Open {label.toLowerCase()}</span><ArrowUpRight size={15} className="group-hover:text-amber-600"/></div></Link>)}</section>
+  <section className="grid min-w-0 gap-5 xl:grid-cols-3">
+   <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:col-span-2"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-5"><div><h2 className="text-sm font-extrabold">Recent orders</h2><p className="mt-1 text-xs text-gray-400">Latest customer purchases</p></div><Link to="/admin/orders" className="flex items-center gap-1 text-xs font-bold text-amber-700">View all <ArrowRight size={14}/></Link></div>
+    <div className="flex flex-wrap gap-2 px-5 py-4">{['all','pending','processing','shipped','delivered'].map(status=><button key={status} onClick={()=>setFilter(status)} aria-pressed={filter===status} className={`rounded-full px-3 py-1.5 text-[10px] font-bold capitalize ${filter===status?'bg-gray-900 text-white':'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{status==='all'?'All orders':status.replaceAll('_',' ')}</button>)}</div>
+    {recent.isLoading?<div className="space-y-3 p-5">{[1,2,3].map(x=><div key={x} className="h-12 animate-pulse rounded bg-gray-100"/>)}</div>:recent.isError?<p className="p-8 text-center text-sm text-gray-500">Recent orders unavailable. <Link to="/admin/orders" className="font-semibold text-amber-700">Open orders</Link></p>:orders.length?<div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left"><thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400"><tr><th className="px-5 py-3">Order</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Status</th><th className="px-5 py-3 text-right">Total</th></tr></thead><tbody className="divide-y divide-gray-100">{orders.map((o:any)=><tr key={o.id} className="hover:bg-gray-50"><td className="px-5 py-4"><Link to="/admin/orders" className="font-mono text-xs font-bold text-gray-900">{o.order_number}</Link><p className="mt-1 flex items-center gap-1 text-[10px] text-gray-400"><Clock3 size={10}/>{formatDate(o.created_at)}</p></td><td className="px-4 py-4"><p className="max-w-[140px] truncate text-xs font-semibold">{[o.first_name,o.last_name].filter(Boolean).join(' ')||'Customer'}</p><p className="max-w-[140px] truncate text-[10px] text-gray-400">{o.email||'—'}</p></td><td className="px-4 py-4"><span className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-semibold capitalize text-gray-600">{String(o.status).replaceAll('_',' ')}</span></td><td className="px-5 py-4 text-right text-xs font-extrabold">{formatPrice(Number(o.total_amount||0))}</td></tr>)}</tbody></table></div>:<p className="p-10 text-center text-sm text-gray-500">No matching orders. <button onClick={()=>setFilter('all')} className="font-bold text-amber-700">Clear filter</button></p>}
+   </div>
+   <div className="space-y-5"><section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-extrabold">Catalogue health</h2><p className="mt-1 text-xs text-gray-400">Active products in your store</p><div className="mt-6 flex items-end justify-between"><span className="text-3xl font-extrabold">{active}<span className="ml-1 text-sm text-gray-400">/ {total}</span></span><span className="text-xs font-bold text-emerald-700">{total?Math.round(active/total*100):0}% active</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-emerald-500" style={{width:`${total?Math.round(active/total*100):0}%`}}/></div><Link to="/admin/products" className="mt-5 flex justify-between border-t border-gray-100 pt-4 text-xs font-bold text-gray-600">Manage products <ArrowUpRight size={15}/></Link></section>
+    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-extrabold">Quick actions</h2><div className="mt-3 space-y-1">{[{label:'Add product',href:'/admin/products/new'},{label:'Process orders',href:'/admin/orders'},{label:'Review returns',href:'/admin/returns'},{label:'Fit operations',href:'/admin/fit-operations'}].map(item=><Link key={item.href} to={item.href} className="flex items-center justify-between rounded-xl p-3 text-xs font-semibold text-gray-700 hover:bg-gray-50">{item.label}<ArrowUpRight size={14} className="text-gray-400"/></Link>)}</div></section>
+   </div>
+  </section>
+ </div>;
 }
