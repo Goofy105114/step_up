@@ -661,8 +661,14 @@ router.get('/return-requests', async (_req: Request, res: Response) => {
 
 router.patch('/return-requests/:id', authorize('admin'), async (req: Request, res: Response) => {
   const { status, admin_note } = req.body;
-  if (!['approved','rejected','received'].includes(status)) {
+  if (typeof status !== 'string' || !['approved','rejected','received'].includes(status)) {
     throw new AppError('Choose approved, rejected or received', 400);
+  }
+  if (admin_note !== undefined && admin_note !== null && typeof admin_note !== 'string') {
+    throw new AppError('Admin note must be text', 400);
+  }
+  if (typeof admin_note === 'string' && admin_note.length > 1000) {
+    throw new AppError('Admin note cannot exceed 1000 characters', 400);
   }
   const client = await pool.connect();
   try {
