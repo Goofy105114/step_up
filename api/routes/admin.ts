@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createHash } from 'crypto';
 import pool, { query } from '../db/pool';
 import { authenticate, authorize } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
@@ -310,6 +311,55 @@ router.delete('/products/:id/variants/:variantId', authorize('admin'), async (re
 });
 
 /* ── Product Images ──────────────────────────────────────────────────── */
+const cloudinaryConfig = () => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new AppError('Product image uploads are not configured. Ask an administrator to configure Cloudinary on the backend.', 503);
+  }
+  return { cloudName, apiKey, apiSecret };
+};
+
+const cloudinarySignature = (parameters: Record<string, string>, apiSecret: string) => {
+  const canonical = Object.keys(parameters).sort().map(key => `${key}=${parameters[key]}`).join('&');
+  return createHash('sha1').update(canonical + apiSecret).digest('hex');
+};
+
+const cloudinaryPublicIdFromUrl = (value: string) => {
+  let parsed: URL;
+  try { parsed = new URL(value); } catch { return null; }
+  if (parsed.hostname !== 'res.cloudinary.com') return null;
+  const segments = parsed.pathname.split('/').filter(Boolean);
+  const uploadIndex = segments.indexOf('upload');
+  if (uploadIndex < 0) return null;
+  const assetSegments = segments.slice(uploadIndex + 1).filter(segment => !/^v\\d+$/.test(segment));
+  if (!assetSegments.length) return null;
+  const last = assetSegments[assetSegments.length - 1];
+  assetSegments[assetSegments.length - 1] = last.replace(/\\.[a-z0-9]+$/i, '');
+  return assetSegments.join('/');
+};
+
+const deleteCloudinaryAsset = async (imageUrl: string) => {
+  const publicId = cloudinaryPublicIdFromUrl(imageUrl);
+  if (!publicId) return;
+  const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
+  const parsed = new URL(imageUrl);
+  if (parsed.pathname.split('/').filter(Boolean)[0] !== cloudName) return;
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = cloudinarySignature({ public_id: publicId, timestamp }, apiSecret);
+  const body = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const result = await response.json() as { result?: string; error?: { message?: string } };
+  if (!response.ok || (result.result !== 'ok' && result.result !== 'not found')) {
+    throw new AppError(result.error?.message || 'Cloud image could not be deleted. The product image record was kept.', 502);
+  }
+};
+
 const normalizeProductImageUrl = (value: unknown) => {
   if (typeof value !== 'string' || value.length > 2048) throw new AppError('Image URL must be a valid HTTPS URL under 2048 characters', 400);
   let parsed: URL;
@@ -320,11 +370,22 @@ const normalizeProductImageUrl = (value: unknown) => {
   return parsed.toString();
 };
 
+router.post('/products/:id/images/upload-signature', authorize('admin'), async (req: Request, res: Response) => {
+  const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
+  const product = await query('SELECT id FROM products WHERE id=$1', [req.params.id]);
+  if (!product.rows[0]) throw new AppError('Product not found', 404);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const folder = `stepup/products/${req.params.id}`;
+  const allowed_formats = 'jpg,png,webp,avif';
+  const signature = cloudinarySignature({ allowed_formats, folder, timestamp }, apiSecret);
+  return res.json({ success: true, data: { cloud_name: cloudName, api_key: apiKey, folder, timestamp, allowed_formats, signature } });
+});
+
 router.post('/products/:id/images', authorize('admin'), async (req: Request, res: Response) => {
   const { url, alt_text, is_primary, sort_order } = req.body;
   const imageUrl = normalizeProductImageUrl(url);
-  if (alt_text !== undefined && alt_text !== null && (typeof alt_text !== 'string' || alt_text.length > 500)) {
-    throw new AppError('Image alt text cannot exceed 500 characters', 400);
+  if (alt_text !== undefined && alt_text !== null && (typeof alt_text !== 'string' || alt_text.length > 255)) {
+    throw new AppError('Image alt text cannot exceed 255 characters', 400);
   }
   const sortOrder = sort_order === undefined ? 0 : Number(sort_order);
   if (!Number.isInteger(sortOrder) || sortOrder < 0) throw new AppError('Image sort order must be a non-negative whole number', 400);
@@ -358,6 +419,12 @@ router.delete('/products/:id/images/:imageId', authorize('admin'), async (req: R
     await client.query('BEGIN');
     const product = await client.query('SELECT id FROM products WHERE id=$1 FOR UPDATE', [req.params.id]);
     if (!product.rows[0]) throw new AppError('Product not found', 404);
+    const image = await client.query(
+      'SELECT url,is_primary FROM product_images WHERE id=$1 AND product_id=$2 FOR UPDATE',
+      [req.params.imageId, req.params.id]);
+    if (!image.rows[0]) throw new AppError('Product image not found', 404);
+    // Remove uploaded Cloudinary assets as well as their database records.
+    await deleteCloudinaryAsset(image.rows[0].url);
     const deleted = await client.query(
       'DELETE FROM product_images WHERE id=$1 AND product_id=$2 RETURNING is_primary',
       [req.params.imageId, req.params.id]);

@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Save, Plus, Trash2, Image } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Image, Upload } from 'lucide-react';
 
 interface ProductForm {
   name: string; slug: string; sku: string; description: string; short_description: string;
@@ -42,6 +42,7 @@ export default function AdminProductForm() {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [images, setImages] = useState<ProductImage[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [newVariant, setNewVariant] = useState<Variant>(emptyVariant);
   const [showAddVariant, setShowAddVariant] = useState(false);
   const [addingStandardSizes, setAddingStandardSizes] = useState(false);
@@ -159,6 +160,46 @@ export default function AdminProductForm() {
     onSuccess: () => { toast.success('Image added'); setNewImageUrl(''); qc.invalidateQueries({ queryKey: ['admin-product', id] }); },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to add image'),
   });
+
+  const uploadProductImage = async (file: File) => {
+    if (!id || uploadingImage) return;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Choose a JPG, PNG, WebP or AVIF image');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be 10 MB or smaller');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const signatureResponse = await api.post(`/admin/products/${id}/images/upload-signature`);
+      const signature = signatureResponse.data.data;
+      const uploadBody = new FormData();
+      uploadBody.append('file', file);
+      uploadBody.append('api_key', signature.api_key);
+      uploadBody.append('timestamp', String(signature.timestamp));
+      uploadBody.append('folder', signature.folder);
+      uploadBody.append('allowed_formats', signature.allowed_formats);
+      uploadBody.append('signature', signature.signature);
+
+      const cloudResponse = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloud_name}/image/upload`, {
+        method: 'POST',
+        body: uploadBody,
+      });
+      const uploaded = await cloudResponse.json();
+      if (!cloudResponse.ok || typeof uploaded.secure_url !== 'string') {
+        throw new Error(uploaded.error?.message || 'Cloud image upload failed');
+      }
+      await addImageMutation.mutateAsync(uploaded.secure_url);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Unable to upload product image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const deleteImageMutation = useMutation({
     mutationFn: (imageId: string) => api.delete(`/admin/products/${id}/images/${imageId}`),
@@ -374,16 +415,26 @@ export default function AdminProductForm() {
             ))}
           </div>
           {!images.length && <p className="text-xs text-gray-500">No product images have been added yet.</p>}
-          <div className="flex gap-3">
-            <input type="url" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)}
-              className="input-field flex-1" placeholder="Paste image URL (https://…)" />
-            <button type="button" disabled={!/^https:\/\//i.test(newImageUrl.trim()) || addImageMutation.isPending}
-              onClick={() => addImageMutation.mutate(newImageUrl.trim())}
-              className="btn-primary px-5 flex items-center gap-2 shrink-0">
-              <Plus size={14} /> Add
-            </button>
+          <div className="space-y-3">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-gray-300 p-4 cursor-pointer hover:border-brand-500 transition-colors">
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-700"><Upload size={16} /> Upload product photo</span>
+              <span className="text-xs text-gray-400">JPG, PNG, WebP or AVIF · Max 10 MB</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploadingImage || addImageMutation.isPending}
+                onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadProductImage(file); e.currentTarget.value = ''; }}
+                className="text-xs sm:ml-auto" />
+            </label>
+            {uploadingImage && <p role="status" className="text-xs text-brand-700">Uploading image securely…</p>}
+            <div className="flex gap-3">
+              <input type="url" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)}
+                className="input-field flex-1" placeholder="Or paste an existing HTTPS image URL" />
+              <button type="button" disabled={!/^https:\/\//i.test(newImageUrl.trim()) || addImageMutation.isPending || uploadingImage}
+                onClick={() => addImageMutation.mutate(newImageUrl.trim())}
+                className="btn-primary px-5 flex items-center gap-2 shrink-0">
+                <Plus size={14} /> Add URL
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-gray-400">Paste any public image URL. First image added becomes the primary image.</p>
+          <p className="text-xs text-gray-400">The first image becomes the primary product photo. Uploaded files are stored in the company Cloudinary account.</p>
         </div>
       )}
 
