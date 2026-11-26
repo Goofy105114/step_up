@@ -121,10 +121,12 @@ export default function AdminProductForm() {
   const addStandardSizes = async () => {
     if (!id || addingStandardSizes) return;
     setAddingStandardSizes(true);
-    const existing = new Set(variants.filter(v => v.color.trim().toLowerCase() === 'black').map(v => String(v.size)));
+    const targetColor = variants[0]?.color || 'Black';
+    const targetHex = variants[0]?.color_hex || '#202820';
+    const existing = new Set(variants.filter(v => v.color.trim().toLowerCase() === targetColor.toLowerCase()).map(v => String(v.size)));
     const missing = ['6', '7', '8', '9', '10', '11'].filter(size => !existing.has(size));
     if (!missing.length) {
-      toast.success('Sizes 6–11 are already set up for Black');
+      toast.success('Sizes 6–11 are already set up for this colour');
       setAddingStandardSizes(false);
       return;
     }
@@ -132,7 +134,7 @@ export default function AdminProductForm() {
       for (const size of missing) {
         const skuBase = (form.sku || form.slug || 'STEPUP').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
         await api.post(`/admin/products/${id}/variants`, {
-          size, color: 'Black', color_hex: '#202820', stock_qty: 0, price_adj: 0,
+          size, color: targetColor, color_hex: targetHex, stock_qty: 0, price_adj: 0,
           sku: `${skuBase}-BLK-${size}`.slice(0, 150),
         });
       }
@@ -484,7 +486,7 @@ export default function AdminProductForm() {
               <div className="text-center py-8 text-xs text-gray-400">No variants yet — click "Add Variant" to add sizes and colors</div>
             )}
           </div>
-          <p className="text-xs text-gray-400">The quick size shortcut adds UK sizes 6–11 in Black with stock set to 0. Enter verified stock quantities before making them available to customers.</p>
+          <p className="text-xs text-gray-400">The quick size shortcut adds UK sizes 6–11 in Black in the first existing colour (or Black for a new product), with stock set to 0. Enter verified stock quantities before making them available to customers.</p>
         </div>
       )}
     </div>
