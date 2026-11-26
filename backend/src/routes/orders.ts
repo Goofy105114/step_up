@@ -8,12 +8,25 @@ const genOrderNo = () => 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 
 
 router.post('/', authenticate, async (req: Request, res: Response) => {
   const { shipping_address, billing_address, payment_method = 'cod', coupon_code } = req.body;
-  if (!shipping_address || typeof shipping_address !== 'object') {
+  if (!shipping_address || typeof shipping_address !== 'object' || Array.isArray(shipping_address)) {
     throw new AppError('Shipping address required', 400);
   }
   const requiredAddressFields = ['full_name', 'phone', 'line1', 'city', 'state', 'postal_code'];
-  if (requiredAddressFields.some(field => !String(shipping_address[field] || '').trim())) {
+  if (requiredAddressFields.some(field => typeof shipping_address[field] !== 'string' || !shipping_address[field].trim())) {
     throw new AppError('Complete all required shipping address fields', 400);
+  }
+  if (shipping_address.full_name.trim().length > 200 ||
+      shipping_address.phone.trim().length > 20 ||
+      shipping_address.line1.trim().length > 255 ||
+      (shipping_address.line2 !== undefined && shipping_address.line2 !== null &&
+        (typeof shipping_address.line2 !== 'string' || shipping_address.line2.trim().length > 255)) ||
+      shipping_address.city.trim().length > 100 ||
+      shipping_address.state.trim().length > 100 ||
+      (shipping_address.country !== undefined &&
+        (typeof shipping_address.country !== 'string' || shipping_address.country.trim().length > 100)) ||
+      (shipping_address.email !== undefined &&
+        (typeof shipping_address.email !== 'string' || shipping_address.email.trim().length > 255))) {
+    throw new AppError('One or more shipping address fields exceed the allowed length', 400);
   }
   if (payment_method !== 'cod') throw new AppError('Online payments are not enabled. Choose Cash on Delivery.', 400);
   const phone = String(shipping_address.phone || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
