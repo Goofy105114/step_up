@@ -92,12 +92,6 @@ export default function CartPage() {
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
             <span>03 Payment</span>
           </div>
-          {shipping === 0 && (
-            <div className="hidden md:flex items-center gap-space-xs bg-surface-container-high px-space-md py-space-xs rounded-full">
-              <span className="material-symbols-outlined text-[16px] text-primary">spa</span>
-              <span className="text-body-sm text-primary font-semibold">Free Orthopedic Shipping unlocked</span>
-            </div>
-          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
