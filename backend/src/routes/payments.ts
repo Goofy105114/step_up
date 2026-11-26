@@ -197,14 +197,37 @@ router.post('/webhook',async(req:Request,res:Response)=>{
   return res.json({received:true});
 });
 
-router.post('/validate-coupon', authenticate, async(req:Request,res:Response)=>{
-  const {code,subtotal}=req.body;
-  const result=await query(`SELECT * FROM coupons WHERE code=$1 AND is_active=true AND valid_from<=NOW()
-    AND (valid_until IS NULL OR valid_until>NOW()) AND (max_uses IS NULL OR used_count<max_uses)`,[code]);
-  const coupon=result.rows[0];
-  if(!coupon) throw new AppError('Invalid or expired coupon',400);
-  if(Number(subtotal)<Number(coupon.min_order_amount)) throw new AppError(`Minimum order amount is ₹${coupon.min_order_amount}`,400);
-  const discount=coupon.discount_type==='percentage'?(Number(subtotal)*Number(coupon.discount_value))/100:Number(coupon.discount_value);
-  return res.json({success:true,coupon,discount:Math.min(discount,Number(subtotal))});
+router.post('/validate-coupon', authenticate, async (req: Request, res: Response) => {
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  if (!code || code.length > 64) throw new AppError('Enter a valid coupon code', 400);
+  const cart = await query(
+    `SELECT COALESCE(SUM((COALESCE(p.sale_price,p.base_price)+pv.price_adj)*ci.quantity),0) AS subtotal
+     FROM carts c
+     JOIN cart_items ci ON ci.cart_id=c.id
+     JOIN products p ON p.id=ci.product_id AND p.is_active=true
+     JOIN product_variants pv ON pv.id=ci.variant_id AND pv.product_id=p.id
+     WHERE c.user_id=$1`,
+    [req.user!.userId]
+  );
+  const subtotal = Number(cart.rows[0]?.subtotal || 0);
+  if (!Number.isFinite(subtotal) || subtotal <= 0) throw new AppError('Add available products to your cart before applying a coupon', 400);
+  const result = await query(
+    `SELECT * FROM coupons
+     WHERE UPPER(code)=UPPER($1) AND is_active=true AND valid_from<=NOW()
+       AND (valid_until IS NULL OR valid_until>NOW())
+       AND (max_uses IS NULL OR used_count<max_uses)
+       AND (user_id IS NULL OR user_id=$2)
+     LIMIT 1`,
+    [code, req.user!.userId]
+  );
+  const coupon = result.rows[0];
+  if (!coupon) throw new AppError('Invalid, expired, or unavailable coupon code', 404);
+  if (subtotal < Number(coupon.min_order_amount)) throw new AppError(`Minimum cart value for this coupon is ₹${coupon.min_order_amount}`, 400);
+  const value = Number(coupon.discount_value);
+  if (!Number.isFinite(value) || value < 0 || !['percentage', 'fixed'].includes(coupon.discount_type)) {
+    throw new AppError('This coupon is not configured correctly. Please contact support.', 503);
+  }
+  const discount = Math.min(subtotal, Math.max(0, coupon.discount_type === 'percentage' ? subtotal * value / 100 : value));
+  return res.json({ success: true, data: { code: coupon.code, discount_amount: discount, cart_subtotal: subtotal } });
 });
 export default router;
