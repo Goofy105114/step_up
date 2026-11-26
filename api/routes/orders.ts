@@ -171,6 +171,12 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
     }
 
     await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2', ['cancelled', order.id]);
+    if (order.coupon_id) {
+      await client.query(
+        'UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',
+        [order.coupon_id]
+      );
+    }
     await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
       [order.id, 'cancelled', 'Cancelled by customer']);
     const items = await client.query('SELECT * FROM order_items WHERE order_id=$1', [order.id]);
