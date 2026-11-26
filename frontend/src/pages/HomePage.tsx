@@ -36,6 +36,14 @@ export default function HomePage() {
     queryKey: ['products', 'new-arrivals'],
     queryFn: () => api.get('/products?new_arrival=true&limit=4').then(r => r.data),
   });
+  const { data: studiesData, isError: studiesError, refetch: refetchStudies, isFetching: studiesFetching } = useQuery({
+    queryKey: ['clinical-studies', 'homepage'],
+    queryFn: () => api.get('/clinical-studies').then(r => r.data),
+  });
+  const { data: reviewsData, isError: reviewsError, refetch: refetchReviews, isFetching: reviewsFetching } = useQuery({
+    queryKey: ['reviews', 'featured'],
+    queryFn: () => api.get('/reviews/featured').then(r => r.data),
+  });
 
   const featuredProducts: Product[] = featured?.data || [];
   const categories: Category[] = categoriesData?.data || [];
@@ -219,6 +227,75 @@ export default function HomePage() {
               {bestsellerProducts.map((product: any) => <ProductCard key={product.id} product={product} />)}
             </div>
           </div>
+        </section>
+      )}
+
+      <section className="bg-[#f4f3ef] py-16 md:py-20">
+        <div className="container-site">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">Evidence & research</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-primary md:text-4xl">Explore the published research</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-on-surface-variant">Read the original sources in STEPUP’s reviewed clinical library. Research summaries are informational and are not a medical diagnosis.</p>
+            </div>
+            <Link to="/clinical-studies" className="text-sm font-semibold text-primary hover:underline">View research library →</Link>
+          </div>
+          {studiesError ? (
+            <div role="alert" className="rounded-2xl border border-error/30 bg-white p-6 text-sm text-on-surface-variant">
+              <p>Published research could not be loaded.</p>
+              <button type="button" onClick={() => refetchStudies()} disabled={studiesFetching} className="btn-outline mt-3 px-4 py-2">{studiesFetching ? 'Retrying…' : 'Retry research'}</button>
+            </div>
+          ) : studiesData?.data?.length ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {studiesData.data.slice(0,3).map((study: any) => (
+                <article key={study.id} className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary">{study.publication || 'Published research'}{study.publication_date ? ` · ${new Date(study.publication_date).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}` : ''}</p>
+                  <h3 className="mt-3 text-base font-semibold leading-6 text-primary">{study.title}</h3>
+                  {study.authors && <p className="mt-2 text-xs text-on-surface-variant">{study.authors}</p>}
+                  {study.summary && <p className="mt-3 line-clamp-4 text-sm leading-6 text-on-surface-variant">{study.summary}</p>}
+                  <a href={study.source_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex text-xs font-semibold text-primary underline underline-offset-4">Read original source ↗</a>
+                </article>
+              ))}
+            </div>
+          ) : studiesData ? (
+            <p className="rounded-2xl border border-dashed border-outline-variant bg-white p-8 text-center text-sm text-on-surface-variant">No verified studies have been published in the library yet.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">{[1,2,3].map(x => <div key={x} className="h-48 animate-pulse rounded-2xl bg-white" />)}</div>
+          )}
+        </div>
+      </section>
+
+      {(reviewsError || reviewsData?.data?.length > 0) && (
+        <section className="container-site py-16 md:py-20">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">Customer experiences</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-primary md:text-4xl">What customers are saying</h2>
+              <p className="mt-2 text-sm text-on-surface-variant">Only approved reviews from actual STEPUP product pages appear here.</p>
+            </div>
+          </div>
+          {reviewsError ? (
+            <div role="alert" className="rounded-2xl border border-error/30 bg-surface-container-low p-6 text-sm text-on-surface-variant">
+              <p>Customer reviews could not be loaded.</p>
+              <button type="button" onClick={() => refetchReviews()} disabled={reviewsFetching} className="btn-outline mt-3 px-4 py-2">{reviewsFetching ? 'Retrying…' : 'Retry reviews'}</button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+              {reviewsData.data.map((review: any) => (
+                <article key={review.id} className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+                  <div className="flex items-center gap-1 text-amber-600" aria-label={`${review.rating} out of 5 stars`}>
+                    {Array.from({length:5}).map((_,i) => <span key={i} aria-hidden="true">{i < Number(review.rating) ? '★' : '☆'}</span>)}
+                  </div>
+                  {review.title && <h3 className="mt-3 font-semibold text-primary">{review.title}</h3>}
+                  <p className="mt-2 text-sm leading-6 text-on-surface-variant">{review.body}</p>
+                  <div className="mt-5 border-t border-outline-variant/40 pt-3">
+                    <p className="text-sm font-semibold text-primary">{review.user_name}</p>
+                    <Link to={`/product/${review.product_slug}`} className="mt-1 text-xs text-secondary underline underline-offset-4">{review.product_name}</Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
