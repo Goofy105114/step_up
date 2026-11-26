@@ -310,6 +310,9 @@ router.patch('/products/:id/variants/:variantId', authorize('admin'), async (req
   if (color !== undefined && typeof color !== 'string') throw new AppError('Color must be text', 400);
   if (color_hex !== undefined && color_hex !== null && typeof color_hex !== 'string') throw new AppError('Color must be text', 400);
   if (sku !== undefined && sku !== null && typeof sku !== 'string') throw new AppError('SKU must be text', 400);
+  const isNumericInput = (value: unknown) => typeof value === 'number' || (typeof value === 'string' && value.trim().length > 0);
+  if (stock_qty !== undefined && !isNumericInput(stock_qty)) throw new AppError('Stock quantity must be a number', 400);
+  if (price_adj !== undefined && !isNumericInput(price_adj)) throw new AppError('Price adjustment must be a number', 400);
   const fields: Record<string, unknown> = {};
   if (stock_qty !== undefined) fields.stock_qty = Number(stock_qty);
   if (price_adj !== undefined) fields.price_adj = Number(price_adj);
