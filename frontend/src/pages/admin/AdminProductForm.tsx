@@ -133,9 +133,10 @@ export default function AdminProductForm() {
     try {
       for (const size of missing) {
         const skuBase = (form.sku || form.slug || 'STEPUP').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const colorCode = targetColor.toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 8) || 'COLOR';
         await api.post(`/admin/products/${id}/variants`, {
           size, color: targetColor, color_hex: targetHex, stock_qty: 0, price_adj: 0,
-          sku: `${skuBase}-BLK-${size}`.slice(0, 150),
+          sku: `${skuBase}-${colorCode}-${size}`.slice(0, 150),
         });
       }
       toast.success(`Added sizes ${missing.join(', ')} with zero stock. Set actual stock quantities before publishing.`);
