@@ -231,7 +231,7 @@ export default function ProfilePage() {
               {[
                 { n: orders.length, label: 'Orders', icon: 'package_2', href: '/orders' },
                 { n: wishlist.length, label: 'Wishlist', icon: 'favorite', href: '/wishlist' },
-                { n: 0, label: 'Reviews', icon: 'star', href: '/profile' },
+                
               ].map(({ n, label, icon, href }) => (
                 <Link key={label} to={href} className="card p-space-lg text-center hover:shadow-card-hover">
                   <span className="material-symbols-outlined text-[28px] text-secondary block mb-space-xs">{icon}</span>
