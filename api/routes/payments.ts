@@ -32,10 +32,16 @@ router.post('/validate-coupon', authenticate, async (req: Request, res: Response
   if (!coupon) throw new AppError('Invalid, expired, or unavailable coupon code', 404);
   if (subtotal < Number(coupon.min_order_amount)) throw new AppError(`Minimum cart value for this coupon is ₹${coupon.min_order_amount}`, 400);
   const value = Number(coupon.discount_value);
-  if (!Number.isFinite(value) || value < 0 || !['percentage', 'fixed'].includes(coupon.discount_type)) {
+  const minimumOrderAmount = Number(coupon.min_order_amount);
+  if (
+    !Number.isFinite(value) || value <= 0 ||
+    !Number.isFinite(minimumOrderAmount) || minimumOrderAmount < 0 ||
+    !['percentage', 'fixed'].includes(coupon.discount_type) ||
+    (coupon.discount_type === 'percentage' && value > 100)
+  ) {
     throw new AppError('This coupon is not configured correctly. Please contact support.', 503);
   }
-  const discount = Math.min(subtotal, Math.max(0, coupon.discount_type === 'percentage' ? subtotal * value / 100 : value));
+  const discount = Math.min(subtotal, coupon.discount_type === 'percentage' ? subtotal * value / 100 : value);
   return res.json({ success: true, data: { code: coupon.code, discount_amount: discount, cart_subtotal: subtotal } });
 });
 
