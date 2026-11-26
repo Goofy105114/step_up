@@ -358,8 +358,14 @@ router.patch('/products/:id/variants/:variantId', authorize('admin'), async (req
   if (price_adj !== undefined && !Number.isFinite(Number(price_adj))) throw new AppError('Price adjustment must be a valid number', 400);
   if (size !== undefined && (!String(size).trim() || String(size).trim().length > 40)) throw new AppError('Size is invalid', 400);
   if (color !== undefined && (!String(color).trim() || String(color).trim().length > 80)) throw new AppError('Color is invalid', 400);
-  if (color_hex !== undefined && color_hex !== null && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
-  if (sku !== undefined && sku !== null && sku.length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  if (color_hex !== undefined && color_hex !== null && typeof color_hex !== 'string') throw new AppError('Color must be text', 400);
+  if (sku !== undefined && sku !== null && typeof sku !== 'string') throw new AppError('SKU must be text', 400);
+  const normalizedColorHex = color_hex === undefined ? undefined : (color_hex === null || color_hex.trim() === '' ? null : color_hex.trim());
+  const normalizedSku = sku === undefined ? undefined : (sku === null || sku.trim() === '' ? null : sku.trim());
+  if (normalizedColorHex !== undefined && normalizedColorHex !== null && !/^#[0-9a-fA-F]{6}$/.test(normalizedColorHex)) throw new AppError('Color must use a six-digit hex value', 400);
+  if (normalizedSku !== undefined && normalizedSku !== null && normalizedSku.length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  if (normalizedSku !== undefined) fields.sku = normalizedSku;
+  if (normalizedColorHex !== undefined) fields.color_hex = normalizedColorHex;
   const existing = await query(`SELECT pv.price_adj,COALESCE(p.sale_price,p.base_price) AS price
     FROM product_variants pv JOIN products p ON p.id=pv.product_id
     WHERE pv.id=$1 AND pv.product_id=$2`, [req.params.variantId, req.params.id]);
