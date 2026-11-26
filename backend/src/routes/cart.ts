@@ -201,11 +201,17 @@ router.post('/apply-coupon', authenticate, async (req: Request, res: Response) =
   }
 
   const value = Number(coupon.discount_value);
-  if (!Number.isFinite(value) || value < 0 || !['percentage', 'fixed'].includes(coupon.discount_type)) {
+  const minimumOrderAmount = Number(coupon.min_order_amount);
+  if (
+    !Number.isFinite(value) || value <= 0 ||
+    !Number.isFinite(minimumOrderAmount) || minimumOrderAmount < 0 ||
+    !['percentage', 'fixed'].includes(coupon.discount_type) ||
+    (coupon.discount_type === 'percentage' && value > 100)
+  ) {
     throw new AppError('This coupon is not configured correctly. Please contact support.', 503);
   }
   const rawDiscount = coupon.discount_type === 'percentage' ? subtotal * value / 100 : value;
-  const discount = Math.min(subtotal, Math.max(0, rawDiscount));
+  const discount = Math.min(subtotal, rawDiscount);
   return res.json({ success: true, data: {
     code: coupon.code,
     discount_type: coupon.discount_type,
