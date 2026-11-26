@@ -44,7 +44,12 @@ export default function ProductPage() {
   }, [product]);
 
   const colors = product ? [...new Set<string>(product.variants?.map((v: any) => v.color))] : [];
-  const sizesForColor = product ? product.variants?.filter((v: any) => v.color === selectedColor) : [];
+  const sizesForColor = product ? product.variants?.filter((v: any) => v.color === selectedColor).sort((a: any, b: any) => {
+    const aSize = Number(a.size);
+    const bSize = Number(b.size);
+    if (Number.isFinite(aSize) && Number.isFinite(bSize)) return aSize - bSize;
+    return String(a.size).localeCompare(String(b.size));
+  }) : [];
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
@@ -256,7 +261,7 @@ export default function ProductPage() {
             {sizesForColor?.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-space-sm">
-                  <label className="label mb-0">Select US Size</label>
+                  <label className="label mb-0">Select UK Size</label>
                   <button onClick={() => setSizeGuideOpen(true)} className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">↑ Size Guide</button>
                 </div>
                 <div className="flex flex-wrap gap-space-sm">
