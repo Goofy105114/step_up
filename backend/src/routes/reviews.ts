@@ -37,6 +37,21 @@ router.post('/', authenticate, [
 });
 
 // GET /api/reviews/:productId
+// GET /api/reviews/featured — only approved customer reviews are shown publicly.
+router.get('/featured', async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT r.id,r.rating,r.title,r.body,r.created_at,
+       p.name AS product_name,p.slug AS product_slug,
+       u.first_name || ' ' || LEFT(u.last_name,1) || '.' AS user_name
+     FROM reviews r
+     JOIN products p ON p.id=r.product_id
+     JOIN users u ON u.id=r.user_id
+     WHERE r.is_approved=true AND NULLIF(BTRIM(r.body),'') IS NOT NULL
+     ORDER BY r.created_at DESC
+     LIMIT 3`);
+  return res.json({ success: true, data: result.rows });
+});
+
 router.get('/:productId', async (req: Request, res: Response) => {
   const { page = '1', limit = '10' } = req.query as Record<string, string>;
   const offset = (parseInt(page) - 1) * parseInt(limit);
