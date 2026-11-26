@@ -115,3 +115,24 @@
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: #f5f3f0; }
 ::-webkit-scrollbar-thumb { background: #bec9c5; border-radius: 999px; }
+
+
+/* Printable order invoice: keep the regular order page out of the printout. */
+.invoice-print { display: none; }
+@media print {
+  @page { size: A4; margin: 16mm; }
+  body * { visibility: hidden !important; }
+  .invoice-print, .invoice-print * { visibility: visible !important; }
+  .invoice-print {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    color: #111827 !important;
+    background: #fff !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 12px !important;
+  }
+  .invoice-print table { page-break-inside: auto; }
+  .invoice-print tr { page-break-inside: avoid; }
+}
