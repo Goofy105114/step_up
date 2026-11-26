@@ -79,7 +79,13 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   if (normalizedTracking !== null && normalizedTracking.length > 100) {
     throw new AppError('Tracking number cannot exceed 100 characters', 400);
   }
-  const normalizedNote = typeof note === 'string' ? note.trim().slice(0, 1000) : null;
+  if (note !== undefined && note !== null && typeof note !== 'string') {
+    throw new AppError('Order status note must be text', 400);
+  }
+  if (typeof note === 'string' && note.length > 1000) {
+    throw new AppError('Order status note cannot exceed 1000 characters', 400);
+  }
+  const normalizedNote = typeof note === 'string' ? note.trim() || null : null;
 
   const allowedNextStatuses: Record<string, string[]> = {
     pending: ['confirmed', 'cancelled'],
