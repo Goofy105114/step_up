@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
+import { query } from './db/pool';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -66,8 +67,13 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Health checks: keep both paths during the deployment transition.
-const healthCheck = (_req: express.Request, res: express.Response) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+const healthCheck = async (_req: express.Request, res: express.Response) => {
+  try {
+    await query('SELECT 1');
+    return res.json({ status: 'OK', database: 'connected', timestamp: new Date().toISOString() });
+  } catch {
+    return res.status(503).json({ status: 'degraded', database: 'unavailable', timestamp: new Date().toISOString() });
+  }
 };
 app.get('/health', healthCheck);
 app.get('/api/health', healthCheck);
