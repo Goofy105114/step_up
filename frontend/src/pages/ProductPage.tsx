@@ -15,6 +15,7 @@ export default function ProductPage() {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [addingCart, setAddingCart] = useState(false);
+  const [wishlistUpdating, setWishlistUpdating] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
   const queryClient = useQueryClient();
   const { data: wishlistData } = useQuery({
@@ -106,12 +107,18 @@ export default function ProductPage() {
 
   const toggleWishlist = async () => {
     if (!user) { toast.error('Please sign in'); return; }
+    if (wishlistUpdating) return;
+    setWishlistUpdating(true);
     try {
       if (wishlisted) await api.delete(`/wishlist/${product.id}`);
       else await api.post('/wishlist', { product_id: product.id });
       await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
       toast.success(wishlisted ? 'Removed from wishlist' : 'Saved to wishlist ❤️');
-    } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to update wishlist'); }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Unable to update wishlist');
+    } finally {
+      setWishlistUpdating(false);
+    }
   };
 
   if (isLoading) return (
@@ -337,9 +344,10 @@ export default function ProductPage() {
             </div>
 
             {/* Wishlist */}
-            <button onClick={toggleWishlist} className="flex items-center justify-center gap-space-xs text-on-surface-variant hover:text-primary transition-colors text-body-sm font-semibold">
+            <button type="button" onClick={toggleWishlist} disabled={wishlistUpdating} aria-pressed={wishlisted}
+              className="flex items-center justify-center gap-space-xs text-on-surface-variant hover:text-primary transition-colors text-body-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: wishlisted ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
-              {wishlisted ? 'Saved to Wishlist' : 'Save to Wishlist'}
+              {wishlistUpdating ? 'Updating wishlist…' : wishlisted ? 'Saved to Wishlist' : 'Save to Wishlist'}
             </button>
 
             {/* Engineered Specs */}
