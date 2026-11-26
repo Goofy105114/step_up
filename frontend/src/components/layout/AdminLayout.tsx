@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, RotateCcw, Users, ArrowLeft,
   FileText, FlaskConical, Activity, Menu, X,
-  Search, Store, LogOut, PanelLeftClose, PanelLeftOpen
+  Search, Store, LogOut, PanelLeftClose, PanelLeftOpen, SlidersHorizontal
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -11,6 +11,7 @@ const nav = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true, group: 'Workspace' },
   { to: '/admin/products', label: 'Products', icon: Package, group: 'Store management' },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart, group: 'Store management' },
+  { to: '/admin/store-settings', label: 'Store settings', icon: SlidersHorizontal, group: 'Store management' },
   { to: '/admin/returns', label: 'Returns', icon: RotateCcw, group: 'Store management' },
   { to: '/admin/users', label: 'Customers', icon: Users, group: 'Store management' },
   { to: '/admin/clinical-studies', label: 'Research library', icon: FileText, group: 'Fit & research' },

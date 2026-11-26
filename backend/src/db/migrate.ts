@@ -5,6 +5,7 @@ import pool from './pool';
 const migrations = [
   { id: '2026-01-stepup-fit-research', file: 'stepup-fit-research-migration.sql' },
   { id: '2026-02-razorpay-checkout', file: 'razorpay-checkout-migration.sql' },
+  { id: '2026-11-store-settings', file: 'store-settings-migration.sql' },
 ];
 
 async function main() {

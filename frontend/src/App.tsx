@@ -24,6 +24,7 @@ import AdminReturns from './pages/admin/AdminReturns';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminClinicalStudies from './pages/admin/AdminClinicalStudies';
 import AdminLabSettings from './pages/admin/AdminLabSettings';
+import AdminStoreSettings from './pages/admin/AdminStoreSettings';
 import AdminPatientProfiles from './pages/admin/AdminPatientProfiles';
 import AdminFitOperations from './pages/admin/AdminFitOperations';
 import FindYourFitPage from './pages/FindYourFitPage';
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/clinical-studies" element={<AdminClinicalStudies />} />
           <Route path="/admin/lab-settings" element={<AdminLabSettings />} />
+          <Route path="/admin/store-settings" element={<AdminStoreSettings />} />
           <Route path="/admin/patient-profiles" element={<AdminPatientProfiles />} />
           <Route path="/admin/fit-operations" element={<AdminFitOperations />} />
         </Route>
