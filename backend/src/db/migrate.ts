@@ -56,6 +56,5 @@ async function main() {
 
 main().catch(async error => {
   console.error('[migrate] failed:', error instanceof Error ? error.message : error);
-  await pool.end();
   process.exitCode = 1;
 });
