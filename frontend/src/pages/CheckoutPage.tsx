@@ -252,7 +252,7 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label className="label" htmlFor="checkout-postal-code">Pincode *</label>
-                      <input id="checkout-postal-code" type="text" required autoComplete="postal-code" placeholder="6-digit PIN code" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => { setA('postal_code', e.target.value.replace(/\\D/g, '').slice(0, 6)); setPincodeMessage(''); }} onBlur={lookupPincode} className="input-field" />
+                      <input id="checkout-postal-code" type="text" required autoComplete="postal-code" placeholder="6-digit PIN code" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => { setA('postal_code', e.target.value.replace(/\D/g, '').slice(0, 6)); setPincodeMessage(''); }} onBlur={lookupPincode} className="input-field" />
                       {pincodeLoading && <p className="text-body-sm text-on-surface-variant mt-1">Looking up PIN code…</p>}
                       {!!pincodeMessage && <p className="text-body-sm text-on-surface-variant mt-1" role="status">{pincodeMessage}</p>}
                     </div>
