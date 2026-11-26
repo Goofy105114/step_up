@@ -29,6 +29,5 @@ async function main() {
 
 main().catch(async error => {
   console.error('[seed] failed:', error instanceof Error ? error.message : error);
-  await pool.end();
   process.exitCode = 1;
 });
