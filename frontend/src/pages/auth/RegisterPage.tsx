@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import api from '../../lib/api';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '' });
   const [showPw, setShowPw] = useState(false);
+  const [otpChannel,setOtpChannel]=useState<'email'|'mobile'>('email');
+  const [otpCode,setOtpCode]=useState('');
+  const [otpRequestId,setOtpRequestId]=useState('');
+  const [verificationTicket,setVerificationTicket]=useState('');
+  const [otpBusy,setOtpBusy]=useState(false);
   const { register, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -15,13 +21,16 @@ export default function RegisterPage() {
     if (form.password.length < 10 || form.password.length > 72 || !/[a-z]/.test(form.password) || !/[A-Z]/.test(form.password) || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password) || /\s/.test(form.password)) { toast.error('Use 10–72 characters with uppercase, lowercase, a number and a symbol.'); return; }
     if (form.phone && !/^[6-9]\d{9}$/.test(form.phone)) { toast.error('Enter exactly 10 digits for an Indian mobile number.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email) || form.email.includes('..')) { toast.error('Enter a valid email address.'); return; }
+    if (!verificationTicket) { toast.error('Verify your email or mobile number before creating your account.'); return; }
     try {
-      await register(form);
+      await register({ ...form, verification_ticket: verificationTicket });
       toast.success('Welcome to StepUp! 🎉');
       navigate('/');
     } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to create your account. Please try again.'); }
   };
 
+  const sendRegistrationOtp=async()=>{const identifier=otpChannel==='email'?form.email:form.phone;if(!identifier){toast.error(otpChannel==='email'?'Enter your email first':'Enter your mobile number first');return;}setOtpBusy(true);try{const result=await api.post('/auth/otp/send',{identifier,purpose:'register'});setOtpRequestId(result.data.request_id);setVerificationTicket('');toast.success('Verification code sent.');}catch(error:any){toast.error(error.response?.data?.message||'Unable to send OTP');}finally{setOtpBusy(false);}};
+  const verifyRegistrationOtp=async()=>{if(!otpRequestId||! /^\d{4,8}$/.test(otpCode)){toast.error('Enter the verification code');return;}setOtpBusy(true);try{const result=await api.post('/auth/otp/verify',{request_id:otpRequestId,otp:otpCode});setVerificationTicket(result.data.verification_ticket);toast.success('Contact verified successfully');}catch(error:any){toast.error(error.response?.data?.message||'OTP verification failed');}finally{setOtpBusy(false);}};
   return (
     <div className="bg-background min-h-screen flex flex-col justify-between">
       <header className="w-full py-space-lg px-margin-mobile md:px-margin flex items-center justify-between">
@@ -106,6 +115,12 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              <section className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-4 space-y-3">
+                <div><p className="text-sm font-semibold text-primary">Verify your contact</p><p className="text-xs text-on-surface-variant mt-1">Choose where STEPUP should send your one-time code.</p></div>
+                <div className="flex flex-wrap gap-2"><button type="button" onClick={()=>{setOtpChannel('email');setOtpRequestId('');setVerificationTicket('');}} className={otpChannel==='email'?'rounded-full px-4 py-2 text-xs font-semibold bg-primary text-white':'rounded-full px-4 py-2 text-xs font-semibold bg-white text-primary border'}>Email OTP</button><button type="button" onClick={()=>{setOtpChannel('mobile');setOtpRequestId('');setVerificationTicket('');}} className={otpChannel==='mobile'?'rounded-full px-4 py-2 text-xs font-semibold bg-primary text-white':'rounded-full px-4 py-2 text-xs font-semibold bg-white text-primary border'}>Mobile OTP</button></div>
+                <div className="flex flex-wrap gap-2"><button type="button" onClick={sendRegistrationOtp} disabled={otpBusy||!!verificationTicket} className="rounded-full bg-secondary px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{otpBusy?'Please wait…':otpRequestId?'Resend code':'Send code'}</button>{verificationTicket&&<span className="self-center text-xs font-semibold text-green-700">Contact verified ✓</span>}</div>
+                {otpRequestId&&!verificationTicket&&<div className="flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" maxLength={8} value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,8))} placeholder="Enter OTP" className="input-field flex-1"/><button type="button" onClick={verifyRegistrationOtp} disabled={otpBusy} className="rounded-full border border-primary px-5 py-2 text-xs font-bold text-primary disabled:opacity-50">Verify OTP</button></div>}
+              </section>
               <div className="flex items-start gap-3 pt-1">
                 <input type="checkbox" required className="w-4 h-4 mt-1 rounded accent-primary" />
                 <span className="text-body-sm text-on-surface-variant">
