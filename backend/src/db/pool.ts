@@ -11,8 +11,9 @@ dotenv.config();
 
 const connectionString = process.env.DATABASE_URL;
 
-const isSupabase = connectionString?.includes('supabase.co');
-const isLocal    = !connectionString;
+// Supabase direct connections use db.<project>.supabase.co; transaction/session
+// poolers use *.pooler.supabase.com. Both require TLS from hosted services.
+const isSupabase = Boolean(connectionString && /supabase\.(co|com)/i.test(connectionString));
 
 const pool = new Pool(
   connectionString
