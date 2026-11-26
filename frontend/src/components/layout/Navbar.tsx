@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 
 const navigation = [
-  { label: 'Relief Sandals & Slides', to: '/shop', search: 'sandals' },
+  { label: 'Relief Sandals & Slides', to: '/shop?search=sandals' },
   { label: 'Shop by Condition', to: '/shop-by-condition' },
   { label: 'Arch Support Technology', to: '/find-your-fit' },
   { label: 'Find Your Fit', to: '/find-your-fit' },
