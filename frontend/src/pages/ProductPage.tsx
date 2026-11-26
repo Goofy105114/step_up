@@ -25,7 +25,7 @@ export default function ProductPage() {
   const [openSpec, setOpenSpec] = useState<number | null>(null);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['product', slug],
     queryFn: () => api.get(`/products/${slug}`).then(r => r.data.data),
   });
@@ -80,6 +80,18 @@ export default function ProductPage() {
       <div className="text-center">
         <span className="material-symbols-outlined text-[48px] text-outline-variant animate-pulse block mb-4">shoe</span>
         <p className="text-body-md text-on-surface-variant">Loading product...</p>
+      </div>
+    </div>
+  );
+
+  if (isError) return (
+    <div className="bg-surface min-h-screen flex items-center justify-center px-6">
+      <div role="alert" className="max-w-md text-center">
+        <span className="material-symbols-outlined text-[48px] text-error mb-4 block" aria-hidden="true">cloud_off</span>
+        <h2 className="text-headline-md font-semibold text-primary mb-3">Product details are temporarily unavailable</h2>
+        <p className="text-body-md text-on-surface-variant mb-6">We couldn't retrieve this product from the STEPUP catalogue. Please try again.</p>
+        <button type="button" onClick={() => refetch()} className="btn-primary">Retry</button>
+        <Link to="/shop" className="ml-4 text-body-md font-semibold text-primary hover:underline">Back to Shop</Link>
       </div>
     </div>
   );
@@ -170,8 +182,8 @@ export default function ProductPage() {
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-space-sm">
                 {images.map((img: string, i: number) => (
-                  <button key={i} onClick={() => setActiveImg(i)}
-                    className={`relative rounded-DEFAULT overflow-hidden bg-surface-container-lowest p-1 shadow-sm transition-all focus:outline-none ${i === activeImg ? 'ring-2 ring-primary' : 'hover:shadow-card'}`}>
+                  <button key={i} type="button" onClick={() => setActiveImg(i)} aria-label={`Show product image ${i + 1}`} aria-pressed={i === activeImg}
+                    className={`relative rounded-DEFAULT overflow-hidden bg-surface-container-lowest p-1 shadow-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${i === activeImg ? 'ring-2 ring-primary' : 'hover:shadow-card'}`}>
                     <img src={img} alt={`View ${i+1}`} className="w-full aspect-[4/3] object-cover rounded-sm" />
                   </button>
                 ))}
@@ -210,7 +222,7 @@ export default function ProductPage() {
                 <span className="text-display-hero-mobile font-bold text-primary">
                   {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(salePrice ?? basePrice)}
                 </span>
-                {salePrice && <span className="text-title-md text-on-surface-variant line-through">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(basePrice)}</span>}
+                {salePrice !== null && <span className="text-title-md text-on-surface-variant line-through">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(basePrice)}</span>}
                 {discount > 0 && <span className="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container px-space-sm py-0.5 rounded-full text-label-badge font-bold">-{discount}% OFF</span>}
               </div>
             </div>
@@ -275,7 +287,7 @@ export default function ProductPage() {
                 <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 {addingCart ? 'Adding...' : 'Add to Bag'}
               </button>
-              <button onClick={() => addToCart(true)} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
+              <button onClick={() => addToCart(true)} disabled={addingCart || !selectedVariant || Number(selectedVariant.stock_qty) < 1}
                 className="flex-1 h-14 bg-primary-container text-on-primary rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs shadow-primary hover:bg-primary transition-all disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">bolt</span>
                 {addingCart ? '...' : `Buy Now · ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(salePrice ?? basePrice)}`}
