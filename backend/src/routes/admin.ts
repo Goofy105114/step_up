@@ -253,6 +253,19 @@ router.patch('/products/:id', authorize('admin'), async (req: Request, res: Resp
   if (req.body.tags !== undefined && (!Array.isArray(req.body.tags) || req.body.tags.some((tag: unknown) => typeof tag !== 'string'))) {
     throw new AppError('Product tags must be an array of text values', 400);
   }
+  const numericFields = ['base_price','sale_price','arch_height_mm','durometer_shore_a'];
+  for (const field of numericFields) {
+    const value = req.body[field];
+    if (value !== undefined && value !== null && !(typeof value === 'number' || (typeof value === 'string' && value.trim().length > 0))) {
+      throw new AppError(`Product ${field.replace(/_/g, ' ')} must be a number`, 400);
+    }
+  }
+  if (req.body.category_id !== undefined && req.body.category_id !== null && typeof req.body.category_id !== 'string') {
+    throw new AppError('Product category must be a valid identifier', 400);
+  }
+  if (req.body.calibrated_at !== undefined && req.body.calibrated_at !== null && typeof req.body.calibrated_at !== 'string') {
+    throw new AppError('Calibration date must be text', 400);
+  }
   const available = await getProductColumnNames();
   const updates: string[] = [];
   const params: unknown[] = [];
