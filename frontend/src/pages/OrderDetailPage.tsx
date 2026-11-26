@@ -15,7 +15,7 @@ export default function OrderDetailPage() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [returnReason, setReturnReason] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['order', id],
     queryFn: () => api.get(`/orders/${id}`).then((r) => r.data.data),
   });
@@ -23,6 +23,7 @@ export default function OrderDetailPage() {
   const cancelMutation = useMutation({
     mutationFn: () => api.post(`/orders/${id}/cancel`),
     onSuccess: () => { toast.success('Order cancelled'); qc.invalidateQueries({ queryKey: ['order', id] }); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to cancel this order'),
   });
 
   const returnMutation = useMutation({
@@ -33,9 +34,17 @@ export default function OrderDetailPage() {
       setShowReturnModal(false);
       setReturnReason('');
     },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to submit the return request'),
   });
 
   if (isLoading) return <div className="container-site py-12 skeleton h-96" />;
+  if (isError) return (
+    <div role="alert" className="container-site py-24 text-center">
+      <p className="mb-3 text-gray-700">We couldn’t load this order right now.</p>
+      <button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-primary mb-4 px-5 py-2.5">{isFetching ? 'Retrying…' : 'Try again'}</button>
+      <div><Link to="/orders" className="text-sm font-semibold text-primary underline">Back to my orders</Link></div>
+    </div>
+  );
   if (!data) return (
     <div className="container-site py-24 text-center">
       <p className="text-gray-500 mb-4">Order not found</p>
@@ -69,13 +78,13 @@ export default function OrderDetailPage() {
               {formatOrderStatus(order.status)}
             </span>
             {['pending', 'confirmed'].includes(order.status) && (
-              <button onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}
+              <button type="button" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}
                 className="text-xs text-red-500 hover:text-red-700 font-semibold uppercase tracking-wider border border-red-200 px-3 py-1.5 hover:bg-red-50 transition-colors">
                 {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Order'}
               </button>
             )}
             {order.status === 'delivered' && !order.return_request && (
-              <button onClick={() => setShowReturnModal(true)}
+              <button type="button" onClick={() => setShowReturnModal(true)}
                 className="text-xs text-gray-600 hover:text-gray-900 font-semibold uppercase tracking-wider border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
                 <RotateCcw size={12} /> Return / Refund
               </button>
@@ -230,7 +239,7 @@ export default function OrderDetailPage() {
                 <h2 className="text-xs font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
                   <RotateCcw size={14} /> Request Return / Refund
                 </h2>
-                <button onClick={() => setShowReturnModal(false)} className="p-1 hover:bg-gray-100">
+                <button type="button" onClick={() => setShowReturnModal(false)} className="p-1 hover:bg-gray-100">
                   <X size={16} />
                 </button>
               </div>
@@ -258,6 +267,7 @@ export default function OrderDetailPage() {
                 <div className="flex gap-3">
                   <button onClick={() => setShowReturnModal(false)} className="btn-outline flex-1 py-3">Cancel</button>
                   <button
+                    type="button"
                     disabled={!returnReason || returnMutation.isPending}
                     onClick={() => returnMutation.mutate(returnReason)}
                     className="btn-primary flex-1 py-3">
