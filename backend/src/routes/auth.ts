@@ -108,7 +108,7 @@ router.post('/reset-password',authAttemptLimiter,[body('token').isLength({min:30
  const hash=hashResetToken(String(req.body.token)),found=await query('SELECT id,user_id FROM password_reset_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW()',[hash]);
  if(!found.rows[0])throw new AppError('Reset link is invalid or expired. Request a new one.',400);
  const passwordHash=await bcrypt.hash(req.body.new_password,12);
- await query('BEGIN');try{await query('UPDATE users SET password_hash=$1,updated_at=NOW() WHERE id=$2',[passwordHash,found.rows[0].user_id]);await query('UPDATE password_reset_tokens SET used_at=NOW() WHERE user_id=$1 AND used_at IS NULL',[found.rows[0].user_id]);await query('COMMIT');}catch(error){await query('ROLLBACK');throw error;}
+ const changed=await query('WITH updated_user AS (UPDATE users SET password_hash=$1,updated_at=NOW() WHERE id=$2 RETURNING id) UPDATE password_reset_tokens SET used_at=NOW() WHERE user_id=(SELECT id FROM updated_user) AND used_at IS NULL RETURNING id',[passwordHash,found.rows[0].user_id]);if(!changed.rowCount)throw new AppError('Reset link is invalid or expired. Request a new one.',400);
  res.json({success:true,message:'Password updated successfully'});
 });
 router.get('/me',authenticate,async(req:Request,res:Response)=>{
