@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import api from '../../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [otpPurpose,setOtpPurpose]=useState('login');
+  const [otpIdentifier,setOtpIdentifier]=useState('');
+  const [otpRequestId,setOtpRequestId]=useState('');
+  const [otpCode,setOtpCode]=useState('');
+  const [otpBusy,setOtpBusy]=useState(false);
   const [tab, setTab] = useState<'patient' | 'order'>('patient');
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
@@ -24,6 +30,8 @@ export default function LoginPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to sign in. Please try again.'); }
   };
 
+  const sendLoginOtp=async()=>{if(!otpIdentifier.trim()){toast.error('Enter your email or mobile number');return;}setOtpBusy(true);try{if(otpRequestId){await api.post('/auth/otp/resend',{request_id:otpRequestId});}else{const r=await api.post('/auth/otp/send',{identifier:otpIdentifier,purpose:otpPurpose});setOtpRequestId(r.data.request_id);}toast.success('OTP sent');}catch(e:any){toast.error(e.response?.data?.message||'Could not send OTP');}finally{setOtpBusy(false);}};
+  const verifyLoginOtp=async()=>{setOtpBusy(true);try{const v=await api.post('/auth/otp/verify',{request_id:otpRequestId,otp:otpCode});const r=await api.post('/auth/otp/login',{verification_ticket:v.data.verification_ticket});localStorage.setItem('token',r.data.token);useAuthStore.setState({token:r.data.token,user:r.data.user});toast.success('Signed in');navigate(r.data.user.role==='admin'||r.data.user.role==='staff'?'/admin':(from==='/login'?'/':from),{replace:true});}catch(e:any){toast.error(e.response?.data?.message||'OTP verification failed');}finally{setOtpBusy(false);}};
   return (
     <div className="bg-background min-h-screen flex flex-col justify-between">
       <header className="w-full py-space-lg px-margin-mobile md:px-margin flex items-center justify-between">
@@ -48,11 +56,11 @@ export default function LoginPage() {
               <div className="flex items-center justify-between mb-8">
                 <div className="inline-flex items-center gap-2 bg-surface-container-low px-3.5 py-1.5 rounded-full">
                   <span className="material-symbols-outlined text-secondary text-[16px]">verified_user</span>
-                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Podiatrist Verified Access • v3.8</span>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">STEPUP ACCOUNT</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-on-surface-variant text-label-md font-semibold">
                   <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  <span>Encrypted Portal</span>
+                  <span>Account sign-in</span>
                 </div>
               </div>
 
@@ -87,7 +95,7 @@ export default function LoginPage() {
                 <div className="space-y-6">
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="label" htmlFor="email">Clinical Account Email</label>
+                      <label className="label" htmlFor="email">Email Address</label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">mail</span>
                         <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
@@ -111,15 +119,7 @@ export default function LoginPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <label className="flex items-center gap-3 cursor-pointer select-none">
-                        <input type="checkbox" className="w-4 h-4 rounded accent-primary" />
-                        <span className="text-body-sm text-on-surface-variant">Keep me authenticated on this device</span>
-                      </label>
-                      <div className="hidden sm:flex items-center gap-1 text-label-badge font-bold uppercase tracking-[0.06em] text-outline">
-                        <span>HSA / FSA eligible</span>
-                      </div>
-                    </div>
+
                     <button type="submit" disabled={isLoading}
                       className="w-full h-[52px] bg-primary text-on-primary rounded-full text-label-md font-semibold tracking-[0.04em] uppercase shadow-md hover:bg-primary-container transition-all flex items-center justify-center gap-2 group mt-2 disabled:opacity-50">
                       {isLoading ? 'Signing in...' : (
@@ -128,6 +128,17 @@ export default function LoginPage() {
                     </button>
                   </form>
 
+
+                  <section className="mt-5 rounded-xl border border-outline-variant/50 bg-surface-container-low p-4 space-y-3">
+                    <p className="text-sm font-semibold text-primary">Sign in with a one-time code</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={()=>{setOtpPurpose('login');setOtpRequestId('');setOtpCode('');}} className="rounded-full border px-3 py-2 text-xs font-semibold">Customer</button>
+                      <button type="button" onClick={()=>{setOtpPurpose('admin');setOtpRequestId('');setOtpCode('');}} className="rounded-full border px-3 py-2 text-xs font-semibold">Admin / staff</button>
+                    </div>
+                    <input value={otpIdentifier} onChange={e=>{setOtpIdentifier(e.target.value);setOtpRequestId('');setOtpCode('');}} className="input-field" placeholder="Email or 10-digit mobile"/>
+                    <button type="button" onClick={sendLoginOtp} disabled={otpBusy} className="btn-primary w-full disabled:opacity-50">{otpBusy?'Please wait':otpRequestId?'Resend OTP':'Send OTP'}</button>
+                    {otpRequestId&&<div className="flex gap-2"><input value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,8))} inputMode="numeric" maxLength={8} className="input-field" placeholder="Enter OTP"/><button type="button" onClick={verifyLoginOtp} disabled={otpBusy} className="btn-primary">Verify</button></div>}
+                  </section>
                   <div className="pt-4 space-y-3">
                     <div className="flex items-center gap-4">
                       <div className="flex-1 h-px bg-surface-container-high" />
@@ -140,7 +151,7 @@ export default function LoginPage() {
                     </p>
                     <div className="mt-4 p-4 bg-secondary-container/30 rounded-DEFAULT">
                       <p className="text-body-sm text-on-secondary-container text-center">
-                        🎁 Use code <strong>WELCOME10</strong> for 10% off your first order!
+                        Your orders, saved items, and account details — all in one place.
                       </p>
                     </div>
                   </div>
