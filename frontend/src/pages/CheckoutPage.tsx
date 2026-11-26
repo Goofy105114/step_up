@@ -90,9 +90,9 @@ export default function CheckoutPage() {
                 resolve();
               } catch (error) { reject(error); }
             },
-            modal: { ondismiss: () => reject(new Error('Payment was not completed. Your cart is still available; check your order status before retrying.')) },
+            modal: { ondismiss: async () => { try { await api.post('/payments/cancel', { order_id: paymentOrder.order_id }); } catch { /* Keep the order available for status review if Razorpay cannot confirm cancellation. */ } reject(new Error('Payment window closed. Your cart is still available; check My Orders before retrying.')); } },
           });
-          checkout.on('payment.failed', (response: any) => reject(new Error(response.error?.description || 'Payment failed. Your cart is still available.')));
+          checkout.on('payment.failed', async (response: any) => { try { await api.post('/payments/cancel', { order_id: paymentOrder.order_id }); } catch { /* Keep the order available for status review if payment state cannot be confirmed. */ } reject(new Error(response.error?.description || 'Payment failed. Your cart is still available.')); });
           checkout.open();
         });
       } else {
