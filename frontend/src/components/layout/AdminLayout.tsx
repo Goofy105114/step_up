@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, RotateCcw, Users, ArrowLeft,
-  FileText, FlaskConical, Activity, Menu, X, ChevronLeft, ChevronRight,
+  FileText, FlaskConical, Activity, Menu, X,
   Search, Store, LogOut, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
