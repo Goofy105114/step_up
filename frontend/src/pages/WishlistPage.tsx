@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../lib/api';
 import { formatPrice } from '../lib/formatters';
 import { Heart, Trash2, ShoppingBag } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 export default function WishlistPage() {
   const qc = useQueryClient();
@@ -66,9 +66,9 @@ export default function WishlistPage() {
                 <div className="p-space-md space-y-space-sm">
                   <Link to={`/product/${item.slug}`} className="block text-title-md font-semibold text-primary hover:underline line-clamp-2">{item.name}</Link>
                   <p className="text-title-md font-semibold text-primary">{formatPrice(Number(item.price))}</p>
-                  <button type="button" onClick={() => toast('Choose an available size on the product page', { icon: '👟' })} className="btn-primary w-full py-3 flex items-center justify-center gap-2">
-                    <ShoppingBag size={16} /> View sizes
-                  </button>
+                  <Link to={`/product/${item.slug}`} className="btn-primary w-full py-3 flex items-center justify-center gap-2">
+                    <ShoppingBag size={16} /> Choose size
+                  </Link>
                 </div>
               </article>
             ))}
