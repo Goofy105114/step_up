@@ -20,13 +20,6 @@ export default function CheckoutPage() {
 
   const setA = (k: string, v: string) => setAddr(a => ({ ...a, [k]: v }));
 
-  const discount = appliedCoupon
-    ? appliedCoupon.discount_type === 'percentage' ? (subtotal * parseFloat(appliedCoupon.discount_value)) / 100 : parseFloat(appliedCoupon.discount_value)
-    : 0;
-  const shipping = (subtotal - discount) >= 599 ? 0 : 99;
-  const tax = (subtotal - discount) * 0.05;
-  const total = subtotal - discount + shipping + tax;
-
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
@@ -38,14 +31,19 @@ export default function CheckoutPage() {
     finally { setCouponLoading(false); }
   };
 
-  const placeOrder = async () => {
+  const validateAddress = () => {
     if (!addr.full_name.trim() || !addr.phone.trim() || !addr.line1.trim() || !addr.city.trim() || !addr.state.trim() || !addr.postal_code.trim()) {
-      toast.error('Complete all required delivery fields'); return;
+      toast.error('Complete all required delivery fields'); return false;
     }
     const phoneDigits = addr.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
-    if (!/^[6-9]\d{9}$/.test(phoneDigits)) { toast.error('Enter a valid 10-digit Indian mobile number'); return; }
-    if (!/^\d{6}$/.test(addr.postal_code.trim())) { toast.error('Enter a valid 6-digit Indian PIN code'); return; }
-    if (addr.country !== 'India') { toast.error('STEPUP currently delivers within India only'); return; }
+    if (!/^[6-9]\d{9}$/.test(phoneDigits)) { toast.error('Enter a valid 10-digit Indian mobile number'); return false; }
+    if (!/^\d{6}$/.test(addr.postal_code.trim())) { toast.error('Enter a valid 6-digit Indian PIN code'); return false; }
+    if (addr.country !== 'India') { toast.error('STEPUP currently delivers within India only'); return false; }
+    return true;
+  };
+
+  const placeOrder = async () => {
+    if (!validateAddress()) return;
     if (payment !== 'cod') { toast.error('Online payments are not enabled yet. Please choose Cash on Delivery.'); return; }
     setPlacing(true);
     try {
@@ -146,49 +144,49 @@ export default function CheckoutPage() {
                 <div className="space-y-space-md">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
                     {[
-                      { key: 'full_name', label: 'Full Name *', placeholder: 'Elena Rostova', icon: 'person' },
-                      { key: 'email', label: 'Email', placeholder: 'elena@example.com', icon: 'mail', type: 'email' },
-                    ].map(({ key, label, placeholder, icon, type }) => (
+                      { key: 'full_name', label: 'Full Name *', placeholder: 'Name for delivery', icon: 'person', autoComplete: 'name', required: true },
+                      { key: 'email', label: 'Email', placeholder: 'name@example.com', icon: 'mail', type: 'email', autoComplete: 'email' },
+                    ].map(({ key, label, placeholder, icon, type, autoComplete, required }) => (
                       <div key={key}>
-                        <label className="label">{label}</label>
+                        <label className="label" htmlFor={`checkout-${key}`}>{label}</label>
                         <div className="relative">
                           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">{icon}</span>
-                          <input type={type || 'text'} placeholder={placeholder} value={(addr as any)[key]} onChange={e => setA(key, e.target.value)}
+                          <input id={`checkout-${key}`} type={type || 'text'} placeholder={placeholder} autoComplete={autoComplete} required={required} value={(addr as any)[key]} onChange={e => setA(key, e.target.value)}
                             className="input-field pl-12" />
                         </div>
                       </div>
                     ))}
                   </div>
                   <div>
-                    <label className="label">Mobile Number *</label>
+                    <label className="label" htmlFor="checkout-phone">Mobile Number *</label>
                     <div className="relative">
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">sms</span>
-                      <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="98765 43210" value={addr.phone} onChange={e => setA('phone', e.target.value)} className="input-field pl-12" />
+                      <input id="checkout-phone" type="tel" required inputMode="numeric" autoComplete="tel-national" placeholder="98765 43210" value={addr.phone} onChange={e => setA('phone', e.target.value)} className="input-field pl-12" />
                     </div>
                     <p className="text-body-sm text-outline mt-1">Your order confirmation will be available after checkout.</p>
                   </div>
                   <div>
-                    <label className="label">Street Address *</label>
+                    <label className="label" htmlFor="checkout-line1">Street Address *</label>
                     <div className="relative">
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">my_location</span>
-                      <input type="text" placeholder="House number and street name" value={addr.line1} onChange={e => setA('line1', e.target.value)} className="input-field pl-12" />
+                      <input id="checkout-line1" type="text" required autoComplete="address-line1" placeholder="House number and street name" value={addr.line1} onChange={e => setA('line1', e.target.value)} className="input-field pl-12" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-space-md">
                     <div className="col-span-2 sm:col-span-1">
-                      <label className="label">City *</label>
-                      <input type="text" placeholder="Mumbai" value={addr.city} onChange={e => setA('city', e.target.value)} className="input-field" />
+                      <label className="label" htmlFor="checkout-city">City *</label>
+                      <input id="checkout-city" type="text" required autoComplete="address-level2" placeholder="City" value={addr.city} onChange={e => setA('city', e.target.value)} className="input-field" />
                     </div>
                     <div>
-                      <label className="label">State *</label>
-                      <input type="text" placeholder="State or union territory" value={addr.state} onChange={e => setA('state', e.target.value)} className="input-field" />
+                      <label className="label" htmlFor="checkout-state">State *</label>
+                      <input id="checkout-state" type="text" required autoComplete="address-level1" placeholder="State or union territory" value={addr.state} onChange={e => setA('state', e.target.value)} className="input-field" />
                     </div>
                     <div>
-                      <label className="label">Pincode *</label>
-                      <input type="text" placeholder="400001" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => setA('postal_code', e.target.value)} className="input-field" />
+                      <label className="label" htmlFor="checkout-postal-code">Pincode *</label>
+                      <input id="checkout-postal-code" type="text" required autoComplete="postal-code" placeholder="6-digit PIN code" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => setA('postal_code', e.target.value)} className="input-field" />
                     </div>
                   </div>
-                  <button onClick={() => setStep(2)} className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 group mt-2">
+                  <button onClick={() => { if (validateAddress()) setStep(2); }} className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 group mt-2">
                     Continue to Payment
                     <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                   </button>
@@ -228,7 +226,7 @@ export default function CheckoutPage() {
                 <button onClick={placeOrder} disabled={placing}
                   className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                   <span className="material-symbols-outlined text-[18px]">lock</span>
-                  {placing ? 'Placing Order...' : `Place Order — ${fmt(total)}`}
+                  {placing ? 'Placing Order...' : 'Place Order — Cash on Delivery'}
                   {!placing && <span className="material-symbols-outlined text-[18px]">arrow_forward</span>}
                 </button>
                 <p className="text-body-sm text-on-surface-variant text-center">Prices and order totals are displayed in INR (₹).</p>
@@ -255,16 +253,10 @@ export default function CheckoutPage() {
                 ))}
               </div>
               <div className="border-t border-outline-variant/20 pt-space-md space-y-space-sm">
-                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                {discount > 0 && <div className="flex justify-between text-body-md text-secondary font-semibold"><span>Discount</span><span>-{fmt(discount)}</span></div>}
-                <div className="flex justify-between text-body-md text-on-surface-variant">
-                  <span>Shipping</span>
-                  <span className={shipping === 0 ? 'text-secondary font-semibold' : ''}>{shipping === 0 ? 'FREE' : fmt(shipping)}</span>
-                </div>
-                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Estimated tax (5%)</span><span>{fmt(tax)}</span></div>
-                <div className="flex justify-between text-title-md font-semibold text-on-surface border-t border-outline-variant/20 pt-space-sm">
-                  <span>Total</span>
-                  <span className="text-headline-sm text-primary">{fmt(total)}</span>
+                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Cart subtotal</span><span>{fmt(subtotal)}</span></div>
+                {appliedCoupon && <p className="text-body-sm text-secondary font-semibold">Coupon {appliedCoupon.code} applied. Final discount is confirmed when the order is created.</p>}
+                <div className="border-t border-outline-variant/20 pt-space-sm">
+                  <p className="text-body-sm text-on-surface-variant">Shipping charges, applicable taxes and the final payable amount are calculated and confirmed by STEPUP when you place the order.</p>
                 </div>
               </div>
             </div>
