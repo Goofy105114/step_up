@@ -88,7 +88,15 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
     try {
       await cleanup.query('BEGIN');
       const items=await cleanup.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[order.id]);
-      for(const item of items.rows) await cleanup.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',[item.quantity,item.variant_id]);
+      for (const item of items.rows) {
+        const restored = await cleanup.query(
+          'UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2 RETURNING id',
+          [item.quantity, item.variant_id]
+        );
+        if (restored.rowCount !== 1) {
+          throw new AppError('Payment setup failed and reserved stock could not be fully released. Contact support to reconcile inventory.', 409);
+        }
+      }
       await cleanup.query("UPDATE orders SET status='cancelled',payment_status='failed' WHERE id=$1 AND payment_status='pending'",[order.id]);
       if(order.coupon_id) await cleanup.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',[order.coupon_id]);
       await cleanup.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Payment session creation failed; reserved stock released']);
@@ -124,7 +132,15 @@ router.post('/cancel', authenticate, async (req: Request, res: Response) => {
     }
     if(current.payment_status==='pending'){
       const items=await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[current.id]);
-      for(const item of items.rows) await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',[item.quantity,item.variant_id]);
+      for (const item of items.rows) {
+        const restored = await client.query(
+          'UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2 RETURNING id',
+          [item.quantity, item.variant_id]
+        );
+        if (restored.rowCount !== 1) {
+          throw new AppError('Cannot cancel this payment because an ordered product variant is missing. Contact support to reconcile inventory.', 409);
+        }
+      }
       await client.query("UPDATE orders SET status='cancelled',payment_status='failed',updated_at=NOW() WHERE id=$1 AND payment_status='pending'",[current.id]);
       if(current.coupon_id) await client.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',[current.coupon_id]);
       await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[current.id,'cancelled','Customer closed the payment window; reserved stock released']);
