@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { formatPrice, formatDate, formatOrderStatus, getStatusColor } from '../lib/formatters';
-import { Package, MapPin, CheckCircle, Circle, RotateCcw, X } from 'lucide-react';
+import { Package, MapPin, CheckCircle, Circle, RotateCcw, X, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -74,6 +74,7 @@ export default function OrderDetailPage() {
             <p className="text-sm text-gray-500 mt-1">Placed on {formatDate(order.created_at)}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <button type="button" onClick={() => window.print()} className="text-xs text-gray-700 hover:text-gray-900 font-semibold uppercase tracking-wider border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"><Printer size={13} /> Print / Save invoice</button>
             <span className={`text-xs px-3 py-1.5 font-bold uppercase tracking-widest ${getStatusColor(order.status)}`}>
               {formatOrderStatus(order.status)}
             </span>
@@ -259,6 +260,60 @@ export default function OrderDetailPage() {
           </div>
         )}
       </div>
+
+      <section className="invoice-print" aria-label="STEPUP order invoice">
+        <header className="flex items-start justify-between border-b-2 border-gray-900 pb-5 mb-6">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-[0.18em] text-gray-900">STEPUP</h1>
+            <p className="mt-1 text-sm text-gray-600">Order invoice</p>
+          </div>
+          <div className="text-right text-sm text-gray-700">
+            <p className="font-bold">Invoice / Order No.</p>
+            <p>{order.order_number}</p>
+            <p className="mt-1">{formatDate(order.created_at)}</p>
+          </div>
+        </header>
+        <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+          <div>
+            <h2 className="font-bold uppercase tracking-wider text-xs mb-2">Billed / Delivered to</h2>
+            <p className="font-semibold">{address.full_name}</p>
+            {address.phone && <p>{address.phone}</p>}
+            <p>{address.line1}{address.line2 ? `, ${address.line2}` : ''}</p>
+            <p>{address.city}, {address.state} {address.postal_code}</p>
+            <p>{address.country}</p>
+          </div>
+          <div>
+            <h2 className="font-bold uppercase tracking-wider text-xs mb-2">Payment</h2>
+            <p>Method: {String(order.payment_method || '').replace(/_/g, ' ')}</p>
+            <p>Status: {order.payment_status === 'paid' ? 'Paid' : order.payment_method === 'cod' ? 'Cash on delivery' : String(order.payment_status || 'Pending')}</p>
+            <p>Order status: {formatOrderStatus(order.status)}</p>
+          </div>
+        </div>
+        <table className="w-full text-sm border-collapse mb-6">
+          <thead><tr className="border-y-2 border-gray-900 text-left">
+            <th className="py-2 pr-3">Item</th><th className="py-2 px-2">Size / Colour</th><th className="py-2 px-2 text-right">Qty</th><th className="py-2 pl-2 text-right">Amount</th>
+          </tr></thead>
+          <tbody>
+            {order.items?.map((item: any) => <tr key={item.id} className="border-b border-gray-300">
+              <td className="py-3 pr-3 font-medium">{item.product_name}</td>
+              <td className="py-3 px-2">{item.size} / {item.color}</td>
+              <td className="py-3 px-2 text-right">{item.quantity}</td>
+              <td className="py-3 pl-2 text-right">{formatPrice(Number(item.total_price))}</td>
+            </tr>)}
+          </tbody>
+        </table>
+        <div className="ml-auto w-full max-w-xs space-y-2 text-sm">
+          <div className="flex justify-between"><span>Subtotal</span><span>{formatPrice(Number(order.subtotal))}</span></div>
+          {Number(order.discount_amount) > 0 && <div className="flex justify-between"><span>Discount</span><span>−{formatPrice(Number(order.discount_amount))}</span></div>}
+          <div className="flex justify-between"><span>Shipping</span><span>{Number(order.shipping_amount) === 0 ? 'Free' : formatPrice(Number(order.shipping_amount))}</span></div>
+          <div className="flex justify-between"><span>Tax</span><span>{formatPrice(Number(order.tax_amount))}</span></div>
+          <div className="flex justify-between border-t-2 border-gray-900 pt-3 font-bold text-base"><span>Total (INR)</span><span>{formatPrice(Number(order.total_amount))}</span></div>
+        </div>
+        <footer className="mt-12 border-t border-gray-300 pt-4 text-xs text-gray-600">
+          <p>This document is an order invoice summary generated from STEPUP order records.</p>
+          <p className="mt-1">For support, contact STEPUP through the official support channel shown on the website.</p>
+        </footer>
+      </section>
 
       {/* Return Modal */}
       <AnimatePresence>
