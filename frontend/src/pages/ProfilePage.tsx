@@ -21,7 +21,7 @@ export default function ProfilePage() {
     queryFn: () => api.get('/wishlist').then(r => r.data),
     enabled: !!user,
   });
-  const { data: fitProfileData } = useQuery({
+  const { data: fitProfileData, isLoading: fitProfileLoading, isError: fitProfileError, refetch: refetchFitProfile, isFetching: fitProfileFetching } = useQuery({
     queryKey: ['patient-fit-profile'],
     queryFn: () => api.get('/patient-profile').then(r => r.data),
     enabled: !!user,
@@ -149,6 +149,13 @@ export default function ProfilePage() {
               Save measurements and comfort preferences you choose to share. This is self-reported shopping information, not a medical record, diagnosis or gait analysis.
             </p>
           </div>
+          {fitProfileLoading ? <p aria-live="polite" className="mb-4 text-sm text-on-surface-variant">Loading your saved fit preferences…</p> : null}
+          {fitProfileError ? (
+            <div role="alert" className="mb-4 rounded-xl border border-error/30 bg-surface-container-low p-4">
+              <p className="text-sm text-on-surface-variant">We couldn’t load your saved fit preferences. Your existing profile has not been changed.</p>
+              <button type="button" onClick={() => refetchFitProfile()} disabled={fitProfileFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{fitProfileFetching ? 'Retrying…' : 'Try again'}</button>
+            </div>
+          ) : null}
           <form onSubmit={(event) => { event.preventDefault(); if (!fitForm.consent) { toast.error('Please provide consent before saving'); return; } if (!fitForm.foot_length_mm && !fitForm.usual_size.trim() && !fitForm.arch_preference && !fitForm.comfort_focus && !fitForm.daily_activity) { toast.error('Add at least one fit preference before saving'); return; } saveFitProfile.mutate(); }} className="space-y-space-md">
             <div className="grid gap-space-md sm:grid-cols-2 lg:grid-cols-3">
               <div>
