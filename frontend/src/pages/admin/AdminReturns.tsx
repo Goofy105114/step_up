@@ -19,7 +19,7 @@ type ReturnRequest = {
 
 export default function AdminReturns() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'return-requests'],
     queryFn: () => api.get('/admin/return-requests').then(response => response.data),
   });
@@ -40,7 +40,7 @@ export default function AdminReturns() {
         <p className="mt-2 text-sm text-gray-500">Review customer requests. Approval does not automatically issue a refund.</p>
       </div>
       {isLoading && <div className="card p-8 text-center text-gray-400">Loading return requests…</div>}
-      {isError && <div className="card p-8 text-center text-red-600">Unable to load return requests.</div>}
+      {isError && <div role="alert" className="card p-8 text-center"><p className="text-sm text-red-600">Unable to load return requests. No return decisions have been changed.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-4 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div>}
       {!isLoading && !isError && requests.length === 0 && <div className="card p-10 text-center text-gray-500">No return requests yet.</div>}
       <div className="space-y-4">
         {requests.map(item => (
@@ -60,12 +60,12 @@ export default function AdminReturns() {
             {item.admin_note && <p className="text-xs text-gray-500">Admin note: {item.admin_note}</p>}
             {item.status === 'requested' && (
               <div className="flex gap-2">
-                <button disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'approved' })} className="btn-primary px-4 py-2 text-xs">Approve</button>
-                <button disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'rejected' })} className="btn-outline px-4 py-2 text-xs">Reject</button>
+                <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'approved' })} className="btn-primary px-4 py-2 text-xs">Approve</button>
+                <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'rejected' })} className="btn-outline px-4 py-2 text-xs">Reject</button>
               </div>
             )}
             {item.status === 'approved' && (
-              <button disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'received' })} className="btn-outline px-4 py-2 text-xs">Mark item received</button>
+              <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'received' })} className="btn-outline px-4 py-2 text-xs">Mark item received</button>
             )}
           </section>
         ))}
