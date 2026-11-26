@@ -6,28 +6,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CartDrawer() {
   const { items, subtotal, isOpen, setOpen, updateItem, removeItem } = useCartStore();
+  const itemCount = items.reduce((total, item) => total + item.quantity, 0);
+  const changeQuantity = async (itemId: string, quantity: number) => {
+    if (quantity < 1) await removeItem(itemId);
+    else await updateItem(itemId, quantity);
+  };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.button type="button" aria-label="Close shopping bag" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 z-50" onClick={() => setOpen(false)} />
 
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.3 }}
-            className="fixed right-0 top-0 h-full w-full max-w-sm bg-white z-50 shadow-2xl flex flex-col">
+            role="dialog" aria-modal="true" aria-label="Shopping bag" className="fixed right-0 top-0 h-full w-full max-w-sm bg-white z-50 shadow-2xl flex flex-col">
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <ShoppingBag size={18} className="text-gray-900" />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-gray-900">
-                  Shopping Cart ({items.length})
+                  Shopping Bag ({itemCount})
                 </h2>
               </div>
               <button onClick={() => setOpen(false)}
-                className="p-1.5 hover:bg-gray-100 transition-colors">
+                aria-label="Close shopping bag" className="p-1.5 hover:bg-gray-100 transition-colors">
                 <X size={18} />
               </button>
             </div>
@@ -38,9 +43,7 @@ export default function CartDrawer() {
                 <div className="text-center py-16 space-y-4">
                   <ShoppingBag size={48} className="mx-auto text-gray-200" strokeWidth={1} />
                   <p className="text-sm text-gray-400 uppercase tracking-widest">Your cart is empty</p>
-                  <button onClick={() => setOpen(false)}>
-                    <Link to="/shop" className="btn-primary text-xs">Start Shopping</Link>
-                  </button>
+                  <Link to="/shop" onClick={() => setOpen(false)} className="btn-primary text-xs">Start Shopping</Link>
                 </div>
               ) : (
                 items.map((item) => (
@@ -60,13 +63,13 @@ export default function CartDrawer() {
                       <p className="text-xs text-gray-400 mt-1">{item.size} / {item.color}</p>
                       <div className="flex items-center justify-between mt-2.5">
                         <div className="flex items-center border border-gray-200">
-                          <button onClick={() => updateItem(item.id, item.quantity - 1)}
+                          <button onClick={() => changeQuantity(item.id, item.quantity - 1)}
                             className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 transition-colors">
                             <Minus size={11} />
                           </button>
                           <span className="w-8 text-center text-xs font-semibold border-x border-gray-200 py-1.5">{item.quantity}</span>
-                          <button onClick={() => updateItem(item.id, item.quantity + 1)}
-                            disabled={item.quantity >= item.stock_qty}
+                          <button onClick={() => changeQuantity(item.id, item.quantity + 1)}
+                            disabled={item.quantity >= item.stock_qty || item.stock_qty < 1}
                             className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-30">
                             <Plus size={11} />
                           </button>
@@ -90,16 +93,11 @@ export default function CartDrawer() {
             {/* Footer */}
             {items.length > 0 && (
               <div className="px-6 py-5 border-t border-gray-200 space-y-4 bg-white">
-                {subtotal < 599 && (
-                  <div className="bg-brand-50 border border-brand-100 px-3 py-2 text-xs text-brand-600 text-center">
-                    Add <strong>{formatPrice(599 - subtotal)}</strong> more for free shipping!
-                  </div>
-                )}
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-widest font-semibold text-gray-500">Subtotal</span>
                   <span className="text-lg font-bold text-gray-900">{formatPrice(subtotal)}</span>
                 </div>
-                <p className="text-xs text-gray-400 text-center">Taxes and shipping calculated at checkout</p>
+                <p className="text-xs text-gray-400 text-center">Shipping charges and applicable taxes are confirmed at checkout</p>
                 <Link to="/checkout" onClick={() => setOpen(false)}
                   className="btn-primary w-full text-center block py-3.5">
                   Proceed to Checkout

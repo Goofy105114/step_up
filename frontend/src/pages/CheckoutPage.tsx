@@ -44,6 +44,14 @@ export default function CheckoutPage() {
 
   const placeOrder = async () => {
     if (!validateAddress()) return;
+    if (items.some((item: any) => item.is_active === false || Number(item.stock_qty) < 1 || Number(item.quantity) > Number(item.stock_qty))) {
+      toast.error('One or more cart items are unavailable or exceed current stock. Return to your bag and review quantities.');
+      return;
+    }
+    if (addr.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.email.trim())) {
+      toast.error('Enter a valid email address or leave the email field blank.');
+      return;
+    }
     if (payment !== 'cod') { toast.error('Online payments are not enabled yet. Please choose Cash on Delivery.'); return; }
     setPlacing(true);
     try {
@@ -223,12 +231,15 @@ export default function CheckoutPage() {
                   {appliedCoupon && <p className="text-body-sm text-secondary font-semibold mt-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">check_circle</span>Coupon applied!</p>}
                 </div>
 
-                <button onClick={placeOrder} disabled={placing}
-                  className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                <div className="flex flex-col-reverse sm:flex-row gap-space-sm">
+                  <button type="button" onClick={() => setStep(1)} disabled={placing} className="btn-outline flex-1 py-4 text-title-md font-semibold justify-center">Back to delivery details</button>
+                  <button onClick={placeOrder} disabled={placing} className="flex-1
+                  h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                   <span className="material-symbols-outlined text-[18px]">lock</span>
                   {placing ? 'Placing Order...' : 'Place Order — Cash on Delivery'}
                   {!placing && <span className="material-symbols-outlined text-[18px]">arrow_forward</span>}
                 </button>
+                </div>
                 <p className="text-body-sm text-on-surface-variant text-center">Prices and order totals are displayed in INR (₹).</p>
               </>
             )}
