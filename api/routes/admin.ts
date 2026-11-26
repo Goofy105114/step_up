@@ -497,13 +497,17 @@ router.patch('/return-requests/:id', async (req: Request, res: Response) => {
     if (!transitions[request.status]?.includes(status)) {
       throw new AppError('This return request cannot move to that status', 409);
     }
+    const order = await client.query('SELECT status FROM orders WHERE id=$1 FOR UPDATE', [request.order_id]);
+    if (!order.rows[0]) throw new AppError('Associated order not found', 404);
+    const note = `Return request ${status}: ${String(admin_note || 'No additional note').slice(0, 1000)}`;
     const updated = await client.query(
       `UPDATE return_requests SET status=$1,admin_note=$2,reviewed_by=$3,reviewed_at=NOW(),updated_at=NOW()
        WHERE id=$4 RETURNING *`,
-      [status, admin_note || null, req.user!.userId, req.params.id]);
+      [status, admin_note ? String(admin_note).slice(0, 1000) : null, req.user!.userId, req.params.id]);
+    // Record the return decision without falsely changing the order's delivery status.
     await client.query(
       'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-      [request.order_id, 'delivered', `Return request ${status}: ${admin_note || 'No additional note'}`, req.user!.userId]);
+      [request.order_id, order.rows[0].status, note, req.user!.userId]);
     await client.query('COMMIT');
     return res.json({ success: true, data: updated.rows[0] });
   } catch (error) {
