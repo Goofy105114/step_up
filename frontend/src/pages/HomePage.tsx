@@ -20,19 +20,19 @@ type Category = {
 };
 
 export default function HomePage() {
-  const { data: featured, isLoading: featuredLoading } = useQuery({
+  const { data: featured, isLoading: featuredLoading, isError: featuredError, refetch: refetchFeatured, isFetching: featuredFetching } = useQuery({
     queryKey: ['products', 'featured'],
     queryFn: () => api.get('/products?featured=true&limit=8').then(r => r.data),
   });
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesData, isError: categoriesError, refetch: refetchCategories, isFetching: categoriesFetching } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api.get('/categories').then(r => r.data),
   });
-  const { data: bestsellers } = useQuery({
+  const { data: bestsellers, isError: bestsellersError, refetch: refetchBestsellers, isFetching: bestsellersFetching } = useQuery({
     queryKey: ['products', 'bestsellers'],
     queryFn: () => api.get('/products?bestseller=true&limit=4').then(r => r.data),
   });
-  const { data: newArrivals } = useQuery({
+  const { data: newArrivals, isError: newArrivalsError, refetch: refetchNewArrivals, isFetching: newArrivalsFetching } = useQuery({
     queryKey: ['products', 'new-arrivals'],
     queryFn: () => api.get('/products?new_arrival=true&limit=4').then(r => r.data),
   });
@@ -135,6 +135,11 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
+        ) : categoriesError ? (
+          <div role="alert" className="rounded-2xl border border-error/30 bg-surface-container-low p-8 text-center text-sm text-on-surface-variant">
+            <p>We couldn’t load collections right now.</p>
+            <button type="button" onClick={() => refetchCategories()} disabled={categoriesFetching} className="btn-primary mt-4 px-5 py-2.5">{categoriesFetching ? 'Retrying…' : 'Try again'}</button>
+          </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-outline-variant p-10 text-center text-sm text-on-surface-variant">
             {categoriesData ? 'New collections are being prepared. Browse all products to see what is available.' : 'Loading collections…'}
@@ -142,6 +147,14 @@ export default function HomePage() {
         )}
       </section>
 
+      {featuredError && !featuredLoading && (
+        <section role="alert" className="container-site py-8">
+          <div className="rounded-2xl border border-error/30 bg-surface-container-low p-6 text-center">
+            <p className="text-sm text-on-surface-variant">Featured products are temporarily unavailable.</p>
+            <button type="button" onClick={() => refetchFeatured()} disabled={featuredFetching} className="btn-outline mt-3 px-5 py-2.5">{featuredFetching ? 'Retrying…' : 'Retry featured products'}</button>
+          </div>
+        </section>
+      )}
       {featuredProducts.length > 0 && (
         <section className="bg-[#f3f5f2] py-16 md:py-20">
           <div className="container-site">
@@ -167,6 +180,11 @@ export default function HomePage() {
         </section>
       )}
 
+      {newArrivalsError && (
+        <section role="alert" className="container-site py-4">
+          <p className="text-sm text-on-surface-variant">New arrivals couldn’t be loaded. <button type="button" onClick={() => refetchNewArrivals()} disabled={newArrivalsFetching} className="font-semibold text-primary underline">{newArrivalsFetching ? 'Retrying…' : 'Retry'}</button></p>
+        </section>
+      )}
       {newArrivalProducts.length > 0 && (
         <section className="container-site py-16 md:py-20">
           <div className="mb-8 flex items-end justify-between">
@@ -182,6 +200,11 @@ export default function HomePage() {
         </section>
       )}
 
+      {bestsellersError && (
+        <section role="alert" className="container-site py-4">
+          <p className="text-sm text-on-surface-variant">Popular products couldn’t be loaded. <button type="button" onClick={() => refetchBestsellers()} disabled={bestsellersFetching} className="font-semibold text-primary underline">{bestsellersFetching ? 'Retrying…' : 'Retry'}</button></p>
+        </section>
+      )}
       {bestsellerProducts.length > 0 && (
         <section className="bg-[#f3f5f2] py-16 md:py-20">
           <div className="container-site">
