@@ -18,7 +18,7 @@ type FitProfile = {
 };
 
 export default function AdminPatientProfiles() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'patient-fit-profiles'],
     queryFn: () => api.get('/admin/patient-fit-profiles').then(response => response.data),
   });
@@ -38,7 +38,7 @@ export default function AdminPatientProfiles() {
 
       <div className="card overflow-hidden">
         {isLoading ? <p className="p-8 text-center text-sm text-gray-400">Loading fit profiles…</p> : null}
-        {isError ? <p className="p-8 text-center text-sm text-red-600">Unable to load fit profiles.</p> : null}
+        {isError ? <div role="alert" className="p-8 text-center"><p className="text-sm text-red-600">Unable to load fit profiles.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div> : null}
         {!isLoading && !isError && profiles.length === 0 ? (
           <div className="p-10 text-center">
             <Users size={28} className="mx-auto text-gray-300" />
@@ -58,7 +58,7 @@ export default function AdminPatientProfiles() {
                 {profiles.map(profile => (
                   <tr key={profile.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-gray-900">{profile.first_name} {profile.last_name}</p>
+                      <p className="font-semibold text-gray-900">{[profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Customer'}</p>
                       <p className="text-xs text-gray-500">{profile.email}</p>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{profile.foot_length_mm ? `${profile.foot_length_mm} mm` : '—'}</td>

@@ -18,7 +18,7 @@ export default function AdminLabSettings() {
   const [description, setDescription] = useState('');
   const [valueJson, setValueJson] = useState('{}');
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'lab-settings'],
     queryFn: () => api.get('/admin/lab-settings').then(response => response.data),
   });
@@ -119,7 +119,7 @@ export default function AdminLabSettings() {
           <label className="label">Setting value (JSON object) *</label>
           <textarea value={valueJson} onChange={event => setValueJson(event.target.value)} rows={7} className="input-field resize-y font-mono text-xs" spellCheck={false} />
         </div>
-        <button type="submit" disabled={saveMutation.isPending} className="btn-primary inline-flex items-center gap-2 px-6">
+        <button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending} className="btn-primary inline-flex items-center gap-2 px-6">
           {editingId ? <Save size={15} /> : <Plus size={15} />}
           {saveMutation.isPending ? 'Saving…' : editingId ? 'Save changes' : 'Add setting'}
         </button>
@@ -130,7 +130,7 @@ export default function AdminLabSettings() {
           <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Configured settings</h2>
         </div>
         {isLoading ? <p className="p-8 text-center text-sm text-gray-400">Loading lab settings…</p> : null}
-        {isError ? <p className="p-8 text-center text-sm text-red-600">Unable to load lab settings.</p> : null}
+        {isError ? <div role="alert" className="p-8 text-center"><p className="text-sm text-red-600">Unable to load lab settings.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div> : null}
         {!isLoading && !isError && settings.length === 0 ? (
           <p className="p-8 text-center text-sm text-gray-400">No laboratory settings have been configured.</p>
         ) : null}
@@ -145,8 +145,8 @@ export default function AdminLabSettings() {
                   {setting.updated_at ? <p className="mt-2 text-[11px] text-gray-400">Updated {new Date(setting.updated_at).toLocaleString()}</p> : null}
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button type="button" onClick={() => startEdit(setting)} className="btn-outline inline-flex items-center gap-1 px-3 py-2 text-xs"><Pencil size={13} /> Edit</button>
-                  <button type="button" onClick={() => {
+                  <button type="button" disabled={saveMutation.isPending || deleteMutation.isPending} onClick={() => startEdit(setting)} className="btn-outline inline-flex items-center gap-1 px-3 py-2 text-xs"><Pencil size={13} /> Edit</button>
+                  <button type="button" disabled={deleteMutation.isPending || saveMutation.isPending} onClick={() => {
                     if (window.confirm(`Delete setting “${setting.setting_key}”?`)) deleteMutation.mutate(setting.id);
                   }} className="rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label="Delete setting"><Trash2 size={15} /></button>
                 </div>
