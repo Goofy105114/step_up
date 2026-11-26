@@ -3,16 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
-import api from '../../lib/api';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '' });
   const [showPw, setShowPw] = useState(false);
-  const [otpChannel,setOtpChannel]=useState('email');
-  const [otpRequestId,setOtpRequestId]=useState('');
-  const [otpCode,setOtpCode]=useState('');
-  const [verificationTicket,setVerificationTicket]=useState('');
-  const [otpBusy,setOtpBusy]=useState(false);
   const [otpChannel,setOtpChannel]=useState<'email'|'mobile'>('email');
   const [otpCode,setOtpCode]=useState('');
   const [otpRequestId,setOtpRequestId]=useState('');
@@ -38,8 +32,6 @@ export default function RegisterPage() {
   const sendRegistrationOtp=async()=>{const identifier=otpChannel==='email'?form.email:form.phone;if(!identifier){toast.error(otpChannel==='email'?'Enter your email first':'Enter your mobile number first');return;}setOtpBusy(true);try{const result=await api.post('/auth/otp/send',{identifier,purpose:'register'});setOtpRequestId(result.data.request_id);setVerificationTicket('');toast.success('Verification code sent.');}catch(error:any){toast.error(error.response?.data?.message||'Unable to send OTP');}finally{setOtpBusy(false);}};
   const verifyRegistrationOtp=async()=>{if(!otpRequestId||! /^\d{4,8}$/.test(otpCode)){toast.error('Enter the verification code');return;}setOtpBusy(true);try{const result=await api.post('/auth/otp/verify',{request_id:otpRequestId,otp:otpCode});setVerificationTicket(result.data.verification_ticket);toast.success('Contact verified successfully');}catch(error:any){toast.error(error.response?.data?.message||'OTP verification failed');}finally{setOtpBusy(false);}};
 
-  const sendOtpCode=async()=>{const identifier=otpChannel==='email'?form.email:form.phone;if(!identifier){toast.error('Enter the selected contact first');return;}setOtpBusy(true);try{const r=await api.post('/auth/otp/send',{identifier,purpose:'register'});setOtpRequestId(r.data.request_id);setVerificationTicket('');toast.success('OTP sent');}catch(e:any){toast.error(e.response?.data?.message||'OTP could not be sent');}finally{setOtpBusy(false);}};
-  const verifyOtpCode=async()=>{setOtpBusy(true);try{const r=await api.post('/auth/otp/verify',{request_id:otpRequestId,otp:otpCode});setVerificationTicket(r.data.verification_ticket);toast.success('Contact verified');}catch(e:any){toast.error(e.response?.data?.message||'OTP verification failed');}finally{setOtpBusy(false);}};
   return (
     <div className="bg-background min-h-screen flex flex-col justify-between">
       <header className="w-full py-space-lg px-margin-mobile md:px-margin flex items-center justify-between">
@@ -131,16 +123,6 @@ export default function RegisterPage() {
                 {otpRequestId&&!verificationTicket&&<div className="flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" maxLength={8} value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,8))} placeholder="Enter OTP" className="input-field flex-1"/><button type="button" onClick={verifyRegistrationOtp} disabled={otpBusy} className="rounded-full border border-primary px-5 py-2 text-xs font-bold text-primary disabled:opacity-50">Verify OTP</button></div>}
               </section>
 
-              <section className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-4 space-y-3">
-                <p className="text-sm font-semibold text-primary">Verify your contact before registration</p>
-                <div className="flex gap-2">
-                  <button type="button" onClick={()=>{setOtpChannel('email');setOtpRequestId('');setVerificationTicket('');}} className="rounded-full border px-4 py-2 text-xs font-semibold">Email OTP</button>
-                  <button type="button" onClick={()=>{setOtpChannel('mobile');setOtpRequestId('');setVerificationTicket('');}} className="rounded-full border px-4 py-2 text-xs font-semibold">Mobile OTP</button>
-                </div>
-                <button type="button" onClick={sendOtpCode} disabled={otpBusy||!!verificationTicket} className="btn-primary disabled:opacity-50">{otpBusy?'Please wait':otpRequestId?'Resend OTP':'Send OTP'}</button>
-                {otpRequestId&&!verificationTicket&&<div className="flex gap-2"><input value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,8))} inputMode="numeric" maxLength={8} className="input-field" placeholder="Enter OTP"/><button type="button" onClick={verifyOtpCode} disabled={otpBusy} className="btn-primary">Verify</button></div>}
-                {verificationTicket&&<p className="text-sm font-semibold text-green-700">Contact verified ✓</p>}
-              </section>
               <div className="flex items-start gap-3 pt-1">
                 <input type="checkbox" required className="w-4 h-4 mt-1 rounded accent-primary" />
                 <span className="text-body-sm text-on-surface-variant">
