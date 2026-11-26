@@ -29,7 +29,7 @@ export default function RegisterPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to create your account. Please try again.'); }
   };
 
-  const sendRegistrationOtp=async()=>{const identifier=otpChannel==='email'?form.email:form.phone;if(!identifier){toast.error(otpChannel==='email'?'Enter your email first':'Enter your mobile number first');return;}setOtpBusy(true);try{const result=await api.post('/auth/otp/send',{identifier,purpose:'register'});setOtpRequestId(result.data.request_id);setVerificationTicket('');toast.success('Verification code sent.');}catch(error:any){toast.error(error.response?.data?.message||'Unable to send OTP');}finally{setOtpBusy(false);}};
+  const sendRegistrationOtp=async()=>{const identifier=otpChannel==='email'?form.email:form.phone;if(!identifier){toast.error(otpChannel==='email'?'Enter your email first':'Enter your mobile number first');return;}if(otpChannel==='mobile'&&!/^[6-9]\\d{9}$/.test(form.phone)){toast.error('Enter a valid 10-digit Indian mobile number first');return;}setOtpBusy(true);try{if(otpRequestId){await api.post('/auth/otp/resend',{request_id:otpRequestId});}else{const result=await api.post('/auth/otp/send',{identifier,purpose:'register'});setOtpRequestId(result.data.request_id);}setVerificationTicket('');toast.success('Verification code sent.');}catch(error:any){toast.error(error.response?.data?.message||'Unable to send OTP');}finally{setOtpBusy(false);}};
   const verifyRegistrationOtp=async()=>{if(!otpRequestId||! /^\d{4,8}$/.test(otpCode)){toast.error('Enter the verification code');return;}setOtpBusy(true);try{const result=await api.post('/auth/otp/verify',{request_id:otpRequestId,otp:otpCode});setVerificationTicket(result.data.verification_ticket);toast.success('Contact verified successfully');}catch(error:any){toast.error(error.response?.data?.message||'OTP verification failed');}finally{setOtpBusy(false);}};
 
   return (
@@ -71,14 +71,14 @@ export default function RegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
                 {[
                   { key: 'first_name', label: 'First Name *', placeholder: 'Elena', icon: 'person' },
-                  { key: 'last_name', label: 'Last Name', placeholder: 'Rostova', icon: 'person' },
+                  { key: 'last_name', label: 'Last Name *', placeholder: 'Rostova', icon: 'person' },
                 ].map(({ key, label, placeholder, icon }) => (
                   <div key={key} className="space-y-2">
                     <label className="label">{label}</label>
                     <div className="relative flex items-center">
                       <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">{icon}</span>
                       <input type="text" placeholder={placeholder} value={(form as any)[key]} onChange={e => set(key, e.target.value)}
-                        required={key === 'first_name'} className="input-field pl-12" />
+                        required className="input-field pl-12" />
                     </div>
                   </div>
                 ))}
@@ -88,7 +88,7 @@ export default function RegisterPage() {
                 <label className="label">Email Address *</label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">mail</span>
-                  <input type="email" required maxLength={254} autoComplete="email" placeholder="patient@example.com" value={form.email} onChange={e => set('email', e.target.value)}
+                  <input type="email" required maxLength={254} autoComplete="email" placeholder="patient@example.com" value={form.email} onChange={e => { set('email', e.target.value); setOtpRequestId(''); setOtpCode(''); setVerificationTicket(''); }}
                     className="input-field pl-12 pr-10" />
                   {form.email && <span className="material-symbols-outlined absolute right-4 text-secondary text-[20px]">check_circle</span>}
                 </div>
@@ -108,7 +108,7 @@ export default function RegisterPage() {
                 <label className="label">Password *</label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">lock</span>
-                  <input type={showPw ? 'text' : 'password'} required placeholder="Minimum 8 characters" value={form.password} onChange={e => set('password', e.target.value)}
+                  <input type={showPw ? 'text' : 'password'} required placeholder="10+ characters with upper, lower, number and symbol" value={form.password} onChange={e => set('password', e.target.value)}
                     className="input-field pl-12 pr-12" />
                   <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 p-1 text-outline hover:text-primary rounded-full">
                     <span className="material-symbols-outlined text-[20px]">{showPw ? 'visibility_off' : 'visibility'}</span>
