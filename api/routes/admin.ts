@@ -148,8 +148,13 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     if (statusChanged && status === 'cancelled') {
       const items = await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1', [req.params.id]);
       for (const item of items.rows) {
-        await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
-          [item.quantity, item.variant_id]);
+        const restored = await client.query(
+          'UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2 RETURNING id',
+          [item.quantity, item.variant_id]
+        );
+        if (restored.rowCount !== 1) {
+          throw new AppError('Cannot complete cancellation because an ordered product variant is missing. Contact support to reconcile inventory.', 409);
+        }
       }
       // Cancellation releases the coupon reservation in the same transaction.
       if (order.coupon_id) {
