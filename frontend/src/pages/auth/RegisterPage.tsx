@@ -12,7 +12,9 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.password.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (form.password.length < 10 || form.password.length > 72 || !/[a-z]/.test(form.password) || !/[A-Z]/.test(form.password) || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password) || /\s/.test(form.password)) { toast.error('Use 10–72 characters with uppercase, lowercase, a number and a symbol.'); return; }
+    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone)) { toast.error('Enter exactly 10 digits for an Indian mobile number.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email) || form.email.includes('..')) { toast.error('Enter a valid email address.'); return; }
     try {
       await register(form);
       toast.success('Welcome to StepUp! 🎉');
@@ -76,7 +78,7 @@ export default function RegisterPage() {
                 <label className="label">Email Address *</label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">mail</span>
-                  <input type="email" required placeholder="patient@example.com" value={form.email} onChange={e => set('email', e.target.value)}
+                  <input type="email" required maxLength={254} autoComplete="email" placeholder="patient@example.com" value={form.email} onChange={e => set('email', e.target.value)}
                     className="input-field pl-12 pr-10" />
                   {form.email && <span className="material-symbols-outlined absolute right-4 text-secondary text-[20px]">check_circle</span>}
                 </div>
@@ -87,7 +89,7 @@ export default function RegisterPage() {
                 <label className="label">Mobile Number (Delivery &amp; Fitting Alerts)</label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">sms</span>
-                  <input type="tel" placeholder="+91 99999 99999" value={form.phone} onChange={e => set('phone', e.target.value)}
+                  <input type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[6-9][0-9]{9}" placeholder="9999999999" value={form.phone} onChange={e => set('phone', e.target.value)}
                     className="input-field pl-12" />
                 </div>
               </div>
