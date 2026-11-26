@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useState } from 'react';
 import { formatDate, formatPrice } from '../../lib/formatters';
 
 type ReturnRequest = {
@@ -19,16 +20,18 @@ type ReturnRequest = {
 
 export default function AdminReturns() {
   const qc = useQueryClient();
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'return-requests'],
     queryFn: () => api.get('/admin/return-requests').then(response => response.data),
   });
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.patch(`/admin/return-requests/${id}`, { status }),
-    onSuccess: () => {
+      api.patch(`/admin/return-requests/${id}`, { status, admin_note: notes[id]?.trim() || null }),
+    onSuccess: (_response, variables) => {
       toast.success('Return request updated');
       qc.invalidateQueries({ queryKey: ['admin', 'return-requests'] });
+      setNotes((current) => { const next = { ...current }; delete next[variables.id]; return next; });
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to update return request'),
   });
@@ -57,7 +60,13 @@ export default function AdminReturns() {
               </div>
             </div>
             <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">{item.reason}</p>
-            {item.admin_note && <p className="text-xs text-gray-500">Admin note: {item.admin_note}</p>}
+            {item.admin_note && <p className="text-xs text-gray-500">Previous admin note: {item.admin_note}</p>}
+            {item.status !== 'received' && item.status !== 'rejected' && (
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-gray-600">Review note (optional)</span>
+                <textarea value={notes[item.id] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} maxLength={1000} rows={2} placeholder="Add the reason for your decision or receipt condition" className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300" />
+              </label>
+            )}
             {item.status === 'requested' && (
               <div className="flex gap-2">
                 <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate({ id: item.id, status: 'approved' })} className="btn-primary px-4 py-2 text-xs">Approve</button>
