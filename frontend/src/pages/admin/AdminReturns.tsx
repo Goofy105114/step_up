@@ -28,10 +28,10 @@ export default function AdminReturns() {
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/admin/return-requests/${id}`, { status, admin_note: notes[id]?.trim() || null }),
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
       toast.success('Return request updated');
       qc.invalidateQueries({ queryKey: ['admin', 'return-requests'] });
-      setNotes((current) => { const next = { ...current }; delete next[(mutation.variables as any)?.id]; return next; });
+      setNotes((current) => { const next = { ...current }; delete next[variables.id]; return next; });
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to update return request'),
   });
