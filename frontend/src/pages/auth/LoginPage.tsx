@@ -159,7 +159,7 @@ export default function LoginPage() {
                     </p>
                     <div className="mt-4 p-4 bg-secondary-container/30 rounded-DEFAULT">
                       <p className="text-body-sm text-on-secondary-container text-center">
-                        🎁 Use code <strong>WELCOME10</strong> for 10% off your first order!
+                        Your orders, saved items, and account details — all in one place.
                       </p>
                     </div>
                   </div>
