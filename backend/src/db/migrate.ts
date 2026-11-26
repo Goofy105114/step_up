@@ -10,6 +10,12 @@ const migrations = [
 async function main() {
   const db = await pool.connect();
   try {
+    // Bootstrap any missing core tables first. The base schema uses CREATE IF NOT EXISTS
+    // and idempotent trigger setup; additive migrations below cover newer features.
+    const baseSchemaPath = path.resolve(process.cwd(), 'src', 'db', 'schema.sql');
+    if (!fs.existsSync(baseSchemaPath)) throw new Error(`Base schema file not found: ${baseSchemaPath}`);
+    await db.query(fs.readFileSync(baseSchemaPath, 'utf8'));
+    
     await db.query(`
       CREATE TABLE IF NOT EXISTS stepup_schema_migrations (
         id VARCHAR(160) PRIMARY KEY,
