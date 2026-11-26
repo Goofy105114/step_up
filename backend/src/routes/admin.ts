@@ -345,6 +345,42 @@ router.delete('/clinical-studies/:id', authorize('admin'), async (req: Request, 
   return res.json({ success: true });
 });
 
+/* ── Store settings ─────────────────────────────────────────────────── */
+const parseCheckoutPricing = (value: any) => {
+  const free_shipping_threshold_inr = Number(value?.free_shipping_threshold_inr);
+  const shipping_fee_inr = Number(value?.shipping_fee_inr);
+  const gst_rate_percent = Number(value?.gst_rate_percent);
+  if (
+    !Number.isFinite(free_shipping_threshold_inr) || free_shipping_threshold_inr < 0 ||
+    !Number.isFinite(shipping_fee_inr) || shipping_fee_inr < 0 ||
+    !Number.isFinite(gst_rate_percent) || gst_rate_percent < 0 || gst_rate_percent > 100
+  ) {
+    throw new AppError('Enter non-negative INR amounts and a GST rate between 0 and 100', 400);
+  }
+  return { free_shipping_threshold_inr, shipping_fee_inr, gst_rate_percent };
+};
+
+router.get('/store-settings/checkout-pricing', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query(
+    "SELECT setting_key,setting_value,description,updated_at FROM store_settings WHERE setting_key='checkout_pricing'"
+  );
+  if (!result.rows[0]) throw new AppError('Checkout pricing settings are not configured', 503);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
+router.put('/store-settings/checkout-pricing', authorize('admin'), async (req: Request, res: Response) => {
+  const setting_value = parseCheckoutPricing(req.body);
+  const result = await query(
+    `INSERT INTO store_settings (setting_key,setting_value,description,updated_by)
+     VALUES ('checkout_pricing',$1,'Checkout shipping threshold, shipping fee and GST rate. Applies to new orders.',$2)
+     ON CONFLICT (setting_key) DO UPDATE
+       SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+     RETURNING setting_key,setting_value,description,updated_at`,
+    [JSON.stringify(setting_value), req.user!.userId]
+  );
+  return res.json({ success: true, data: result.rows[0] });
+});
+
 /* ── Laboratory settings ────────────────────────────────────────────── */
 const validSettingKey = (value: unknown) =>
   typeof value === 'string' && /^[a-zA-Z0-9_.-]{2,120}$/.test(value);
