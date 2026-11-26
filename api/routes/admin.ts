@@ -144,6 +144,10 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
         await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
           [item.quantity, item.variant_id]);
       }
+      // Cancellation releases the coupon reservation in the same transaction.
+      if (order.coupon_id) {
+        await client.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1', [order.coupon_id]);
+      }
     }
 
     await client.query('COMMIT');
