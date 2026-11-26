@@ -168,3 +168,18 @@ JWT_SECRET=<long-random-string>
 STRIPE_SECRET_KEY=sk_test_...
 DB_PASSWORD=yourpassword
 ```
+
+
+## Product image uploads
+
+Admin product photography uses signed, direct-to-Cloudinary uploads. The backend signs short-lived upload parameters after verifying the administrator and product; the browser uploads the image directly to the company Cloudinary account. The API stores the resulting HTTPS image URL in the existing `product_images` table. Existing external HTTPS image URLs remain supported.
+
+Configure these values as backend environment variables (locally in `backend/.env`, and in the Render service environment for hosted use):
+
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET` — backend only; never expose this secret in frontend variables or commit a real value.
+
+Uploads are restricted to JPG, PNG, WebP and AVIF, with a 10 MB client-side limit. The first image becomes primary unless another image is already primary. Deleting an image removes its Cloudinary asset when it belongs to the configured Cloudinary account, then removes the database record. If Cloudinary is not configured, URL-based image management continues to work but signed file uploads return a clear configuration error.
+
+No production storage bucket, database migration, or deployment is created by this code change. Configure the company-owned Cloudinary account before enabling uploads in production.
