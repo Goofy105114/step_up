@@ -54,13 +54,13 @@ export default function RegisterPage() {
             <div className="flex items-center justify-between mb-8">
               <div className="inline-flex items-center gap-2 bg-surface-container-low px-3.5 py-1.5 rounded-full">
                 <span className="material-symbols-outlined text-secondary text-[16px]">person_add</span>
-                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">New Patient Registration</span>
+                <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Create Account</span>
               </div>
             </div>
 
             <div className="max-w-2xl mb-10">
               <h1 className="text-headline-lg font-semibold text-primary tracking-tight mb-3">
-                Create Your Orthopedic Profile
+                Create your STEPUP account
               </h1>
               <p className="text-body-md text-on-surface-variant leading-relaxed">
                 Create an account to save your details, manage orders, and keep your footwear preferences together.
@@ -130,14 +130,14 @@ export default function RegisterPage() {
                   <Link to="/" className="text-secondary underline underline-offset-2">Terms of Service</Link>
                   {' '}and{' '}
                   <Link to="/" className="text-secondary underline underline-offset-2">Privacy Policy</Link>.
-                  HSA/FSA data processed under HIPAA-compliant encryption.
+                  
                 </span>
               </div>
 
               <button type="submit" disabled={isLoading}
                 className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold tracking-[0.04em] uppercase shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 group disabled:opacity-50">
                 {isLoading ? 'Creating Profile...' : (
-                  <><span>Create Orthopedic Profile</span><span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></>
+                  <><span>Create account</span><span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></>
                 )}
               </button>
 
