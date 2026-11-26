@@ -76,16 +76,32 @@ export default function ProductPage() {
 
   const submitReview = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!user) { toast.error('Please sign in to write a review'); return; }
-    if (!reviewRating) { toast.error('Choose a star rating first'); return; }
+    if (!user) {
+      toast.error('Please sign in to write a review');
+      return;
+    }
+    if (!reviewRating) {
+      toast.error('Choose a star rating first');
+      return;
+    }
     setReviewSubmitting(true);
     try {
-      await api.post('/reviews', { product_id: product.id, rating: reviewRating, title: reviewTitle.trim(), body: reviewBody.trim() });
+      await api.post('/reviews', {
+        product_id: product.id,
+        rating: reviewRating,
+        title: reviewTitle.trim(),
+        body: reviewBody.trim(),
+      });
       toast.success('Review submitted. It will appear after moderation.');
-      setReviewRating(0); setReviewTitle(''); setReviewBody('');
+      setReviewRating(0);
+      setReviewTitle('');
+      setReviewBody('');
       await queryClient.invalidateQueries({ queryKey: ['product', slug] });
-    } catch (error: any) { toast.error(error.response?.data?.message || 'Could not submit your review'); }
-    finally { setReviewSubmitting(false); }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not submit your review');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   const toggleWishlist = async () => {
