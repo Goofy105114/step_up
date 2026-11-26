@@ -41,7 +41,9 @@ export default function HomePage() {
   const categories: Category[] = categoriesData?.data || [];
   const bestsellerProducts = bestsellers?.data || [];
   const newArrivalProducts = newArrivals?.data || [];
-  const heroImage = featuredProducts[0]?.primary_image;
+  // Editorial visual extracted from the supplied Stitch landing-page code; catalogue product imagery always takes precedence.
+  const stitchEditorialImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAcMrHTF7CDnQi3dqN1LXjoDMN2KTZkimZ4ZKkU7l_Nnuo5uki9KJZR4xOr-Dp4szNlpbMqS-dn13rQOWYhSyLosdcIb_A_hUYEe2mxsJQkTMiSJqRHXhld4X79tCg9DUBlVS2Apg87Yv6BIgFA6SuOAOtTMBCnIz1x-qUlp-LP7YBR6AFhhcdClnc4O9owVpvqC73XrSxl2OOBvP4w7Gp2k_bhD8MUj7prlyH5KY';
+  const heroImage = featuredProducts[0]?.primary_image || stitchEditorialImage;
 
   return (
     <main className="bg-surface text-on-surface">
@@ -80,7 +82,7 @@ export default function HomePage() {
               {heroImage ? (
                 <img
                   src={heroImage}
-                  alt={featuredProducts[0]?.name || 'Featured STEPUP footwear'}
+                  alt={featuredProducts[0]?.name || 'STEPUP supportive footwear editorial'}
                   className="h-full w-full object-cover"
                   fetchPriority="high"
                 />

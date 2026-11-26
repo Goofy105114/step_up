@@ -45,3 +45,8 @@ This folder documents the supplied Stitch reference pack used to align the STEPU
 
 ## Current implementation note
 The first implementation slice is the shared navigation/header in `frontend/src/components/layout/Navbar.tsx`. It replaces the previous generic footwear-category navigation with the Stitch-inspired information architecture while retaining STEPUP branding and existing route/API integrations. The rest of the screens are being aligned incrementally so each UI is backed by the existing working data flows.
+
+
+## Extracted visual reference
+
+The supplied Stitch screen exports were extracted and reviewed. A compact contact sheet is committed at [`stitch-ui-montage.jpg`](./stitch-ui-montage.jpg) for quick visual comparison during implementation. Individual screen exports and their `code.html` files remain the source reference in the original uploaded archive; this montage is documentation only and is not used as a live storefront product image. The homepage uses a specific editorial footwear image URL extracted from the Stitch landing-page HTML as a visual fallback only; a real catalogue product image takes precedence whenever available.
