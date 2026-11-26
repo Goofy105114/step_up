@@ -161,7 +161,7 @@ export default function Navbar() {
           </form>
           <nav aria-label="Mobile navigation" className="grid gap-1">
             {navigation.map((item) => (
-              <Link key={item.label} to={item.to} aria-current={isNavigationActive(item.to, location.pathname, location.search) ? 'page' : undefined} className={`rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isNavigationActive(item.to, location.pathname, location.search) ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
+              <Link key={item.label} to={item.to} aria-current={activeNavigationLabel === item.label ? 'page' : undefined} className={`rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${activeNavigationLabel === item.label ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
                 {item.label}
               </Link>
             ))}
