@@ -53,7 +53,29 @@ router.get('/orders', async (req: Request, res: Response) => {
 router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   const { status, note, tracking_number } = req.body;
   const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
-  if (!allowedStatuses.includes(status)) throw new AppError('Invalid order status', 400);
+  if (typeof status !== 'string' || !allowedStatuses.includes(status)) {
+    throw new AppError('Invalid order status', 400);
+  }
+  if (tracking_number !== undefined && tracking_number !== null && typeof tracking_number !== 'string') {
+    throw new AppError('Tracking number must be text', 400);
+  }
+  const normalizedTracking = typeof tracking_number === 'string' ? tracking_number.trim() : null;
+  if (normalizedTracking !== null && normalizedTracking.length > 100) {
+    throw new AppError('Tracking number cannot exceed 100 characters', 400);
+  }
+  const normalizedNote = typeof note === 'string' ? note.trim().slice(0, 1000) : null;
+
+  const allowedNextStatuses: Record<string, string[]> = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['processing', 'cancelled'],
+    processing: ['shipped', 'cancelled'],
+    shipped: ['out_for_delivery'],
+    out_for_delivery: ['delivered'],
+    delivered: [],
+    cancelled: [],
+    refunded: [],
+    returned: [],
+  };
 
   const client = await pool.connect();
   try {
@@ -61,28 +83,48 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     const orderRes = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
     const order = orderRes.rows[0];
     if (!order) throw new AppError('Order not found', 404);
-    if (status === 'cancelled' && order.payment_status === 'paid') {
+
+    const statusChanged = status !== order.status;
+    if (statusChanged && !allowedNextStatuses[order.status]?.includes(status)) {
+      if (status === 'refunded') {
+        throw new AppError('Refund status must be confirmed by the payment provider integration.', 409);
+      }
+      if (status === 'returned') {
+        throw new AppError('Mark an order as returned only through the reviewed return workflow.', 409);
+      }
+      throw new AppError(`Order cannot move from ${order.status} to ${status}`, 409);
+    }
+    if (statusChanged && status === 'cancelled' && order.payment_status === 'paid') {
       throw new AppError('Refund the payment through the payment provider before cancelling this order.', 409);
     }
-    if (status === 'refunded') {
-      throw new AppError('Refund status must be confirmed by the payment provider integration.', 409);
+    if (!statusChanged && tracking_number === undefined) {
+      await client.query('COMMIT');
+      return res.json({ success: true, message: 'Order is already in that status' });
     }
 
-    const updates = ['status=$1', 'updated_at=NOW()'];
-    const params: unknown[] = [status];
-    let pIdx = 2;
+    const updates = ['updated_at=NOW()'];
+    const params: unknown[] = [];
+    let pIdx = 1;
+    if (statusChanged) {
+      updates.push(`status=$${pIdx++}`);
+      params.push(status);
+    }
     if (tracking_number !== undefined) {
       updates.push(`tracking_number=$${pIdx++}`);
-      params.push(tracking_number || null);
+      params.push(normalizedTracking || null);
     }
-    if (status === 'delivered') updates.push('delivered_at=COALESCE(delivered_at,NOW())');
+    if (statusChanged && status === 'delivered') updates.push('delivered_at=COALESCE(delivered_at,NOW())');
     params.push(req.params.id);
     await client.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
-    await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-      [req.params.id, status, note || null, req.user!.userId]);
 
-    if (status === 'cancelled' && order.status !== 'cancelled') {
-      const items = await client.query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
+    if (statusChanged) {
+      await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
+        [req.params.id, status, normalizedNote, req.user!.userId]);
+    }
+
+    // Restore stock only on the single, locked transition into cancelled.
+    if (statusChanged && status === 'cancelled') {
+      const items = await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1', [req.params.id]);
       for (const item of items.rows) {
         await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',
           [item.quantity, item.variant_id]);
@@ -90,7 +132,7 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     }
 
     await client.query('COMMIT');
-    return res.json({ success: true, message: 'Order status updated' });
+    return res.json({ success: true, message: statusChanged ? 'Order status updated' : 'Tracking details updated' });
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
