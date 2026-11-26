@@ -89,7 +89,7 @@ export default function RegisterPage() {
                 <label className="label">Mobile Number (Delivery &amp; Fitting Alerts)</label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">sms</span>
-                  <input type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[6-9][0-9]{9}" placeholder="9999999999" value={form.phone} onChange={e => set('phone', e.target.value)}
+                  <input type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[6-9][0-9]{9}" placeholder="9999999999" value={form.phone} onChange={e => set('phone', e.target.value.replace(/\\D/g, '').slice(0, 10))}
                     className="input-field pl-12" />
                 </div>
               </div>
