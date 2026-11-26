@@ -15,7 +15,7 @@ type RecentProfile = {
 };
 
 export default function AdminFitOperations() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'fit-operations'],
     queryFn: () => api.get('/admin/fit-operations').then(response => response.data),
   });
@@ -56,7 +56,7 @@ export default function AdminFitOperations() {
         </p>
       </div>
       {isLoading ? <div className="card p-8 text-center text-sm text-gray-400">Loading fit operations…</div> : null}
-      {isError ? <div className="card p-8 text-center text-sm text-red-600">Unable to load fit operations.</div> : null}
+      {isError ? <div role="alert" className="card p-8 text-center"><p className="text-sm text-red-600">Unable to load fit operations.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div> : null}
       {!isLoading && !isError ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -93,7 +93,7 @@ export default function AdminFitOperations() {
                 {recent.map(profile => (
                   <div key={profile.id} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="font-semibold text-gray-900">{profile.first_name} {profile.last_name}</p>
+                      <p className="font-semibold text-gray-900">{[profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Customer'}</p>
                       <p className="mt-1 text-xs capitalize text-gray-500">{[profile.arch_preference, profile.comfort_focus, profile.usual_size].filter(Boolean).join(' · ') || 'No optional preferences provided'}</p>
                     </div>
                     <span className="text-xs text-gray-400">{new Date(profile.updated_at).toLocaleDateString()}</span>
