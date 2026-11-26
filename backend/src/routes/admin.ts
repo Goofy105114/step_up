@@ -181,6 +181,9 @@ router.patch('/products/:id', async (req: Request, res: Response) => {
     const nextSale = nextSaleRaw === null || nextSaleRaw === '' ? null : Number(nextSaleRaw);
     if (nextSale !== null && (!Number.isFinite(nextSale) || nextSale <= 0 || nextSale > nextBase)) throw new AppError('Sale price must be positive and cannot exceed the base price', 400);
   }
+  if (req.body.arch_support_level !== undefined && req.body.arch_support_level !== null && !['low', 'medium', 'high'].includes(req.body.arch_support_level)) throw new AppError('Invalid arch support level', 400);
+  if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
+  if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
   if (!updates.length) throw new AppError('No supported product fields to update', 400);
   params.push(req.params.id);
   const result = await query(`UPDATE products SET ${updates.join(',')},updated_at=NOW() WHERE id=$${index} RETURNING *`, params);
