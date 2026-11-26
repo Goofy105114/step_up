@@ -21,14 +21,42 @@ export default function ShopPage() {
   const CATEGORIES = [{ slug: '', label: 'All Footwear' }, ...(categoriesData?.data || []).map((category: any) => ({ slug: category.slug, label: category.name }))];
   const [category, setCategory] = useState(paramCategory || '');
   const [sort, setSort] = useState('');
-  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [searchDraft, setSearchDraft] = useState(searchParams.get('search') || '');
+  const [search, setSearch] = useState(searchParams.get('search')?.trim() || '');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [page, setPage] = useState(1);
   const [allProducts, setAllProducts] = useState<any[]>([]);
 
-  useEffect(() => { setCategory(paramCategory || ''); setPage(1); setAllProducts([]); }, [paramCategory]);
-  useEffect(() => { setPage(1); setAllProducts([]); }, [category, sort, search, minPrice, maxPrice]);
+  const priceRangeInvalid = minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice);
+
+  useEffect(() => {
+    setCategory(paramCategory || '');
+    setPage(1);
+    setAllProducts([]);
+  }, [paramCategory]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('search') || '';
+    setSearchDraft(nextSearch);
+    setSearch(nextSearch.trim());
+  }, [searchParams]);
+
+  useEffect(() => {
+    setPage(1);
+    setAllProducts([]);
+  }, [category, sort, search, minPrice, maxPrice]);
+
+  const resetFilters = () => {
+    setCategory('');
+    setSort('');
+    setSearchDraft('');
+    setSearch('');
+    setMinPrice('');
+    setMaxPrice('');
+    setPage(1);
+    setAllProducts([]);
+  };
 
   const buildQuery = (p = page) => {
     const params: Record<string, string> = { limit: '12', page: String(p) };
@@ -42,15 +70,20 @@ export default function ShopPage() {
     return new URLSearchParams(params).toString();
   };
 
-  const { data, isFetching } = useQuery<{ data: any[]; pagination: { pages: number; total: number } }>({
+  const { data, isFetching, isError, refetch } = useQuery<{ data: any[]; pagination: { pages: number; total: number } }>({
     queryKey: ['products', 'shop', category, sort, search, minPrice, maxPrice, page],
     queryFn: () => api.get(`/products?${buildQuery()}`).then(r => r.data),
+    enabled: !priceRangeInvalid,
   });
 
   useEffect(() => {
     if (!data?.data) return;
-    setAllProducts(prev => page === 1 ? data.data : [...prev, ...data.data]);
-  }, [data]);
+    setAllProducts(prev => {
+      if (page === 1) return data.data;
+      const productsById = new Map([...prev, ...data.data].map(product => [product.id, product]));
+      return Array.from(productsById.values());
+    });
+  }, [data, page]);
 
   const hasMore = data?.pagination && page < data.pagination.pages;
   const total = data?.pagination?.total ?? 0;
@@ -117,18 +150,19 @@ export default function ShopPage() {
                   <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
                   <h2 className="text-title-md font-semibold text-primary">Filters &amp; Specs</h2>
                 </div>
-                <button onClick={() => { setCategory(''); setSort(''); setSearch(''); setMinPrice(''); setMaxPrice(''); }} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
+                <button onClick={resetFilters} className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary hover:underline">Reset All</button>
               </div>
 
               {/* Search */}
               <div className="mb-space-md">
-                <label className="label">Search</label>
-                <form onSubmit={e => { e.preventDefault(); setPage(1); setAllProducts([]); }}>
+                <label className="label" htmlFor="shop-search">Search</label>
+                <form onSubmit={e => { e.preventDefault(); setSearch(searchDraft.trim()); setPage(1); setAllProducts([]); }}>
                   <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">search</span>
-                    <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)}
+                    <input id="shop-search" type="search" placeholder="Search products..." value={searchDraft} onChange={e => setSearchDraft(e.target.value)}
                       className="input-field pl-10 h-11 text-body-sm" />
                   </div>
+                  <button type="submit" className="btn-outline mt-2 w-full py-2 text-body-sm">Search products</button>
                 </form>
               </div>
 
@@ -136,9 +170,10 @@ export default function ShopPage() {
               <div className="mb-space-md">
                 <label className="label">Price range (₹)</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="number" min="0" inputMode="numeric" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="input-field h-10 text-body-sm" />
-                  <input type="number" min="0" inputMode="numeric" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="input-field h-10 text-body-sm" />
+                  <input type="number" min="0" inputMode="numeric" aria-label="Minimum price in rupees" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="input-field h-10 text-body-sm" />
+                  <input type="number" min="0" inputMode="numeric" aria-label="Maximum price in rupees" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="input-field h-10 text-body-sm" />
                 </div>
+                {priceRangeInvalid && <p role="alert" className="mt-2 text-xs text-error">Maximum price must be greater than or equal to minimum price.</p>}
               </div>
 
               {/* Categories */}
@@ -188,16 +223,27 @@ export default function ShopPage() {
                     </button>
                   ))}
                 </div>
-
               </div>
 
               {/* Grid */}
-              {allProducts.length === 0 && !isFetching ? (
+              {priceRangeInvalid ? (
+                <div role="alert" className="rounded-lg border border-error/30 bg-surface-container-low p-space-xl text-center">
+                  <h3 className="text-title-lg font-semibold text-primary mb-2">Check your price range</h3>
+                  <p className="text-body-sm text-on-surface-variant">Enter a maximum price that is at least the minimum price.</p>
+                </div>
+              ) : isError ? (
+                <div role="alert" className="rounded-lg border border-error/30 bg-surface-container-low p-space-xl text-center">
+                  <span className="material-symbols-outlined text-[40px] text-error mb-2">cloud_off</span>
+                  <h3 className="text-headline-sm font-semibold text-primary mb-2">We couldn't load the collection</h3>
+                  <p className="text-body-md text-on-surface-variant mb-space-md">Your filters are still here. Check your connection and try again.</p>
+                  <button onClick={() => refetch()} disabled={isFetching} className="btn-primary">{isFetching ? 'Retrying…' : 'Try again'}</button>
+                </div>
+              ) : allProducts.length === 0 && !isFetching ? (
                 <div className="text-center py-24">
                   <span className="material-symbols-outlined text-[64px] text-outline-variant block mb-space-lg">search_off</span>
                   <h3 className="text-headline-sm font-semibold text-primary mb-space-sm">No products found</h3>
                   <p className="text-body-md text-on-surface-variant mb-space-lg">Try adjusting your filters or search term</p>
-                  <button onClick={() => { setCategory(''); setSort(''); setSearch(''); setMinPrice(''); setMaxPrice(''); }} className="btn-primary">Clear Filters</button>
+                  <button onClick={resetFilters} className="btn-primary">Clear Filters</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-space-md md:gap-space-lg">
@@ -205,13 +251,13 @@ export default function ShopPage() {
                 </div>
               )}
 
-              {isFetching && allProducts.length === 0 && (
+              {isFetching && allProducts.length === 0 && !priceRangeInvalid && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-space-md md:gap-space-lg">
                   {Array(6).fill(0).map((_, i) => <div key={i} className="rounded-DEFAULT bg-surface-container-low animate-pulse aspect-[4/5]" />)}
                 </div>
               )}
 
-              {hasMore && (
+              {hasMore && !isError && (
                 <div className="text-center mt-space-xl">
                   <button onClick={() => setPage(p => p + 1)} disabled={isFetching} className="btn-outline px-12 py-space-md text-title-md font-semibold">
                     {isFetching ? 'Loading...' : 'Load More Products'}
