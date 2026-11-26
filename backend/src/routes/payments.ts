@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { createRazorpayOrder, fetchRazorpayPayment, verifyCheckoutSignature, verifyWebhookSignature } from '../services/razorpay';
+import { createRazorpayOrder, fetchRazorpayPayment, fetchRazorpayOrderPayments, verifyCheckoutSignature, verifyWebhookSignature } from '../services/razorpay';
 
 const router = Router();
 
@@ -73,6 +73,10 @@ router.post('/cancel', authenticate, async (req: Request, res: Response) => {
   const order=found.rows[0];
   if(!order) throw new AppError('Payment order not found',404);
   if(order.payment_status==='paid') throw new AppError('This order is already paid and cannot be cancelled here',409);
+  if(order.payment_intent_id){
+    const payments=await fetchRazorpayOrderPayments(order.payment_intent_id);
+    if(payments.some((payment:any)=>['authorized','captured'].includes(payment.status))) throw new AppError('A payment is already authorized or captured. Refresh your orders before retrying.',409);
+  }
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
