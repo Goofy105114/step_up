@@ -48,7 +48,7 @@ export default function CheckoutPage() {
       toast.error('One or more cart items are unavailable or exceed current stock. Return to your bag and review quantities.');
       return;
     }
-    if (addr.email.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(addr.email.trim())) {
+    if (addr.email.trim() && !/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(addr.email.trim())) {
       toast.error('Enter a valid email address or leave the email field blank.');
       return;
     }
