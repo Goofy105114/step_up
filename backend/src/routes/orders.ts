@@ -60,7 +60,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         `SELECT * FROM coupons WHERE code=$1 AND is_active=true
          AND valid_from<=NOW() AND (valid_until IS NULL OR valid_until>NOW())
          AND (max_uses IS NULL OR used_count<max_uses)
-         FOR UPDATE`, [coupon_code]);
+         AND (user_id IS NULL OR user_id=$2)
+         FOR UPDATE`, [String(coupon_code).trim().toUpperCase(), req.user!.userId]);
       const coupon = couponResult.rows[0];
       if (coupon && subtotal >= Number(coupon.min_order_amount)) {
         couponId = coupon.id;
