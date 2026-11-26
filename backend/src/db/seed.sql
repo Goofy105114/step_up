@@ -22,9 +22,9 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'Experience the ultimate in running comfort with our CloudStep Runner Pro. Engineered with advanced foam technology and breathable mesh upper, these shoes provide superior cushioning and support for every stride. Perfect for both road running and gym workouts.',
     'Advanced cushioning running shoe with breathable mesh upper',
     'a1000000-0000-0000-0000-000000000004',
-    3999.00, 3199.00, true, true, false,
+    3999.00, NULL, true, true, false,
     ARRAY['running', 'sports', 'mens', 'cushioning'],
-    4.6, 128
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000002',
@@ -35,7 +35,7 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'a1000000-0000-0000-0000-000000000006',
     4599.00, NULL, true, false, true,
     ARRAY['heels', 'formal', 'womens', 'leather'],
-    4.8, 94
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000003',
@@ -44,9 +44,9 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'Built for the trails, the TerraTrek Hiker delivers rugged durability and ankle support you can rely on. Waterproof nubuck upper, Vibram outsole, and EVA midsole make this your go-to companion for outdoor adventures.',
     'Waterproof trail-ready hiking boot',
     'a1000000-0000-0000-0000-000000000001',
-    5999.00, 4999.00, false, true, false,
+    5999.00, NULL, false, true, false,
     ARRAY['hiking', 'outdoor', 'mens', 'waterproof'],
-    4.5, 67
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000004',
@@ -55,9 +55,9 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'Designed specifically for active kids, the SoftStep Velcro features easy-close straps, a flexible sole that supports natural foot development, and extra cushioning for all-day play. Machine-washable upper.',
     'Easy velcro kids shoe with flexible sole',
     'a1000000-0000-0000-0000-000000000003',
-    1999.00, 1699.00, false, false, true,
+    1999.00, NULL, false, false, true,
     ARRAY['kids', 'velcro', 'school', 'flexible'],
-    4.7, 203
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000005',
@@ -68,7 +68,7 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'a1000000-0000-0000-0000-000000000005',
     2499.00, NULL, true, false, true,
     ARRAY['sneakers', 'casual', 'unisex', 'canvas'],
-    4.4, 312
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000006',
@@ -77,9 +77,9 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'Ultra-lightweight EVA slides with a contoured footbed and anti-slip outsole. Perfect for home, poolside, or quick errands. The CloudFloat Slide delivers unmatched comfort in a minimalist design.',
     'Lightweight EVA slides with contoured footbed',
     'a1000000-0000-0000-0000-000000000007',
-    999.00, 799.00, false, false, true,
+    999.00, NULL, false, false, true,
     ARRAY['slides', 'casual', 'unisex', 'lightweight'],
-    4.3, 445
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000007',
@@ -88,9 +88,9 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'Dominate the pitch with the BlazeKick Football Boot. Synthetic leather upper for superior ball feel, stud configuration optimised for natural grass, and a snug anatomical fit. Recommended by professional coaches.',
     'Professional-grade football boot for natural grass',
     'a1000000-0000-0000-0000-000000000004',
-    3499.00, 2999.00, false, true, false,
+    3499.00, NULL, false, true, false,
     ARRAY['football', 'sports', 'mens', 'studs'],
-    4.6, 89
+    0, 0
   ),
   (
     'b1000000-0000-0000-0000-000000000008',
@@ -101,67 +101,63 @@ INSERT INTO products (id, name, slug, description, short_description, category_i
     'a1000000-0000-0000-0000-000000000002',
     1799.00, NULL, true, false, false,
     ARRAY['flats', 'formal', 'womens', 'ballerina'],
-    4.5, 176
+    0, 0
   )
 ON CONFLICT (slug) DO NOTHING;
 
 -- Product Variants
 INSERT INTO product_variants (product_id, size, color, color_hex, stock_qty, sku) VALUES
   -- CloudStep Runner Pro (Men's)
-  ('b1000000-0000-0000-0000-000000000001', '6',  'Black/White', '#000000', 0,  'CSR-BW-6'),
-  ('b1000000-0000-0000-0000-000000000001', '7',  'Black/White', '#000000', 25, 'CSR-BW-7'),
-  ('b1000000-0000-0000-0000-000000000001', '8',  'Black/White', '#000000', 30, 'CSR-BW-8'),
-  ('b1000000-0000-0000-0000-000000000001', '9',  'Black/White', '#000000', 28, 'CSR-BW-9'),
-  ('b1000000-0000-0000-0000-000000000001', '10', 'Black/White', '#000000', 20, 'CSR-BW-10'),
-  ('b1000000-0000-0000-0000-000000000001', '11', 'Black/White', '#000000', 15, 'CSR-BW-11'),
-  ('b1000000-0000-0000-0000-000000000001', '8',  'Navy Blue',   '#1B2A6B', 22, 'CSR-NB-8'),
-  ('b1000000-0000-0000-0000-000000000001', '9',  'Navy Blue',   '#1B2A6B', 18, 'CSR-NB-9'),
-  ('b1000000-0000-0000-0000-000000000001', '10', 'Navy Blue',   '#1B2A6B', 20, 'CSR-NB-10'),
+  ('b1000000-0000-0000-0000-000000000001', '6',  'Black/White', '#000000', 0, 'CSR-BW-6'),
+  ('b1000000-0000-0000-0000-000000000001', '7',  'Black/White', '#000000', 0, 'CSR-BW-7'),
+  ('b1000000-0000-0000-0000-000000000001', '8',  'Black/White', '#000000', 0, 'CSR-BW-8'),
+  ('b1000000-0000-0000-0000-000000000001', '9',  'Black/White', '#000000', 0, 'CSR-BW-9'),
+  ('b1000000-0000-0000-0000-000000000001', '10', 'Black/White', '#000000', 0, 'CSR-BW-10'),
+  ('b1000000-0000-0000-0000-000000000001', '11', 'Black/White', '#000000', 0, 'CSR-BW-11'),
+  ('b1000000-0000-0000-0000-000000000001', '8',  'Navy Blue',   '#1B2A6B', 0, 'CSR-NB-8'),
+  ('b1000000-0000-0000-0000-000000000001', '9',  'Navy Blue',   '#1B2A6B', 0, 'CSR-NB-9'),
+  ('b1000000-0000-0000-0000-000000000001', '10', 'Navy Blue',   '#1B2A6B', 0, 'CSR-NB-10'),
   -- UrbanGrace Heel
-  ('b1000000-0000-0000-0000-000000000002', '5',  'Black',       '#111111', 15, 'UGH-BK-5'),
-  ('b1000000-0000-0000-0000-000000000002', '6',  'Black',       '#111111', 20, 'UGH-BK-6'),
-  ('b1000000-0000-0000-0000-000000000002', '7',  'Black',       '#111111', 18, 'UGH-BK-7'),
+  ('b1000000-0000-0000-0000-000000000002', '5',  'Black',       '#111111', 0, 'UGH-BK-5'),
+  ('b1000000-0000-0000-0000-000000000002', '6',  'Black',       '#111111', 0, 'UGH-BK-6'),
+  ('b1000000-0000-0000-0000-000000000002', '7',  'Black',       '#111111', 0, 'UGH-BK-7'),
   ('b1000000-0000-0000-0000-000000000002', '8',  'Black',       '#111111', 0, 'UGH-BK-8'),
   ('b1000000-0000-0000-0000-000000000002', '9',  'Black',       '#111111', 0, 'UGH-BK-9'),
   ('b1000000-0000-0000-0000-000000000002', '10', 'Black',       '#111111', 0, 'UGH-BK-10'),
   ('b1000000-0000-0000-0000-000000000002', '11', 'Black',       '#111111', 0, 'UGH-BK-11'),
-  ('b1000000-0000-0000-0000-000000000002', '6',  'Nude',        '#D4A574', 12, 'UGH-NU-6'),
-  ('b1000000-0000-0000-0000-000000000002', '7',  'Nude',        '#D4A574', 10, 'UGH-NU-7'),
+  ('b1000000-0000-0000-0000-000000000002', '6',  'Nude',        '#D4A574', 0, 'UGH-NU-6'),
+  ('b1000000-0000-0000-0000-000000000002', '7',  'Nude',        '#D4A574', 0, 'UGH-NU-7'),
   ('b1000000-0000-0000-0000-000000000002', '8',  'Nude',        '#D4A574', 0, 'UGH-NU-8'),
   ('b1000000-0000-0000-0000-000000000002', '9',  'Nude',        '#D4A574', 0, 'UGH-NU-9'),
   ('b1000000-0000-0000-0000-000000000002', '10', 'Nude',        '#D4A574', 0, 'UGH-NU-10'),
   ('b1000000-0000-0000-0000-000000000002', '11', 'Nude',        '#D4A574', 0, 'UGH-NU-11'),
   -- StreetVibe Sneaker
-  ('b1000000-0000-0000-0000-000000000005', '6',  'White',       '#FFFFFF', 40, 'SVS-WH-6'),
-  ('b1000000-0000-0000-0000-000000000005', '7',  'White',       '#FFFFFF', 45, 'SVS-WH-7'),
-  ('b1000000-0000-0000-0000-000000000005', '8',  'White',       '#FFFFFF', 38, 'SVS-WH-8'),
-  ('b1000000-0000-0000-0000-000000000005', '9',  'White',       '#FFFFFF', 30, 'SVS-WH-9'),
+  ('b1000000-0000-0000-0000-000000000005', '6',  'White',       '#FFFFFF', 0, 'SVS-WH-6'),
+  ('b1000000-0000-0000-0000-000000000005', '7',  'White',       '#FFFFFF', 0, 'SVS-WH-7'),
+  ('b1000000-0000-0000-0000-000000000005', '8',  'White',       '#FFFFFF', 0, 'SVS-WH-8'),
+  ('b1000000-0000-0000-0000-000000000005', '9',  'White',       '#FFFFFF', 0, 'SVS-WH-9'),
   ('b1000000-0000-0000-0000-000000000005', '10', 'White',       '#FFFFFF', 0, 'SVS-WH-10'),
   ('b1000000-0000-0000-0000-000000000005', '11', 'White',       '#FFFFFF', 0, 'SVS-WH-11'),
-  ('b1000000-0000-0000-0000-000000000005', '7',  'Black',       '#111111', 35, 'SVS-BK-7'),
-  ('b1000000-0000-0000-0000-000000000005', '8',  'Black',       '#111111', 32, 'SVS-BK-8'),
+  ('b1000000-0000-0000-0000-000000000005', '7',  'Black',       '#111111', 0, 'SVS-BK-7'),
+  ('b1000000-0000-0000-0000-000000000005', '8',  'Black',       '#111111', 0, 'SVS-BK-8'),
   ('b1000000-0000-0000-0000-000000000005', '9',  'Black',       '#111111', 0, 'SVS-BK-9'),
   ('b1000000-0000-0000-0000-000000000005', '10', 'Black',       '#111111', 0, 'SVS-BK-10'),
   ('b1000000-0000-0000-0000-000000000005', '11', 'Black',       '#111111', 0, 'SVS-BK-11'),
   -- CloudFloat Slide
-  ('b1000000-0000-0000-0000-000000000006', 'S',  'Black',       '#111111', 60, 'CFS-BK-S'),
-  ('b1000000-0000-0000-0000-000000000006', 'M',  'Black',       '#111111', 80, 'CFS-BK-M'),
-  ('b1000000-0000-0000-0000-000000000006', 'L',  'Black',       '#111111', 70, 'CFS-BK-L'),
-  ('b1000000-0000-0000-0000-000000000006', 'M',  'White',       '#FFFFFF', 50, 'CFS-WH-M'),
-  ('b1000000-0000-0000-0000-000000000006', 'L',  'White',       '#FFFFFF', 45, 'CFS-WH-L'),
+  ('b1000000-0000-0000-0000-000000000006', 'S',  'Black',       '#111111', 0, 'CFS-BK-S'),
+  ('b1000000-0000-0000-0000-000000000006', 'M',  'Black',       '#111111', 0, 'CFS-BK-M'),
+  ('b1000000-0000-0000-0000-000000000006', 'L',  'Black',       '#111111', 0, 'CFS-BK-L'),
+  ('b1000000-0000-0000-0000-000000000006', 'M',  'White',       '#FFFFFF', 0, 'CFS-WH-M'),
+  ('b1000000-0000-0000-0000-000000000006', 'L',  'White',       '#FFFFFF', 0, 'CFS-WH-L'),
   -- SoftStep Kids
-  ('b1000000-0000-0000-0000-000000000004', '1',  'Blue',        '#3B82F6', 30, 'SSK-BL-1'),
-  ('b1000000-0000-0000-0000-000000000004', '2',  'Blue',        '#3B82F6', 35, 'SSK-BL-2'),
-  ('b1000000-0000-0000-0000-000000000004', '3',  'Blue',        '#3B82F6', 28, 'SSK-BL-3'),
-  ('b1000000-0000-0000-0000-000000000004', '2',  'Pink',        '#EC4899', 25, 'SSK-PK-2'),
-  ('b1000000-0000-0000-0000-000000000004', '3',  'Pink',        '#EC4899', 22, 'SSK-PK-3')
+  ('b1000000-0000-0000-0000-000000000004', '1',  'Blue',        '#3B82F6', 0, 'SSK-BL-1'),
+  ('b1000000-0000-0000-0000-000000000004', '2',  'Blue',        '#3B82F6', 0, 'SSK-BL-2'),
+  ('b1000000-0000-0000-0000-000000000004', '3',  'Blue',        '#3B82F6', 0, 'SSK-BL-3'),
+  ('b1000000-0000-0000-0000-000000000004', '2',  'Pink',        '#EC4899', 0, 'SSK-PK-2'),
+  ('b1000000-0000-0000-0000-000000000004', '3',  'Pink',        '#EC4899', 0, 'SSK-PK-3')
 ON CONFLICT (sku) DO NOTHING;
 
 -- Product Images (using placeholder URLs — replace with real CDN in production)
 -- Product images intentionally omitted for the initial catalogue.
 -- Add product photography later through the STEPUP admin product editor.
-INSERT INTO coupons (code, description, discount_type, discount_value, min_order_amount, max_uses) VALUES
-  ('WELCOME10', 'Welcome discount for new customers', 'percentage', 10, 999, 1000),
-  ('FLAT500',   'Flat ₹500 off on orders above ₹3000',  'fixed',      500, 3000, 500),
-  ('SUMMER20',  'Summer sale 20% off',                   'percentage', 20, 1500, NULL)
-ON CONFLICT (code) DO NOTHING;
+-- Product images intentionally omitted; upload verified photography through the admin editor.
