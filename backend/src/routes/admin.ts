@@ -304,8 +304,8 @@ const normalizeProductImageUrl = (value: unknown) => {
 router.post('/products/:id/images', async (req: Request, res: Response) => {
   const { url, alt_text, is_primary, sort_order } = req.body;
   const imageUrl = normalizeProductImageUrl(url);
-  if (alt_text !== undefined && alt_text !== null && (typeof alt_text !== 'string' || alt_text.length > 500)) {
-    throw new AppError('Image alt text cannot exceed 500 characters', 400);
+  if (alt_text !== undefined && alt_text !== null && (typeof alt_text !== 'string' || alt_text.length > 255)) {
+    throw new AppError('Image alt text cannot exceed 255 characters', 400);
   }
   const sortOrder = sort_order === undefined ? 0 : Number(sort_order);
   if (!Number.isInteger(sortOrder) || sortOrder < 0) throw new AppError('Image sort order must be a non-negative whole number', 400);
