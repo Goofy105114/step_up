@@ -4,7 +4,8 @@ import { authenticate, authorize } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
-router.use(authenticate, authorize('admin', 'staff'));
+// The admin interface is admin-only; staff roles must not inherit admin API access.
+router.use(authenticate, authorize('admin'));
 
 /* ── Dashboard ───────────────────────────────────────────────────────── */
 router.get('/dashboard', async (_req: Request, res: Response) => {
