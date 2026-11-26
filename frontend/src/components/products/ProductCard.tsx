@@ -63,9 +63,13 @@ export default function ProductCard({ product }: { product: Product }) {
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">photo</span>
-              <span className="sr-only">No product image available</span>
+            <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,#ffffff_0%,#edf2ed_48%,#dce7df_100%)]">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full border border-primary/10" />
+              <div className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full border border-primary/10" />
+              <span className="material-symbols-outlined relative text-[76px] text-primary/45" aria-hidden="true">steps</span>
+              <span className="relative mt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-primary/65">STEPUP</span>
+              <span className="relative mt-1 text-[9px] font-medium tracking-wide text-on-surface-variant/75">Product photography coming soon</span>
+              <span className="sr-only">Product image will be added soon</span>
             </div>
           )}
         </Link>
