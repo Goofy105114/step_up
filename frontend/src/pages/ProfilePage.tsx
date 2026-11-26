@@ -160,11 +160,11 @@ export default function ProfilePage() {
             <div className="grid gap-space-md sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label className="label">Foot length (mm)</label>
-                <input type="number" min="1" max="500" step="0.1" value={fitForm.foot_length_mm} onChange={event => setFitForm(current => ({ ...current, foot_length_mm: event.target.value }))} className="input-field" placeholder="Optional measurement" />
+                <select value={fitForm.foot_length_mm} onChange={event => setFitForm(current => ({ ...current, foot_length_mm: event.target.value }))} className="input-field"><option value="">Select foot length</option>{Array.from({ length: 17 }, (_, index) => 220 + index * 5).map(mm => <option key={mm} value={String(mm)}>{mm} mm</option>)}</select>
               </div>
               <div>
                 <label className="label">Usual shoe size</label>
-                <input value={fitForm.usual_size} onChange={event => setFitForm(current => ({ ...current, usual_size: event.target.value }))} className="input-field" placeholder="e.g. UK 8 / EU 42" />
+                <select value={fitForm.usual_size} onChange={event => setFitForm(current => ({ ...current, usual_size: event.target.value }))} className="input-field"><option value="">Select UK shoe size</option>{[5,6,7,8,9,10,11].map(size => <option key={size} value={`UK ${size}`}>UK {size}</option>)}</select>
               </div>
               <div>
                 <label className="label">Arch preference</label>
