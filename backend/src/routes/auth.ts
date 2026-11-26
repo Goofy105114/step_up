@@ -105,10 +105,8 @@ router.post('/forgot-password',authAttemptLimiter,[emailRules],async(req:Request
  res.json({success:true,message:'If an account exists for this email, a password reset link has been sent.'});
 });
 router.post('/reset-password',authAttemptLimiter,[body('token').isLength({min:30,max:200}),body('new_password').custom(strongPassword).withMessage('Use 10–72 characters with uppercase, lowercase, a number and a symbol; no spaces.')],async(req:Request,res:Response)=>{
- const hash=hashResetToken(String(req.body.token)),found=await query('SELECT id,user_id FROM password_reset_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW()',[hash]);
- if(!found.rows[0])throw new AppError('Reset link is invalid or expired. Request a new one.',400);
- const passwordHash=await bcrypt.hash(req.body.new_password,12);
- const changed=await query('WITH updated_user AS (UPDATE users SET password_hash=$1,updated_at=NOW() WHERE id=$2 RETURNING id) UPDATE password_reset_tokens SET used_at=NOW() WHERE user_id=(SELECT id FROM updated_user) AND used_at IS NULL RETURNING id',[passwordHash,found.rows[0].user_id]);if(!changed.rowCount)throw new AppError('Reset link is invalid or expired. Request a new one.',400);
+ const hash=hashResetToken(String(req.body.token)),passwordHash=await bcrypt.hash(req.body.new_password,12);
+ const changed=await query('WITH claimed AS (UPDATE password_reset_tokens SET used_at=NOW() WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW() RETURNING user_id), updated_user AS (UPDATE users SET password_hash=$2,updated_at=NOW() WHERE id=(SELECT user_id FROM claimed) RETURNING id) SELECT id FROM updated_user',[hash,passwordHash]);if(!changed.rowCount)throw new AppError('Reset link is invalid or expired. Request a new one.',400);
  res.json({success:true,message:'Password updated successfully'});
 });
 router.get('/me',authenticate,async(req:Request,res:Response)=>{
