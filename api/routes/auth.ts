@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
+import rateLimit from 'express-rate-limit';
 import { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
