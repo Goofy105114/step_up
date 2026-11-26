@@ -53,6 +53,7 @@ export default function Footer() {
             <ul className="mt-4 space-y-3">
               <li><Link to="/find-your-fit" className="text-sm text-white/65 hover:text-white">Find your fit</Link></li>
               <li><Link to="/clinical-studies" className="text-sm text-white/65 hover:text-white">Research library</Link></li>
+              <li><Link to="/about" className="text-sm text-white/65 hover:text-white">About STEPUP</Link></li>
               <li><Link to="/wishlist" className="text-sm text-white/65 hover:text-white">Wishlist</Link></li>
             </ul>
           </div>
