@@ -13,6 +13,7 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [payment, setPayment] = useState('cod');
+  const [paymentPending, setPaymentPending] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -52,15 +53,56 @@ export default function CheckoutPage() {
       toast.error('Enter a valid email address or leave the email field blank.');
       return;
     }
-    if (payment !== 'cod') { toast.error('Online payments are not enabled yet. Please choose Cash on Delivery.'); return; }
     setPlacing(true);
     try {
-      const res = await api.post('/orders', { shipping_address: addr, payment_method: payment, coupon_code: appliedCoupon?.code });
-      setOrderId(res.data.data.order_number);
-      await clearCart();
-      setStep(3);
-    } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to place order'); }
-    finally { setPlacing(false); }
+      if (payment === 'razorpay') {
+        setPaymentPending(true);
+        const scriptUrl = 'https://checkout.razorpay.com/v1/checkout.js';
+        const loaded = await new Promise<boolean>((resolve) => {
+          if ((window as any).Razorpay) return resolve(true);
+          const script = document.createElement('script');
+          script.src = scriptUrl;
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+        if (!loaded) throw new Error('Secure payment checkout could not be loaded. Please retry or choose Cash on Delivery.');
+        const created = await api.post('/payments/create-order', { shipping_address: addr, coupon_code: appliedCoupon?.code });
+        const paymentOrder = created.data.data;
+        await new Promise<void>((resolve, reject) => {
+          const RazorpayConstructor = (window as any).Razorpay;
+          const checkout = new RazorpayConstructor({
+            key: paymentOrder.key_id,
+            amount: paymentOrder.amount,
+            currency: paymentOrder.currency,
+            name: 'STEPUP',
+            description: `Order ${paymentOrder.order_number}`,
+            order_id: paymentOrder.razorpay_order_id,
+            prefill: { name: addr.full_name, email: addr.email, contact: addr.phone },
+            notes: { order_number: paymentOrder.order_number },
+            theme: { color: '#1f2937' },
+            handler: async (response: any) => {
+              try {
+                const verified = await api.post('/payments/verify', response);
+                setOrderId(verified.data.data.order_number);
+                await clearCart();
+                setStep(3);
+                resolve();
+              } catch (error) { reject(error); }
+            },
+            modal: { ondismiss: async () => { try { await api.post('/payments/cancel', { order_id: paymentOrder.order_id }); } catch { /* Keep the order available for status review if Razorpay cannot confirm cancellation. */ } reject(new Error('Payment window closed. Your cart is still available; check My Orders before retrying.')); } },
+          });
+          checkout.on('payment.failed', async (response: any) => { try { await api.post('/payments/cancel', { order_id: paymentOrder.order_id }); } catch { /* Keep the order available for status review if payment state cannot be confirmed. */ } reject(new Error(response.error?.description || 'Payment failed. Your cart is still available.')); });
+          checkout.open();
+        });
+      } else {
+        const res = await api.post('/orders', { shipping_address: addr, payment_method: 'cod', coupon_code: appliedCoupon?.code });
+        setOrderId(res.data.data.order_number);
+        await clearCart();
+        setStep(3);
+      }
+    } catch (e: any) { toast.error(e.response?.data?.message || e.message || 'Unable to complete checkout'); }
+    finally { setPlacing(false); setPaymentPending(false); }
   };
 
   if (step === 3) return (
@@ -207,12 +249,17 @@ export default function CheckoutPage() {
               <>
                 <div className="card p-space-lg md:p-space-xl">
                   <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-on-surface-variant block mb-space-md">Step 02 • Payment Method</span>
-                  <div className="mb-space-md rounded-xl border border-outline-variant/40 bg-surface-container-low p-space-md">
-                    <div className="flex items-center gap-space-sm">
+                  <div className="space-y-3 mb-space-md">
+                    <label className={`flex items-center gap-3 rounded-xl border p-space-md cursor-pointer ${payment === 'cod' ? 'border-primary bg-surface-container-low' : 'border-outline-variant/40'}`}>
+                      <input type="radio" name="payment-method" value="cod" checked={payment === 'cod'} onChange={() => setPayment('cod')} />
                       <span className="material-symbols-outlined text-[24px] text-primary">payments</span>
-                      <div><p className="text-label-md font-semibold text-on-surface">Cash on Delivery</p><p className="text-body-sm text-on-surface-variant">Pay in Indian Rupees when your order arrives.</p></div>
-                    </div>
-                    <p className="mt-3 text-body-sm text-on-surface-variant">UPI and card payments will be available after a payment gateway is configured. No online payment will be simulated.</p>
+                      <span><span className="block text-label-md font-semibold text-on-surface">Cash on Delivery</span><span className="block text-body-sm text-on-surface-variant">Pay in Indian Rupees when your order arrives.</span></span>
+                    </label>
+                    <label className={`flex items-center gap-3 rounded-xl border p-space-md cursor-pointer ${payment === 'razorpay' ? 'border-primary bg-surface-container-low' : 'border-outline-variant/40'}`}>
+                      <input type="radio" name="payment-method" value="razorpay" checked={payment === 'razorpay'} onChange={() => setPayment('razorpay')} />
+                      <span className="material-symbols-outlined text-[24px] text-primary">credit_card</span>
+                      <span><span className="block text-label-md font-semibold text-on-surface">UPI, Cards & Netbanking</span><span className="block text-body-sm text-on-surface-variant">Secure payment powered by Razorpay. Availability depends on merchant account configuration.</span></span>
+                    </label>
                   </div>
                 </div>
 
@@ -236,7 +283,7 @@ export default function CheckoutPage() {
                   <button onClick={placeOrder} disabled={placing} className="flex-1
                   h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                   <span className="material-symbols-outlined text-[18px]">lock</span>
-                  {placing ? 'Placing Order...' : 'Place Order — Cash on Delivery'}
+                  {placing ? (paymentPending ? 'Opening secure payment…' : 'Placing Order...') : payment === 'razorpay' ? 'Pay Securely with Razorpay' : 'Place Order — Cash on Delivery'}
                   {!placing && <span className="material-symbols-outlined text-[18px]">arrow_forward</span>}
                 </button>
                 </div>
