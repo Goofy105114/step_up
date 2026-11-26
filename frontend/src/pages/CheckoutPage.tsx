@@ -18,7 +18,7 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponLoading, setCouponLoading] = useState(false);
-  const [addr, setAddr] = useState({ full_name: '', email: '', phone: '', line1: '', city: '', state: '', postal_code: '', country: 'India' });
+  const [addr, setAddr] = useState({ full_name: '', email: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'India' });
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeMessage, setPincodeMessage] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -40,6 +40,7 @@ export default function CheckoutPage() {
       full_name: preferred.full_name || current.full_name,
       phone: preferred.phone || current.phone,
       line1: preferred.line1 || '',
+      line2: preferred.line2 || '',
       city: preferred.city || '',
       state: preferred.state || '',
       postal_code: preferred.postal_code || '',
@@ -60,6 +61,7 @@ export default function CheckoutPage() {
       full_name: selected.full_name || '',
       phone: selected.phone || '',
       line1: selected.line1 || '',
+      line2: selected.line2 || '',
       city: selected.city || '',
       state: selected.state || '',
       postal_code: selected.postal_code || '',
@@ -296,6 +298,10 @@ export default function CheckoutPage() {
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">my_location</span>
                       <input id="checkout-line1" type="text" required autoComplete="address-line1" placeholder="House number and street name" value={addr.line1} onChange={e => setA('line1', e.target.value)} className="input-field pl-12" />
                     </div>
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="checkout-line2">Apartment / landmark</label>
+                    <input id="checkout-line2" type="text" autoComplete="address-line2" placeholder="Apartment, floor or nearby landmark" value={addr.line2} onChange={e => setA('line2', e.target.value)} className="input-field" />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-space-md">
                     <div className="col-span-2 sm:col-span-1">
