@@ -26,7 +26,7 @@ import patientProfileRoutes from './routes/patient-profile';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number.parseInt(process.env.PORT || '5000', 10);
 
 // Render runs behind a reverse proxy.
 app.set('trust proxy', 1);
