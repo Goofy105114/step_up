@@ -3,12 +3,10 @@ import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { formatPrice } from '../lib/formatters';
 import { Heart, Trash2, ShoppingBag } from 'lucide-react';
-import { useCartStore } from '../store/cartStore';
 import toast from 'react-hot-toast';
 
 export default function WishlistPage() {
   const qc = useQueryClient();
-  useCartStore();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['wishlist'],
@@ -18,6 +16,7 @@ export default function WishlistPage() {
   const removeMutation = useMutation({
     mutationFn: (productId: string) => api.delete(`/wishlist/${productId}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['wishlist'] }); toast.success('Removed from wishlist'); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to update wishlist'),
   });
 
   const items = data?.data || [];
