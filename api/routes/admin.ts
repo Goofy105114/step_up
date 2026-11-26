@@ -39,7 +39,7 @@ router.get('/orders', async (req: Request, res: Response) => {
   const { status } = req.query as Record<string, string>;
   const pageValue = req.query.page === undefined ? '1' : String(req.query.page);
   const limitValue = req.query.limit === undefined ? '20' : String(req.query.limit);
-  if (!/^\\d+$/.test(pageValue) || !/^\\d+$/.test(limitValue)) {
+  if (!/^[0-9]+$/.test(pageValue) || !/^[0-9]+$/.test(limitValue)) {
     throw new AppError('Page and limit must be positive whole numbers', 400);
   }
   const page = Number(pageValue);
