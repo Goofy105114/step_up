@@ -5,7 +5,7 @@ import { ShoppingCart, Users, Package, TrendingUp, ArrowUpRight } from 'lucide-r
 import { Link } from 'react-router-dom';
 
 export default function AdminDashboard() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: () => api.get('/admin/dashboard').then((r) => r.data.data),
     refetchInterval: 30000,
@@ -17,11 +17,19 @@ export default function AdminDashboard() {
 
   if (isLoading) return (
     <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5">
         {Array(4).fill(0).map((_, i) => <div key={i} className="bg-white border border-gray-200 h-28" />)}
       </div>
       <div className="bg-white border border-gray-200 h-64" />
     </div>
+  );
+
+  if (isError) return (
+    <section role="alert" className="bg-white border border-gray-200 p-8 text-center">
+      <h1 className="text-lg font-bold text-gray-900">Dashboard data is unavailable</h1>
+      <p className="mt-2 text-sm text-gray-500">The latest store metrics could not be loaded. Existing orders and products have not been changed.</p>
+      <button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-primary mt-5 px-5 py-3 disabled:opacity-60">{isFetching ? 'Retrying…' : 'Try again'}</button>
+    </section>
   );
 
   const kpis = [
@@ -32,7 +40,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 sm:space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">Dashboard</h1>
@@ -44,11 +52,11 @@ export default function AdminDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
         {kpis.map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white border border-gray-200 p-5 hover:border-gray-400 transition-colors">
+          <div key={label} className="min-w-0 bg-white border border-gray-200 p-4 sm:p-5 hover:border-gray-400 transition-colors">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs uppercase tracking-widest font-semibold text-gray-500">{label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+                <p className="mt-2 break-words text-xl font-bold text-gray-900 sm:text-2xl">{value}</p>
                 <p className="text-xs text-gray-400 mt-1">{sub}</p>
               </div>
               <div className={`w-10 h-10 ${bg} flex items-center justify-center`}>
@@ -59,9 +67,9 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-5">
+      <div className="grid min-w-0 lg:grid-cols-3 gap-3 sm:gap-5">
         {/* Recent orders */}
-        <div className="lg:col-span-2 bg-white border border-gray-200">
+        <div className="min-w-0 lg:col-span-2 bg-white border border-gray-200">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Recent Orders</h2>
             <Link to="/admin/orders" className="text-xs text-brand-500 hover:text-brand-700 uppercase tracking-wider flex items-center gap-1">
@@ -94,7 +102,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Top products */}
-        <div className="bg-white border border-gray-200">
+        <div className="min-w-0 bg-white border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Top Products</h2>
           </div>
