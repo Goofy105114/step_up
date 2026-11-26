@@ -323,15 +323,17 @@ router.post('/products/:id/variants', authorize('admin'), async (req: Request, r
   if (normalizedSize.length > 40 || normalizedColor.length > 80) throw new AppError('Size or color is too long', 400);
   if (!Number.isInteger(parsedStock) || parsedStock < 0) throw new AppError('Stock quantity must be a non-negative whole number', 400);
   if (!Number.isFinite(parsedAdjustment)) throw new AppError('Price adjustment must be a valid number', 400);
-  if (color_hex && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
-  if (sku !== undefined && sku !== null && sku.length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  const normalizedColorHex = color_hex === undefined || color_hex === null || color_hex.trim() === '' ? null : color_hex.trim();
+  if (normalizedColorHex !== null && !/^#[0-9a-fA-F]{6}$/.test(normalizedColorHex)) throw new AppError('Color must use a six-digit hex value', 400);
+  const normalizedSku = sku === undefined || sku === null || sku.trim() === '' ? null : sku.trim();
+  if (normalizedSku !== null && normalizedSku.length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
   const product = await query('SELECT COALESCE(sale_price,base_price) AS price FROM products WHERE id=$1', [req.params.id]);
   if (!product.rows[0]) throw new AppError('Product not found', 404);
   if (Number(product.rows[0].price) + parsedAdjustment <= 0) throw new AppError('Variant price must remain above zero', 400);
   const result = await query(
     `INSERT INTO product_variants (product_id,size,color,color_hex,stock_qty,price_adj,sku)
      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [req.params.id, normalizedSize, normalizedColor, color_hex || null, parsedStock, parsedAdjustment, sku || null]);
+    [req.params.id, normalizedSize, normalizedColor, normalizedColorHex, parsedStock, parsedAdjustment, normalizedSku]);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
