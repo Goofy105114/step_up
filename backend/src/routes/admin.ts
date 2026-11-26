@@ -230,80 +230,133 @@ router.patch('/products/:id', async (req: Request, res: Response) => {
 /* ── Variants ────────────────────────────────────────────────────────── */
 router.post('/products/:id/variants', async (req: Request, res: Response) => {
   const { size, color, color_hex, stock_qty, price_adj, sku } = req.body;
-  if (!String(size || '').trim() || !String(color || '').trim()) throw new AppError('Size and color required', 400);
+  const normalizedSize = String(size || '').trim();
+  const normalizedColor = String(color || '').trim();
   const parsedStock = stock_qty === undefined ? 0 : Number(stock_qty);
   const parsedAdjustment = price_adj === undefined ? 0 : Number(price_adj);
+  if (!normalizedSize || !normalizedColor) throw new AppError('Size and color required', 400);
+  if (normalizedSize.length > 40 || normalizedColor.length > 80) throw new AppError('Size or color is too long', 400);
   if (!Number.isInteger(parsedStock) || parsedStock < 0) throw new AppError('Stock quantity must be a non-negative whole number', 400);
   if (!Number.isFinite(parsedAdjustment)) throw new AppError('Price adjustment must be a valid number', 400);
   if (color_hex && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
-  const product = await query('SELECT COALESCE(sale_price,base_price) AS price FROM products WHERE id=$1',[req.params.id]);
-  if (!product.rows[0]) throw new AppError('Product not found',404);
-  if (Number(product.rows[0].price) + parsedAdjustment <= 0) throw new AppError('Variant price must remain above zero',400);
+  if (sku !== undefined && sku !== null && String(sku).length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  const product = await query('SELECT COALESCE(sale_price,base_price) AS price FROM products WHERE id=$1', [req.params.id]);
+  if (!product.rows[0]) throw new AppError('Product not found', 404);
+  if (Number(product.rows[0].price) + parsedAdjustment <= 0) throw new AppError('Variant price must remain above zero', 400);
   const result = await query(
     `INSERT INTO product_variants (product_id,size,color,color_hex,stock_qty,price_adj,sku)
      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [req.params.id, String(size).trim(), String(color).trim(), color_hex || null, parsedStock, parsedAdjustment, sku || null]);
+    [req.params.id, normalizedSize, normalizedColor, color_hex || null, parsedStock, parsedAdjustment, sku || null]);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
 router.patch('/products/:id/variants/:variantId', async (req: Request, res: Response) => {
   const { stock_qty, price_adj, sku, size, color, color_hex } = req.body;
-  const fields: Record<string, unknown> = { stock_qty, price_adj, sku, size, color, color_hex };
-  const updates: string[] = [];
-  const params: unknown[] = [];
-  let pIdx = 1;
-  for (const [k, v] of Object.entries(fields)) {
-    if (v !== undefined) { updates.push(`${k}=$${pIdx++}`); params.push(v); }
-  }
-  if (!updates.length) throw new AppError('No fields to update', 400);
-  if (stock_qty !== undefined && (!Number.isInteger(Number(stock_qty)) || Number(stock_qty) < 0)) throw new AppError('Stock quantity must be a non-negative whole number',400);
-  if (price_adj !== undefined && !Number.isFinite(Number(price_adj))) throw new AppError('Price adjustment must be a valid number',400);
-  if (size !== undefined && !String(size).trim()) throw new AppError('Size cannot be empty',400);
-  if (color !== undefined && !String(color).trim()) throw new AppError('Color cannot be empty',400);
-  if (color_hex !== undefined && color_hex !== null && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value',400);
-  const existing = await query(`SELECT pv.price_adj,pv.size,pv.color,pv.color_hex,COALESCE(p.sale_price,p.base_price) AS price
-    FROM product_variants pv JOIN products p ON p.id=pv.product_id WHERE pv.id=$1 AND pv.product_id=$2`,
-    [req.params.variantId,req.params.id]);
-  if (!existing.rows[0]) throw new AppError('Product variant not found',404);
+  const fields: Record<string, unknown> = {};
+  if (stock_qty !== undefined) fields.stock_qty = Number(stock_qty);
+  if (price_adj !== undefined) fields.price_adj = Number(price_adj);
+  if (sku !== undefined) fields.sku = sku;
+  if (size !== undefined) fields.size = String(size).trim();
+  if (color !== undefined) fields.color = String(color).trim();
+  if (color_hex !== undefined) fields.color_hex = color_hex;
+  if (!Object.keys(fields).length) throw new AppError('No fields to update', 400);
+  if (stock_qty !== undefined && (!Number.isInteger(Number(stock_qty)) || Number(stock_qty) < 0)) throw new AppError('Stock quantity must be a non-negative whole number', 400);
+  if (price_adj !== undefined && !Number.isFinite(Number(price_adj))) throw new AppError('Price adjustment must be a valid number', 400);
+  if (size !== undefined && (!String(size).trim() || String(size).trim().length > 40)) throw new AppError('Size is invalid', 400);
+  if (color !== undefined && (!String(color).trim() || String(color).trim().length > 80)) throw new AppError('Color is invalid', 400);
+  if (color_hex !== undefined && color_hex !== null && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
+  if (sku !== undefined && sku !== null && String(sku).length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  const existing = await query(`SELECT pv.price_adj,COALESCE(p.sale_price,p.base_price) AS price
+    FROM product_variants pv JOIN products p ON p.id=pv.product_id
+    WHERE pv.id=$1 AND pv.product_id=$2`, [req.params.variantId, req.params.id]);
+  if (!existing.rows[0]) throw new AppError('Product variant not found', 404);
   const finalAdjustment = price_adj === undefined ? Number(existing.rows[0].price_adj) : Number(price_adj);
-  if (Number(existing.rows[0].price) + finalAdjustment <= 0) throw new AppError('Variant price must remain above zero',400);
+  if (Number(existing.rows[0].price) + finalAdjustment <= 0) throw new AppError('Variant price must remain above zero', 400);
+  const columns = Object.keys(fields);
+  const params = columns.map(column => fields[column]);
+  const assignments = columns.map((column, index) => `${column}=$${index + 1}`);
   params.push(req.params.variantId, req.params.id);
   const result = await query(
-    `UPDATE product_variants SET ${updates.join(',')} WHERE id=${pIdx} AND product_id=${pIdx+1} RETURNING *`, params);
+    `UPDATE product_variants SET ${assignments.join(',')}
+     WHERE id=$${params.length - 1} AND product_id=$${params.length} RETURNING *`, params);
+  if (!result.rows[0]) throw new AppError('Product variant not found', 404);
   return res.json({ success: true, data: result.rows[0] });
 });
 
 router.delete('/products/:id/variants/:variantId', async (req: Request, res: Response) => {
-  await query('DELETE FROM product_variants WHERE id=$1 AND product_id=$2',
+  const result = await query('DELETE FROM product_variants WHERE id=$1 AND product_id=$2 RETURNING id',
     [req.params.variantId, req.params.id]);
+  if (!result.rows[0]) throw new AppError('Product variant not found', 404);
   return res.json({ success: true });
 });
 
 /* ── Product Images ──────────────────────────────────────────────────── */
+const normalizeProductImageUrl = (value: unknown) => {
+  if (typeof value !== 'string' || value.length > 2048) throw new AppError('Image URL must be a valid HTTPS URL under 2048 characters', 400);
+  let parsed: URL;
+  try { parsed = new URL(value.trim()); } catch { throw new AppError('Image URL is invalid', 400); }
+  if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) {
+    throw new AppError('Product image URL must use HTTPS and cannot contain embedded credentials', 400);
+  }
+  return parsed.toString();
+};
+
 router.post('/products/:id/images', async (req: Request, res: Response) => {
   const { url, alt_text, is_primary, sort_order } = req.body;
-  if (typeof url !== 'string' || !url.trim()) throw new AppError('Image URL required', 400);
-  if (!isHttpsUrl(url)) throw new AppError('Product image URL must use HTTPS',400);
-  const product = await query('SELECT id FROM products WHERE id=$1',[req.params.id]);
-  if (!product.rows[0]) throw new AppError('Product not found',404);
-  if (sort_order !== undefined && (!Number.isInteger(Number(sort_order)) || Number(sort_order) < 0)) throw new AppError('Image sort order must be a non-negative whole number',400);
-  if (is_primary) {
-    await query('UPDATE product_images SET is_primary=false WHERE product_id=$1', [req.params.id]);
+  const imageUrl = normalizeProductImageUrl(url);
+  if (alt_text !== undefined && alt_text !== null && (typeof alt_text !== 'string' || alt_text.length > 500)) {
+    throw new AppError('Image alt text cannot exceed 500 characters', 400);
   }
-  const existing = await query(
-    'SELECT id FROM product_images WHERE product_id=$1 AND is_primary=true', [req.params.id]);
-  const setAsPrimary = is_primary || existing.rows.length === 0;
-  const result = await query(
-    `INSERT INTO product_images (product_id,url,alt_text,is_primary,sort_order)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [req.params.id, url, alt_text || null, setAsPrimary, sort_order || 0]);
-  return res.status(201).json({ success: true, data: result.rows[0] });
+  const sortOrder = sort_order === undefined ? 0 : Number(sort_order);
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) throw new AppError('Image sort order must be a non-negative whole number', 400);
+  if (is_primary !== undefined && typeof is_primary !== 'boolean') throw new AppError('is_primary must be a boolean', 400);
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const product = await client.query('SELECT id FROM products WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!product.rows[0]) throw new AppError('Product not found', 404);
+    const existing = await client.query('SELECT id FROM product_images WHERE product_id=$1 AND is_primary=true', [req.params.id]);
+    const setAsPrimary = is_primary === true || existing.rows.length === 0;
+    if (setAsPrimary) await client.query('UPDATE product_images SET is_primary=false WHERE product_id=$1', [req.params.id]);
+    const result = await client.query(
+      `INSERT INTO product_images (product_id,url,alt_text,is_primary,sort_order)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.params.id, imageUrl, alt_text ? alt_text.trim() : null, setAsPrimary, sortOrder]);
+    await client.query('COMMIT');
+    return res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 router.delete('/products/:id/images/:imageId', async (req: Request, res: Response) => {
-  await query('DELETE FROM product_images WHERE id=$1 AND product_id=$2',
-    [req.params.imageId, req.params.id]);
-  return res.json({ success: true });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const product = await client.query('SELECT id FROM products WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!product.rows[0]) throw new AppError('Product not found', 404);
+    const deleted = await client.query(
+      'DELETE FROM product_images WHERE id=$1 AND product_id=$2 RETURNING is_primary',
+      [req.params.imageId, req.params.id]);
+    if (!deleted.rows[0]) throw new AppError('Product image not found', 404);
+    if (deleted.rows[0].is_primary) {
+      const next = await client.query(
+        'SELECT id FROM product_images WHERE product_id=$1 ORDER BY sort_order ASC,created_at ASC LIMIT 1',
+        [req.params.id]);
+      if (next.rows[0]) await client.query('UPDATE product_images SET is_primary=true WHERE id=$1', [next.rows[0].id]);
+    }
+    await client.query('COMMIT');
+    return res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 /* ── Users ───────────────────────────────────────────────────────────── */
