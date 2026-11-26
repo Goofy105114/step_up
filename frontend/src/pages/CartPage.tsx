@@ -16,6 +16,7 @@ export default function CartPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [savingWishlistId, setSavingWishlistId] = useState<string | null>(null);
 
   const hasUnavailableItems = items.some((item: any) => item.is_active === false || Number(item.stock_qty) < 1 || Number(item.quantity) > Number(item.stock_qty));
 
@@ -154,16 +155,20 @@ export default function CartPage() {
                         </button>
                       </div>
                       <div className="flex items-center gap-space-md text-on-surface-variant text-body-sm">
-                        <button onClick={async () => {
+                        <button type="button" disabled={savingWishlistId === item.product_id} onClick={async () => {
+                          if (savingWishlistId) return;
+                          setSavingWishlistId(item.product_id);
                           try {
                             await api.post('/wishlist', { product_id: item.product_id });
                             toast.success('Saved to wishlist');
                           } catch (error: any) {
                             toast.error(error.response?.data?.message || 'Unable to save item');
+                          } finally {
+                            setSavingWishlistId(null);
                           }
-                        }} className="hover:text-primary transition-colors flex items-center gap-1">
+                        }} className="hover:text-primary transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-wait">
                           <span className="material-symbols-outlined text-[16px]">favorite</span>
-                          <span className="hidden sm:inline">Save</span>
+                          <span className="hidden sm:inline">{savingWishlistId === item.product_id ? 'Saving…' : 'Save'}</span>
                         </button>
                         <button onClick={() => handleUpdate(item.id, 0)} className="hover:text-error transition-colors flex items-center gap-1">
                           <span className="material-symbols-outlined text-[16px]">delete_outline</span>
