@@ -5,7 +5,7 @@ const router = Router();
 
 router.get('/:pincode', async (req: Request, res: Response) => {
   const pincode = String(req.params.pincode || '').trim();
-  if (!/^\\d{6}$/.test(pincode) || pincode.startsWith('0')) {
+  if (!/^\d{6}$/.test(pincode) || pincode.startsWith('0')) {
     throw new AppError('Enter a valid 6-digit Indian PIN code', 400);
   }
 
