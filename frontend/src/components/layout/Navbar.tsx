@@ -4,27 +4,32 @@ import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 
 const navigation = [
-  { label: 'Relief Sandals & Slides', to: '/shop?search=sandals' },
-  { label: 'Shop by Condition', to: '/shop-by-condition' },
-  { label: 'Arch Support Technology', to: '/shop-by-condition?tag=arch-support' },
-  { label: 'Find Your Fit', to: '/find-your-fit' },
-  { label: 'Clinical Studies', to: '/clinical-studies' },
-];
+  { key: 'sandals', label: 'Relief Sandals & Slides', to: '/shop?search=sandals' },
+  { key: 'conditions', label: 'Shop by Condition', to: '/shop-by-condition' },
+  { key: 'arch-support', label: 'Arch Support Technology', to: '/shop-by-condition?tag=arch-support' },
+  { key: 'fit', label: 'Find Your Fit', to: '/find-your-fit' },
+  { key: 'studies', label: 'Clinical Studies', to: '/clinical-studies' },
+] as const;
+
+type NavigationKey = (typeof navigation)[number]['key'];
+
+const getActiveNavigationKey = (pathname: string, search: string): NavigationKey | null => {
+  const params = new URLSearchParams(search);
+  if (pathname === '/shop-by-condition') {
+    return params.get('tag') === 'arch-support' ? 'arch-support' : 'conditions';
+  }
+  if (pathname === '/find-your-fit') return 'fit';
+  if (pathname === '/clinical-studies') return 'studies';
+  if (pathname === '/shop' && params.get('search')?.toLowerCase() === 'sandals') return 'sandals';
+  return null;
+};
 
 const navClass = (isActive: boolean) =>
-  `whitespace-nowrap rounded-full px-3 py-2 text-[12px] font-semibold tracking-[0.015em] transition-colors ${
-    isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'
+  `whitespace-nowrap rounded-full px-3 py-2 text-[12px] font-semibold tracking-[0.015em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+    isActive
+      ? 'bg-primary text-white shadow-sm'
+      : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'
   }`;
-
-const isNavigationActive = (to: string, pathname: string, search: string) => {
-  const target = new URL(to, 'https://stepup.local');
-  if (target.pathname !== pathname) return false;
-  const targetTag = target.searchParams.get('tag');
-  const currentTag = new URLSearchParams(search).get('tag');
-  if (targetTag) return targetTag === currentTag;
-  if (target.pathname === '/shop-by-condition') return currentTag !== 'arch-support';
-  return true;
-};
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -34,6 +39,7 @@ export default function Navbar() {
   const { items, setOpen, fetchCart } = useCartStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const activeNavigationKey = getActiveNavigationKey(location.pathname, location.search);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -82,7 +88,7 @@ export default function Navbar() {
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
           {navigation.map((item) => (
-            <Link key={item.label} to={item.to} aria-current={isNavigationActive(item.to, location.pathname, location.search) ? 'page' : undefined} className={navClass(isNavigationActive(item.to, location.pathname, location.search))}>
+            <Link key={item.label} to={item.to} aria-current={activeNavigationKey === item.key ? 'page' : undefined} className={navClass(isNavigationActive(item.to, location.pathname, location.search))}>
               {item.label}
             </Link>
           ))}
