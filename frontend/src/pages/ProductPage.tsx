@@ -165,9 +165,12 @@ export default function ProductPage() {
               {images[activeImg] ? (
                 <img src={images[activeImg]} alt={product.name} className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
               ) : (
-                <div className="flex min-h-[420px] w-full flex-col items-center justify-center gap-3 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-5xl text-outline-variant">image</span>
-                  <span className="text-sm">No product images available</span>
+                <div className="relative flex min-h-[420px] w-full flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,#ffffff_0%,#edf2ed_48%,#dce7df_100%)] text-primary">
+                  <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full border border-primary/10" />
+                  <div className="absolute -bottom-20 -left-12 h-72 w-72 rounded-full border border-primary/10" />
+                  <span className="material-symbols-outlined relative text-[112px] text-primary/40">steps</span>
+                  <span className="relative mt-4 text-xs font-bold uppercase tracking-[0.24em]">STEPUP</span>
+                  <span className="relative mt-2 text-xs text-on-surface-variant">Product photography coming soon</span>
                 </div>
               )}
 
