@@ -35,17 +35,32 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
 
 /* ── Orders ──────────────────────────────────────────────────────────── */
 router.get('/orders', async (req: Request, res: Response) => {
-  const { status, page = '1', limit = '20' } = req.query as Record<string, string>;
-  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const { status } = req.query as Record<string, string>;
+  const pageValue = req.query.page === undefined ? '1' : String(req.query.page);
+  const limitValue = req.query.limit === undefined ? '20' : String(req.query.limit);
+  if (!/^\\d+$/.test(pageValue) || !/^\\d+$/.test(limitValue)) {
+    throw new AppError('Page and limit must be positive whole numbers', 400);
+  }
+  const page = Number(pageValue);
+  const limit = Number(limitValue);
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1000000) {
+    throw new AppError('Page must be between 1 and 1000000', 400);
+  }
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new AppError('Limit must be between 1 and 100', 400);
+  }
+  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
+  if (status && !allowedStatuses.includes(status)) throw new AppError('Invalid order status filter', 400);
+  const offset = (page - 1) * limit;
   const conditions: string[] = [];
   const params: unknown[] = [];
-  if (status) { conditions.push(`o.status=$${params.length + 1}`); params.push(status); }
+  if (status) { conditions.push(`o.status=${params.length + 1}`); params.push(status); }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  params.push(parseInt(limit), offset);
+  params.push(limit, offset);
   const result = await query(
     `SELECT o.*,u.email,u.first_name,u.last_name FROM orders o
      LEFT JOIN users u ON o.user_id=u.id ${where}
-     ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+     ORDER BY o.created_at DESC LIMIT ${params.length - 1} OFFSET ${params.length}`,
     params);
   return res.json({ success: true, data: result.rows });
 });
