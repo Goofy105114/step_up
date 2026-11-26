@@ -47,7 +47,27 @@ router.post('/', authenticate, [
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
+// Keep the named endpoint before the parameter route so "featured" is never
+// treated as a product UUID.
+router.get('/featured', async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT r.id,r.rating,r.title,r.body,r.created_at,
+       p.name AS product_name,p.slug AS product_slug,
+       u.first_name || ' ' || LEFT(u.last_name,1) || '.' AS user_name
+     FROM reviews r
+     JOIN products p ON p.id=r.product_id
+     JOIN users u ON u.id=r.user_id
+     WHERE r.is_approved=true AND NULLIF(BTRIM(r.body),'') IS NOT NULL
+     ORDER BY r.created_at DESC
+     LIMIT 3`
+  );
+  return res.json({ success: true, data: result.rows });
+});
+
 router.get('/:productId', async (req: Request, res: Response) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.productId)) {
+    throw new AppError('Invalid product ID', 400);
+  }
   const { page = '1', limit = '10' } = req.query as Record<string, string>;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const safeLimit = Math.min(50, Math.max(1, Number.parseInt(limit, 10) || 10));
