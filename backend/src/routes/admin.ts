@@ -72,14 +72,20 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     const params: unknown[] = [status];
     let pIdx = 2;
     if (tracking_number !== undefined) {
-      updates.push(`tracking_number=$${pIdx++}`);
-      params.push(tracking_number || null);
+      if (tracking_number !== null && typeof tracking_number !== 'string') throw new AppError('Tracking number must be text',400);
+      const normalizedTracking = typeof tracking_number === 'string' ? tracking_number.trim() : '';
+      if (normalizedTracking.length > 100) throw new AppError('Tracking number cannot exceed 100 characters',400);
+      updates.push(`tracking_number=${pIdx++}`);
+      params.push(normalizedTracking || null);
     }
     if (status === 'delivered') updates.push('delivered_at=COALESCE(delivered_at,NOW())');
     params.push(req.params.id);
-    await client.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
-    await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-      [req.params.id, status, note || null, req.user!.userId]);
+    await client.query(`UPDATE orders SET ${updates.join(',')} WHERE id=${pIdx}`, params);
+    // A tracking-only edit is not a new order-status event.
+    if (status !== order.status) {
+      await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
+        [req.params.id, status, note || null, req.user!.userId]);
+    }
 
     if (status === 'cancelled' && order.status !== 'cancelled') {
       const items = await client.query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
