@@ -25,7 +25,7 @@ export default function AdminProducts() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">Products</h1>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{data?.data?.length || 0} products</span>
+          <span className="text-xs text-gray-400">{isLoading || isError ? '—' : `${data?.data?.length || 0} products`}</span>
           <Link to="/admin/products/new" className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
             + Add Product
           </Link>
@@ -35,6 +35,8 @@ export default function AdminProducts() {
       <div className="card overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Loading…</div>
+        ) : isError ? (
+          <div role="alert" className="p-8 text-center"><p className="text-sm text-red-600">Unable to load products.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
