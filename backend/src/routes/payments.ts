@@ -43,7 +43,24 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
       discount=coupon.discount_type==='percentage'?subtotal*Number(coupon.discount_value)/100:Number(coupon.discount_value);
       discount=Math.min(discount,subtotal);
     }
-    const shipping=subtotal-discount>=599?0:99, tax=(subtotal-discount)*0.05, total=subtotal-discount+shipping+tax;
+    const pricingResult = await client.query(
+      "SELECT setting_value FROM store_settings WHERE setting_key='checkout_pricing' FOR SHARE"
+    );
+    const pricing = pricingResult.rows[0]?.setting_value;
+    const freeShippingThreshold = Number(pricing?.free_shipping_threshold_inr);
+    const shippingFee = Number(pricing?.shipping_fee_inr);
+    const gstRatePercent = Number(pricing?.gst_rate_percent);
+    if (
+      !Number.isFinite(freeShippingThreshold) || freeShippingThreshold < 0 ||
+      !Number.isFinite(shippingFee) || shippingFee < 0 ||
+      !Number.isFinite(gstRatePercent) || gstRatePercent < 0 || gstRatePercent > 100
+    ) {
+      throw new AppError('Checkout pricing is not configured correctly. Please contact support.', 503);
+    }
+    const taxableAmount = Math.max(0, subtotal - discount);
+    const shipping = taxableAmount >= freeShippingThreshold ? 0 : shippingFee;
+    const tax = taxableAmount * (gstRatePercent / 100);
+    const total = taxableAmount + shipping + tax;
     const orderNo='ORD-'+Date.now()+'-'+Math.floor(Math.random()*1000);
     const inserted=await client.query(`INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,coupon_id,shipping_address,billing_address,payment_method,payment_status)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'razorpay','pending') RETURNING *`,
