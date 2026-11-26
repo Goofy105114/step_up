@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
-import { useCartStore } from '../../store/cartStore';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
 
 interface Product {
   id: string;
@@ -25,8 +23,6 @@ interface Product {
 
 export default function ProductCard({ product }: { product: Product }) {
   const { user } = useAuthStore();
-  const { fetchCart } = useCartStore();
-  const [addingCart, setAddingCart] = useState(false);
   const queryClient = useQueryClient();
   const { data: wishlistData } = useQuery({
     queryKey: ['wishlist'],
@@ -39,21 +35,6 @@ export default function ProductCard({ product }: { product: Product }) {
   const salePrice = product.sale_price ? parseFloat(product.sale_price) : null;
   const displayPrice = salePrice ?? basePrice;
   const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
-
-  const handleQuickAdd = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!user) { toast.error('Please sign in to add to cart'); return; }
-    const firstAvailable = product.variants?.find(v => v.stock_qty > 0);
-    if (!firstAvailable) { toast.error('Out of stock'); return; }
-    setAddingCart(true);
-    try {
-      await api.post('/cart/items', { product_id: product.id, variant_id: firstAvailable.id, quantity: 1 });
-      await fetchCart();
-      toast.success(`${product.name} added to cart!`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to add to cart');
-    } finally { setAddingCart(false); }
-  };
 
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,59 +52,52 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <Link to={`/product/${product.slug}`} className="group product-card block">
-      {/* Image */}
+    <article className="group product-card">
       <div className="relative overflow-hidden bg-surface-container-low aspect-[4/5]">
-        {product.primary_image ? (
-          <img
-            src={product.primary_image}
-            alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="material-symbols-outlined text-[48px] text-outline">photo</span>
-          </div>
-        )}
+        <Link to={`/product/${product.slug}`} aria-label={`View ${product.name}`} className="block w-full h-full">
+          {product.primary_image ? (
+            <img
+              src={product.primary_image}
+              alt={product.name}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">photo</span>
+              <span className="sr-only">No product image available</span>
+            </div>
+          )}
+        </Link>
 
-        {/* Badges */}
-        <div className="absolute top-space-sm left-space-sm flex flex-col gap-1">
-          {discount > 0 && (
-            <span className="badge bg-primary-container text-on-primary">-{discount}%</span>
-          )}
-          {product.is_new_arrival && !discount && (
-            <span className="badge bg-secondary-container text-on-secondary-container">New</span>
-          )}
-          {product.is_bestseller && (
-            <span className="badge bg-tertiary-fixed text-tertiary">Best Seller</span>
-          )}
+        <div className="absolute top-space-sm left-space-sm flex flex-col gap-1 pointer-events-none">
+          {discount > 0 && <span className="badge bg-primary-container text-on-primary">-{discount}%</span>}
+          {product.is_new_arrival && !discount && <span className="badge bg-secondary-container text-on-secondary-container">New</span>}
+          {product.is_bestseller && <span className="badge bg-tertiary-fixed text-tertiary">Best Seller</span>}
         </div>
 
-        {/* Wishlist */}
         <button
+          type="button"
           onClick={handleWishlist}
-          className="absolute top-space-sm right-space-sm w-9 h-9 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center text-on-surface-variant hover:text-error transition-colors shadow-sm opacity-0 group-hover:opacity-100"
+          aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
+          aria-pressed={wishlisted}
+          className="absolute top-space-sm right-space-sm w-10 h-10 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-on-surface-variant hover:text-error focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary transition-colors shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
         >
-          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: wishlisted ? "'FILL' 1" : "'FILL' 0" }}>
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: wishlisted ? "'FILL' 1" : "'FILL' 0" }} aria-hidden="true">
             favorite
           </span>
         </button>
 
-        {/* Quick add button */}
-        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-          <button
-            onClick={handleQuickAdd}
-            disabled={addingCart}
-            className="w-full bg-primary-container text-on-primary py-space-sm text-label-md font-semibold tracking-[0.04em] hover:bg-primary transition-colors flex items-center justify-center gap-space-xs disabled:opacity-70"
-          >
-            <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
-            {addingCart ? 'Adding...' : 'Quick Add'}
-          </button>
-        </div>
+        <Link
+          to={`/product/${product.slug}`}
+          className="absolute bottom-0 left-0 right-0 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0 sm:group-focus-within:translate-y-0 transition-transform duration-300 bg-primary-container text-on-primary py-space-sm text-label-md font-semibold tracking-[0.04em] hover:bg-primary flex items-center justify-center gap-space-xs"
+        >
+          View sizes &amp; details
+          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
+        </Link>
       </div>
 
-      {/* Info */}
-      <div className="p-space-md">
+      <Link to={`/product/${product.slug}`} className="block p-space-md rounded-b-DEFAULT focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
         {product.brand && (
           <p className="text-label-badge font-bold uppercase tracking-[0.06em] text-on-surface-variant mb-1">{product.brand}</p>
         )}
@@ -131,34 +105,32 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.name}
         </h3>
 
-        {/* Rating */}
         {product.avg_rating && parseFloat(product.avg_rating) > 0 && (
-          <div className="flex items-center gap-1 mb-space-sm">
-            <div className="flex text-[#f59e0b]">
-              {[1,2,3,4,5].map(i => (
+          <div className="flex items-center gap-1 mb-space-sm" aria-label={`Rated ${parseFloat(product.avg_rating).toFixed(1)} out of 5 from ${product.review_count ?? 0} reviews`}>
+            <div className="flex text-[#f59e0b]" aria-hidden="true">
+              {[1, 2, 3, 4, 5].map(i => (
                 <span key={i} className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: i <= Math.round(parseFloat(product.avg_rating!)) ? "'FILL' 1" : "'FILL' 0" }}>
                   star
                 </span>
               ))}
             </div>
             <span className="text-body-sm text-on-surface-variant">
-              {parseFloat(product.avg_rating).toFixed(1)} ({product.review_count})
+              {parseFloat(product.avg_rating).toFixed(1)} ({product.review_count ?? 0})
             </span>
           </div>
         )}
 
-        {/* Price */}
-        <div className="flex items-center gap-space-sm">
+        <div className="flex flex-wrap items-baseline gap-space-sm">
           <span className="text-title-md font-semibold text-primary">
             {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(displayPrice)}
           </span>
-          {salePrice && (
+          {salePrice !== null && (
             <span className="text-body-sm text-on-surface-variant line-through">
               {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(basePrice)}
             </span>
           )}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </article>
   );
 }
