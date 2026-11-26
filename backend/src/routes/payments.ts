@@ -73,6 +73,7 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
       const items=await cleanup.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[order.id]);
       for(const item of items.rows) await cleanup.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',[item.quantity,item.variant_id]);
       await cleanup.query("UPDATE orders SET status='cancelled',payment_status='failed' WHERE id=$1 AND payment_status='pending'",[order.id]);
+      if(order.coupon_id) await cleanup.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',[order.coupon_id]);
       await cleanup.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Payment session creation failed; reserved stock released']);
       await cleanup.query('COMMIT');
     } catch { await cleanup.query('ROLLBACK'); } finally { cleanup.release(); }
@@ -98,6 +99,7 @@ router.post('/cancel', authenticate, async (req: Request, res: Response) => {
       const items=await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[order.id]);
       for(const item of items.rows) await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',[item.quantity,item.variant_id]);
       await client.query("UPDATE orders SET status='cancelled',payment_status='failed',updated_at=NOW() WHERE id=$1",[order.id]);
+      if(order.coupon_id) await client.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',[order.coupon_id]);
       await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Customer closed the payment window; reserved stock released']);
     }
     await client.query('COMMIT');
