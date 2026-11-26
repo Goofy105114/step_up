@@ -376,10 +376,33 @@ router.patch('/products/:id/variants/:variantId', authorize('admin'), async (req
 });
 
 router.delete('/products/:id/variants/:variantId', authorize('admin'), async (req: Request, res: Response) => {
-  const result = await query('DELETE FROM product_variants WHERE id=$1 AND product_id=$2 RETURNING id',
-    [req.params.variantId, req.params.id]);
-  if (!result.rows[0]) throw new AppError('Product variant not found', 404);
-  return res.json({ success: true });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const variant = await client.query(
+      'SELECT id FROM product_variants WHERE id=$1 AND product_id=$2 FOR UPDATE',
+      [req.params.variantId, req.params.id]
+    );
+    if (!variant.rows[0]) throw new AppError('Product variant not found', 404);
+
+    const ordered = await client.query(
+      'SELECT 1 FROM order_items WHERE variant_id=$1 LIMIT 1',
+      [req.params.variantId]
+    );
+    if (ordered.rows[0]) {
+      throw new AppError('This variant is linked to order history and cannot be deleted. Set its stock to zero instead.', 409);
+    }
+
+    await client.query('DELETE FROM product_variants WHERE id=$1 AND product_id=$2',
+      [req.params.variantId, req.params.id]);
+    await client.query('COMMIT');
+    return res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 /* ── Product Images ──────────────────────────────────────────────────── */
