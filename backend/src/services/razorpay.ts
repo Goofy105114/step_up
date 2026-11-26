@@ -53,3 +53,13 @@ export async function fetchRazorpayPayment(paymentId: string) {
   if (!response.ok) throw new AppError('Unable to confirm payment status with Razorpay. Please retry shortly.', 502);
   return payload;
 }
+
+export async function fetchRazorpayOrderPayments(orderId: string) {
+  const { keyId, keySecret } = credentials();
+  const response = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}/payments`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}` },
+  });
+  const payload = await response.json() as any;
+  if (!response.ok) throw new AppError('Unable to confirm the payment session status. Please check your order status before retrying.', 502);
+  return Array.isArray(payload.items) ? payload.items : [];
+}
