@@ -67,6 +67,27 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
   }
 });
 
+router.post('/cancel', authenticate, async (req: Request, res: Response) => {
+  const orderId = String(req.body?.order_id || '');
+  const found = await query('SELECT * FROM orders WHERE id=$1 AND user_id=$2 AND payment_method=$3',[orderId,req.user!.userId,'razorpay']);
+  const order=found.rows[0];
+  if(!order) throw new AppError('Payment order not found',404);
+  if(order.payment_status==='paid') throw new AppError('This order is already paid and cannot be cancelled here',409);
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
+    if(locked.rows[0].payment_status==='pending'){
+      const items=await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[order.id]);
+      for(const item of items.rows) await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',[item.quantity,item.variant_id]);
+      await client.query("UPDATE orders SET status='cancelled',payment_status='failed',updated_at=NOW() WHERE id=$1",[order.id]);
+      await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Customer closed the payment window; reserved stock released']);
+    }
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+  return res.json({success:true});
+});
+
 router.post('/verify', authenticate, async (req: Request,res: Response) => {
   const {razorpay_order_id,razorpay_payment_id,razorpay_signature}=req.body||{};
   if (![razorpay_order_id,razorpay_payment_id,razorpay_signature].every((v:unknown)=>typeof v==='string'&&v.length>0)) throw new AppError('Payment verification details are incomplete',400);
