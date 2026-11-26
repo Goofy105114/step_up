@@ -9,6 +9,7 @@ const ORDER_STATUSES = ['pending','confirmed','processing','shipped','out_for_de
 export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<Record<string, string>>({});
   const qc = useQueryClient();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -19,8 +20,8 @@ export default function AdminOrders() {
   const updateMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/admin/orders/${id}/status`, { status }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'orders'] }); toast.success('Status updated'); setUpdating(null); },
-    onError: (error: any) => { toast.error(error.response?.data?.message || 'Unable to update order status'); setUpdating(null); },
+    onSuccess: (_response, variables) => { qc.invalidateQueries({ queryKey: ['admin', 'orders'] }); toast.success('Status updated'); setUpdating(null); setPendingStatus((current) => { const next = { ...current }; delete next[variables.id]; return next; }); },
+    onError: (error: any, variables) => { toast.error(error.response?.data?.message || 'Unable to update order status'); setPendingStatus((current) => { const next = { ...current }; delete next[variables.id]; return next; }); },
   });
 
   return (
@@ -37,6 +38,8 @@ export default function AdminOrders() {
       <div className="card overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Loading…</div>
+        ) : isError ? (
+          <div role="alert" className="p-8 text-center"><p className="text-sm text-red-600">Unable to load orders.</p><button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{isFetching ? 'Retrying…' : 'Try again'}</button></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -50,7 +53,7 @@ export default function AdminOrders() {
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-gray-700">{order.order_number}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{order.first_name} {order.last_name}</p>
+                      <p className="font-medium text-gray-900">{[order.first_name, order.last_name].filter(Boolean).join(' ') || 'Customer'}</p>
                       <p className="text-xs text-gray-400">{order.email}</p>
                     </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</td>
@@ -60,13 +63,14 @@ export default function AdminOrders() {
                     <td className="px-4 py-3 font-semibold text-gray-900">{formatPrice(parseFloat(order.total_amount))}</td>
                     <td className="px-4 py-3">
                       {updating === order.id ? (
-                        <select autoFocus defaultValue={order.status}
-                          onChange={(e) => updateMutation.mutate({ id: order.id, status: e.target.value })}
+                        <select autoFocus value={pendingStatus[order.id] ?? order.status}
+                          disabled={updateMutation.isPending}
+                          onChange={(e) => { setPendingStatus((current) => ({ ...current, [order.id]: e.target.value })); updateMutation.mutate({ id: order.id, status: e.target.value }); }}
                           className="border border-brand-300 rounded-lg px-2 py-1 text-xs focus:outline-none">
                           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
                         </select>
                       ) : (
-                        <button type="button" onClick={() => setUpdating(order.id)}
+                        <button type="button" disabled={updateMutation.isPending} onClick={() => setUpdating(order.id)}
                           className="text-xs text-brand-600 hover:text-brand-800 font-medium">Update</button>
                       )}
                     </td>
