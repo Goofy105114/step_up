@@ -72,7 +72,7 @@ export default function CheckoutPage() {
 
   const lookupPincode = async () => {
     const pin = addr.postal_code.trim();
-    if (!/^\\d{6}$/.test(pin)) return;
+    if (!/^\d{6}$/.test(pin)) return;
     setPincodeLoading(true);
     setPincodeMessage('');
     try {
