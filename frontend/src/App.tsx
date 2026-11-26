@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import Layout from './components/layout/Layout';
@@ -30,6 +30,13 @@ import FindYourFitPage from './pages/FindYourFitPage';
 import ClinicalStudiesPage from './pages/ClinicalStudiesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage';
+import AboutPage from './pages/AboutPage';
+
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
+  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior }); }, [pathname, search]);
+  return null;
+}
 
 export default function App() {
   const { token, fetchMe } = useAuthStore();
@@ -39,7 +46,9 @@ export default function App() {
   }, [token, fetchMe]);
 
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/shop" element={<ShopPage />} />
@@ -52,6 +61,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/find-your-fit" element={<FindYourFitPage />} />
         <Route path="/clinical-studies" element={<ClinicalStudiesPage />} />
+        <Route path="/about" element={<AboutPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/checkout" element={<CheckoutPage />} />
@@ -79,6 +89,7 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

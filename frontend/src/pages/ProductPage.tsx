@@ -24,6 +24,10 @@ export default function ProductPage() {
   });
   const [openSpec, setOpenSpec] = useState<number | null>(null);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewBody, setReviewBody] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['product', slug],
@@ -68,6 +72,36 @@ export default function ProductPage() {
       if (goToCheckout) navigate('/checkout');
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to add'); }
     finally { setAddingCart(false); }
+  };
+
+  const submitReview = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user) {
+      toast.error('Please sign in to write a review');
+      return;
+    }
+    if (!reviewRating) {
+      toast.error('Choose a star rating first');
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      await api.post('/reviews', {
+        product_id: product.id,
+        rating: reviewRating,
+        title: reviewTitle.trim(),
+        body: reviewBody.trim(),
+      });
+      toast.success('Review submitted. It will appear after moderation.');
+      setReviewRating(0);
+      setReviewTitle('');
+      setReviewBody('');
+      await queryClient.invalidateQueries({ queryKey: ['product', slug] });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not submit your review');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   const toggleWishlist = async () => {
@@ -335,6 +369,32 @@ export default function ProductPage() {
                 <p className="text-body-md text-on-surface-variant leading-relaxed">{product.description}</p>
               </div>
             )}
+
+            <section id="customer-reviews" className="scroll-mt-28 border-t border-outline-variant/30 pt-space-lg">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div><p className="text-label-badge font-bold uppercase tracking-widest text-secondary">Customer feedback</p><h2 className="mt-1 text-title-lg font-semibold text-primary">Reviews & ratings</h2></div>
+                <span className="text-sm text-on-surface-variant">{Number(product.review_count || 0)} reviews · {Number(product.avg_rating || 0).toFixed(1)} / 5</span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {(product.reviews || []).map((review: any) => <article key={review.id} className="rounded-xl border border-outline-variant/40 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-1 text-amber-500">{[1,2,3,4,5].map(star => <span key={star} className="material-symbols-outlined text-[16px]" style={{fontVariationSettings: star <= Number(review.rating) ? "'FILL' 1" : "'FILL' 0"}}>star</span>)}</div><span className="text-xs text-on-surface-variant">{review.created_at ? new Date(review.created_at).toLocaleDateString('en-IN') : ''}</span></div>
+                  {review.title && <h3 className="mt-2 text-sm font-semibold text-primary">{review.title}</h3>}
+                  <p className="mt-1 text-sm leading-6 text-on-surface-variant">{review.body}</p><p className="mt-2 text-xs font-semibold text-on-surface">{review.user_name || 'STEPUP customer'}</p>
+                </article>)}
+                {!product.reviews?.length && <p className="rounded-xl bg-surface-container-low p-4 text-sm text-on-surface-variant">No approved reviews yet. Be the first to share your experience.</p>}
+              </div>
+              <form onSubmit={submitReview} className="mt-5 rounded-2xl bg-surface-container-low p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-primary">Write a review</h3>
+                <p className="mt-1 text-xs text-on-surface-variant">Your review is checked before appearing publicly.</p>
+                <div className="mt-3 flex items-center gap-1" role="radiogroup" aria-label="Choose rating">
+                  {[1,2,3,4,5].map(star => <button key={star} type="button" role="radio" aria-checked={reviewRating === star} aria-label={`${star} star${star > 1 ? 's' : ''}`} onClick={() => setReviewRating(star)} className="rounded p-1 text-amber-500 transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="material-symbols-outlined text-2xl" style={{fontVariationSettings: star <= reviewRating ? "'FILL' 1" : "'FILL' 0"}}>star</span></button>)}
+                  <span className="ml-2 text-xs text-on-surface-variant">{reviewRating ? `${reviewRating} out of 5` : 'Select a rating'}</span>
+                </div>
+                <input value={reviewTitle} onChange={event => setReviewTitle(event.target.value)} maxLength={255} placeholder="Review title (optional)" className="input-field mt-3 w-full" />
+                <textarea value={reviewBody} onChange={event => setReviewBody(event.target.value)} maxLength={3000} rows={4} placeholder="What did you think about the fit, comfort and quality?" className="input-field mt-3 w-full resize-y" />
+                <button type="submit" disabled={reviewSubmitting || !reviewRating} className="btn-primary mt-3 disabled:opacity-50">{reviewSubmitting ? 'Submitting…' : 'Submit review'}</button>
+              </form>
+            </section>
 
             {/* Trust row */}
             <div className="grid grid-cols-3 gap-space-sm">

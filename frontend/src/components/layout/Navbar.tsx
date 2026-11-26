@@ -9,6 +9,7 @@ const navigation = [
   { label: 'Arch Support Technology', to: '/shop-by-condition?tag=arch-support' },
   { label: 'Find Your Fit', to: '/find-your-fit' },
   { label: 'Clinical Studies', to: '/clinical-studies' },
+  { label: 'About', to: '/about' },
 ];
 
 const navClass = (isActive: boolean) =>
@@ -26,6 +27,7 @@ const getActiveNavigationLabel = (pathname: string, search: string) => {
   }
   if (pathname === '/find-your-fit') return 'Find Your Fit';
   if (pathname === '/clinical-studies') return 'Clinical Studies';
+  if (pathname === '/about') return 'About';
   if (pathname === '/shop' && params.get('search')?.toLowerCase() === 'sandals') {
     return 'Relief Sandals & Slides';
   }
@@ -88,7 +90,7 @@ export default function Navbar() {
           <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.19em] text-secondary">Supportive Footwear</span>
         </Link>
 
-        <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
+        <nav aria-label="Main navigation" className="hidden items-center gap-1 2xl:flex">
           {navigation.map((item) => (
             <Link key={item.label} to={item.to} aria-current={activeNavigationLabel === item.label ? 'page' : undefined} className={navClass(activeNavigationLabel === item.label)}>
               {item.label}
@@ -105,7 +107,7 @@ export default function Navbar() {
               placeholder="Search supportive footwear"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-40 bg-transparent text-xs text-on-surface outline-none placeholder:text-outline xl:w-48"
+              className="w-32 bg-transparent text-xs text-on-surface outline-none placeholder:text-outline 2xl:w-48"
             />
           </form>
 
@@ -145,7 +147,7 @@ export default function Navbar() {
             aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((open) => !open)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low xl:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low 2xl:hidden"
           >
             <span className="material-symbols-outlined text-[23px]">{mobileOpen ? 'close' : 'menu'}</span>
           </button>
