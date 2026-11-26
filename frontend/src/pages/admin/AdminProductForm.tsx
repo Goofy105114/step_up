@@ -45,13 +45,13 @@ export default function AdminProductForm() {
   const [newVariant, setNewVariant] = useState<Variant>(emptyVariant);
   const [showAddVariant, setShowAddVariant] = useState(false);
 
-  const { data: categories } = useQuery({
+  const { data: categories, isLoading: categoriesLoading, isError: categoriesError, refetch: refetchCategories, isFetching: categoriesFetching } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api.get('/categories').then((r) => r.data.data),
   });
 
   // Load existing product data
-  const { data: productData } = useQuery({
+  const { data: productData, isLoading: productLoading, isError: productError, refetch: refetchProduct, isFetching: productFetching } = useQuery({
     queryKey: ['admin-product', id],
     enabled: isEdit,
     queryFn: () => api.get(`/admin/products/${id}`).then((r) => r.data.data),
@@ -102,6 +102,7 @@ export default function AdminProductForm() {
     mutationFn: ({ variantId, data }: { variantId: string; data: any }) =>
       api.patch(`/admin/products/${id}/variants/${variantId}`, data),
     onSuccess: () => { toast.success('Stock updated'); qc.invalidateQueries({ queryKey: ['admin-product', id] }); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to update stock'),
   });
 
   const addVariantMutation = useMutation({
@@ -112,40 +113,52 @@ export default function AdminProductForm() {
       setShowAddVariant(false);
       qc.invalidateQueries({ queryKey: ['admin-product', id] });
     },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to add variant'),
   });
 
   const deleteVariantMutation = useMutation({
     mutationFn: (variantId: string) => api.delete(`/admin/products/${id}/variants/${variantId}`),
     onSuccess: () => { toast.success('Variant removed'); qc.invalidateQueries({ queryKey: ['admin-product', id] }); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to remove variant'),
   });
 
   const addImageMutation = useMutation({
     mutationFn: (url: string) => api.post(`/admin/products/${id}/images`, { url, is_primary: images.length === 0 }),
     onSuccess: () => { toast.success('Image added'); setNewImageUrl(''); qc.invalidateQueries({ queryKey: ['admin-product', id] }); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to add image'),
   });
 
   const deleteImageMutation = useMutation({
     mutationFn: (imageId: string) => api.delete(`/admin/products/${id}/images/${imageId}`),
     onSuccess: () => { toast.success('Image removed'); qc.invalidateQueries({ queryKey: ['admin-product', id] }); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to remove image'),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.slug || !form.base_price) {
+    const basePrice = Number(form.base_price);
+    const salePrice = form.sale_price === '' ? null : Number(form.sale_price);
+    const archHeight = form.arch_height_mm === '' ? null : Number(form.arch_height_mm);
+    const durometer = form.durometer_shore_a === '' ? null : Number(form.durometer_shore_a);
+    if (!form.name.trim() || !form.slug.trim() || form.base_price.trim() === '') {
       toast.error('Name, slug and base price are required'); return;
     }
+    if (!Number.isFinite(basePrice) || basePrice <= 0) { toast.error('Base price must be greater than ₹0'); return; }
+    if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || salePrice >= basePrice)) { toast.error('Sale price must be below the base price'); return; }
+    if (archHeight !== null && (!Number.isFinite(archHeight) || archHeight <= 0)) { toast.error('Arch height must be greater than 0 mm'); return; }
+    if (durometer !== null && (!Number.isFinite(durometer) || durometer < 0 || durometer > 100)) { toast.error('Durometer must be between 0 and 100 Shore A'); return; }
     saveMutation.mutate({
       ...form,
       sku: form.sku.trim() || null,
       care_instructions: form.care_instructions.trim() || null,
       arch_support_level: form.arch_support_level || null,
-      arch_height_mm: form.arch_height_mm === '' ? null : Number(form.arch_height_mm),
-      durometer_shore_a: form.durometer_shore_a === '' ? null : Number(form.durometer_shore_a),
+      arch_height_mm: archHeight,
+      durometer_shore_a: durometer,
       calibration_reference: form.calibration_reference.trim() || null,
       calibrated_at: form.calibrated_at || null,
       calibration_notes: form.calibration_notes.trim() || null,
-      base_price: parseFloat(form.base_price),
-      sale_price: form.sale_price ? parseFloat(form.sale_price) : null,
+      base_price: basePrice,
+      sale_price: salePrice,
       tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
     });
   };
@@ -167,7 +180,9 @@ export default function AdminProductForm() {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {isEdit && productLoading && <div role="status" className="bg-white border border-gray-200 p-8 text-center text-sm text-gray-500">Loading product details…</div>}
+      {isEdit && productError && <div role="alert" className="bg-white border border-red-200 p-6 text-sm"><p className="text-red-700">Unable to load this product. No placeholder values have been loaded.</p><button type="button" onClick={() => refetchProduct()} disabled={productFetching} className="btn-outline mt-3 px-4 py-2 text-xs">{productFetching ? 'Retrying…' : 'Retry loading product'}</button></div>}
+      {(!isEdit || (!productLoading && !productError && productData)) && <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* Basic info */}
         <div className="bg-white border border-gray-200 p-6 space-y-4">
@@ -221,6 +236,8 @@ export default function AdminProductForm() {
                 <option value="">Select category</option>
                 {(categories || []).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {categoriesLoading && <p className="mt-1 text-xs text-gray-400">Loading categories…</p>}
+              {categoriesError && <div role="alert" className="mt-1 text-xs text-red-600">Categories could not be loaded. <button type="button" onClick={() => refetchCategories()} disabled={categoriesFetching} className="underline">{categoriesFetching ? 'Retrying…' : 'Retry'}</button></div>}
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
@@ -286,10 +303,8 @@ export default function AdminProductForm() {
           <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700 pb-3 border-b border-gray-100 mb-4">Visibility & Badges</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {([['is_active', 'Active'], ['is_featured', 'Featured'], ['is_new_arrival', 'New Arrival'], ['is_bestseller', 'Bestseller']] as [keyof ProductForm, string][]).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-3 cursor-pointer" onClick={() => setField(key, !form[key])}>
-                <div className={`w-11 h-6 rounded-full transition-colors relative ${form[key] ? 'bg-brand-500' : 'bg-gray-200'}`}>
-                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </div>
+              <label key={key} className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={Boolean(form[key])} onChange={(e) => setField(key, e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
                 <span className="text-xs font-medium text-gray-700">{label}</span>
               </label>
             ))}
@@ -304,7 +319,7 @@ export default function AdminProductForm() {
           </button>
           <Link to="/admin/products" className="btn-outline px-8">Cancel</Link>
         </div>
-      </form>
+      </form>}
 
       {/* Images — only shown after product is created */}
       {isEdit && (
@@ -319,18 +334,19 @@ export default function AdminProductForm() {
                 {img.is_primary && (
                   <span className="absolute top-1 left-1 bg-brand-500 text-white text-[9px] px-1.5 py-0.5 font-bold uppercase">Primary</span>
                 )}
-                <button onClick={() => deleteImageMutation.mutate(img.id)}
-                  className="absolute top-1 right-1 bg-red-500 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="button" aria-label={`Remove image ${img.alt_text || img.url}`} disabled={deleteImageMutation.isPending} onClick={() => deleteImageMutation.mutate(img.id)}
+                  className="absolute top-1 right-1 bg-red-500 text-white p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50 transition-opacity">
                   <Trash2 size={10} />
                 </button>
               </div>
             ))}
           </div>
+          {!images.length && <p className="text-xs text-gray-500">No product images have been added yet.</p>}
           <div className="flex gap-3">
-            <input value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)}
-              className="input-field flex-1" placeholder="Paste image URL (e.g. https://images.unsplash.com/…)" />
-            <button type="button" disabled={!newImageUrl || addImageMutation.isPending}
-              onClick={() => addImageMutation.mutate(newImageUrl)}
+            <input type="url" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)}
+              className="input-field flex-1" placeholder="Paste image URL (https://…)" />
+            <button type="button" disabled={!/^https:\/\//i.test(newImageUrl.trim()) || addImageMutation.isPending}
+              onClick={() => addImageMutation.mutate(newImageUrl.trim())}
               className="btn-primary px-5 flex items-center gap-2 shrink-0">
               <Plus size={14} /> Add
             </button>
@@ -414,17 +430,18 @@ export default function AdminProductForm() {
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-gray-500">{v.sku || '—'}</td>
                     <td className="px-3 py-2">
-                      <input type="number" defaultValue={v.stock_qty} min="0"
+                      <input type="number" defaultValue={v.stock_qty} min="0" step="1" aria-label={`Stock quantity for size ${v.size}, ${v.color}`}
                         onBlur={(e) => {
-                          const val = parseInt(e.target.value);
+                          const val = Number(e.target.value);
+                          if (!Number.isInteger(val) || val < 0) { toast.error('Stock must be a whole number of 0 or more'); e.target.value = String(v.stock_qty); return; }
                           if (val !== v.stock_qty) updateVariantMutation.mutate({ variantId: v.id!, data: { stock_qty: val } });
                         }}
                         className="w-20 border border-gray-200 px-2 py-1 text-xs text-center focus:outline-none focus:border-brand-400" />
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-500">₹{v.price_adj}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => deleteVariantMutation.mutate(v.id!)}
-                        className="text-red-400 hover:text-red-600 transition-colors p-1">
+                      <button type="button" aria-label={`Remove variant size ${v.size}, ${v.color}`} disabled={deleteVariantMutation.isPending} onClick={() => deleteVariantMutation.mutate(v.id!)}
+                        className="text-red-400 hover:text-red-600 disabled:opacity-50 transition-colors p-1">
                         <Trash2 size={14} />
                       </button>
                     </td>
