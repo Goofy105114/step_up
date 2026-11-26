@@ -256,7 +256,10 @@ router.patch('/products/:id', authorize('admin'), async (req: Request, res: Resp
 /* ── Variants ────────────────────────────────────────────────────────── */
 router.post('/products/:id/variants', authorize('admin'), async (req: Request, res: Response) => {
   const { size, color, color_hex, stock_qty, price_adj, sku } = req.body;
-  const normalizedSize = String(size || '').trim();
+  if (typeof size !== 'string' || typeof color !== 'string') throw new AppError('Size and color must be text', 400);
+  if (color_hex !== undefined && color_hex !== null && typeof color_hex !== 'string') throw new AppError('Color must be text', 400);
+  if (sku !== undefined && sku !== null && typeof sku !== 'string') throw new AppError('SKU must be text', 400);
+  const normalizedSize = size.trim();
   const normalizedColor = String(color || '').trim();
   const parsedStock = stock_qty === undefined ? 0 : Number(stock_qty);
   const parsedAdjustment = price_adj === undefined ? 0 : Number(price_adj);
@@ -265,7 +268,7 @@ router.post('/products/:id/variants', authorize('admin'), async (req: Request, r
   if (!Number.isInteger(parsedStock) || parsedStock < 0) throw new AppError('Stock quantity must be a non-negative whole number', 400);
   if (!Number.isFinite(parsedAdjustment)) throw new AppError('Price adjustment must be a valid number', 400);
   if (color_hex && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
-  if (sku !== undefined && sku !== null && String(sku).length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  if (sku !== undefined && sku !== null && sku.length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
   const product = await query('SELECT COALESCE(sale_price,base_price) AS price FROM products WHERE id=$1', [req.params.id]);
   if (!product.rows[0]) throw new AppError('Product not found', 404);
   if (Number(product.rows[0].price) + parsedAdjustment <= 0) throw new AppError('Variant price must remain above zero', 400);
@@ -278,6 +281,10 @@ router.post('/products/:id/variants', authorize('admin'), async (req: Request, r
 
 router.patch('/products/:id/variants/:variantId', authorize('admin'), async (req: Request, res: Response) => {
   const { stock_qty, price_adj, sku, size, color, color_hex } = req.body;
+  if (size !== undefined && typeof size !== 'string') throw new AppError('Size must be text', 400);
+  if (color !== undefined && typeof color !== 'string') throw new AppError('Color must be text', 400);
+  if (color_hex !== undefined && color_hex !== null && typeof color_hex !== 'string') throw new AppError('Color must be text', 400);
+  if (sku !== undefined && sku !== null && typeof sku !== 'string') throw new AppError('SKU must be text', 400);
   const fields: Record<string, unknown> = {};
   if (stock_qty !== undefined) fields.stock_qty = Number(stock_qty);
   if (price_adj !== undefined) fields.price_adj = Number(price_adj);
@@ -291,7 +298,7 @@ router.patch('/products/:id/variants/:variantId', authorize('admin'), async (req
   if (size !== undefined && (!String(size).trim() || String(size).trim().length > 40)) throw new AppError('Size is invalid', 400);
   if (color !== undefined && (!String(color).trim() || String(color).trim().length > 80)) throw new AppError('Color is invalid', 400);
   if (color_hex !== undefined && color_hex !== null && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
-  if (sku !== undefined && sku !== null && String(sku).length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
+  if (sku !== undefined && sku !== null && sku.length > 100) throw new AppError('SKU cannot exceed 100 characters', 400);
   const existing = await query(`SELECT pv.price_adj,COALESCE(p.sale_price,p.base_price) AS price
     FROM product_variants pv JOIN products p ON p.id=pv.product_id
     WHERE pv.id=$1 AND pv.product_id=$2`, [req.params.variantId, req.params.id]);
