@@ -213,6 +213,21 @@ router.post('/products', authorize('admin'), async (req: Request, res: Response)
   for (const [field, value] of Object.entries({ is_featured, is_new_arrival, is_bestseller })) {
     if (value !== undefined && typeof value !== 'boolean') throw new AppError(`${field.replace(/_/g, ' ')} must be a boolean`, 400);
   }
+  const numericInput = (value: unknown) => typeof value === 'number' || (typeof value === 'string' && value.trim().length > 0);
+  if (!numericInput(base_price)) throw new AppError('Base price must be a positive number', 400);
+  if (sale_price !== undefined && sale_price !== null && sale_price !== '' && !numericInput(sale_price)) {
+    throw new AppError('Sale price must be a number', 400);
+  }
+  if (category_id !== undefined && category_id !== null && typeof category_id !== 'string') {
+    throw new AppError('Product category must be a valid identifier', 400);
+  }
+  if (calibrated_at !== undefined && calibrated_at !== null && typeof calibrated_at !== 'string') {
+    throw new AppError('Calibration date must be text', 400);
+  }
+  if (arch_support_level !== undefined && arch_support_level !== null &&
+      arch_support_level !== '' && (typeof arch_support_level !== 'string' || !['low', 'medium', 'high'].includes(arch_support_level))) {
+    throw new AppError('Invalid arch support level', 400);
+  }
   const base = Number(base_price);
   const sale = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
   if (!String(name || '').trim() || !String(slug || '').trim() || !Number.isFinite(base) || base <= 0) throw new AppError('Name, slug and a positive base price are required', 400);
