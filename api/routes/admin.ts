@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate, authorize('admin', 'staff'));
 
 /* ── Dashboard ───────────────────────────────────────────────────────── */
-router.get('/dashboard', async (_req: Request, res: Response) => {
+router.get('/dashboard', authorize('admin'), async (_req: Request, res: Response) => {
   const [orders, revenue, users, products] = await Promise.all([
     query(`SELECT COUNT(*) AS total,
                   COUNT(*) FILTER (WHERE status='pending') AS pending,
