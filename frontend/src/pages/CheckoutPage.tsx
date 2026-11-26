@@ -35,9 +35,9 @@ export default function CheckoutPage() {
     if (!addr.full_name.trim() || !addr.phone.trim() || !addr.line1.trim() || !addr.city.trim() || !addr.state.trim() || !addr.postal_code.trim()) {
       toast.error('Complete all required delivery fields'); return false;
     }
-    const phoneDigits = addr.phone.replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '');
-    if (!/^[6-9]\\d{9}$/.test(phoneDigits)) { toast.error('Enter a valid 10-digit Indian mobile number'); return false; }
-    if (!/^\\d{6}$/.test(addr.postal_code.trim())) { toast.error('Enter a valid 6-digit Indian PIN code'); return false; }
+    const phoneDigits = addr.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    if (!/^[6-9]\d{9}$/.test(phoneDigits)) { toast.error('Enter a valid 10-digit Indian mobile number'); return false; }
+    if (!/^\d{6}$/.test(addr.postal_code.trim())) { toast.error('Enter a valid 6-digit Indian PIN code'); return false; }
     if (addr.country !== 'India') { toast.error('STEPUP currently delivers within India only'); return false; }
     return true;
   };
