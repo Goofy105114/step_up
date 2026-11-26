@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import api from '../../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [otpPurpose,setOtpPurpose]=useState('login');
+  const [otpIdentifier,setOtpIdentifier]=useState('');
+  const [otpRequestId,setOtpRequestId]=useState('');
+  const [otpCode,setOtpCode]=useState('');
+  const [otpBusy,setOtpBusy]=useState(false);
   const [tab, setTab] = useState<'patient' | 'order'>('patient');
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
@@ -24,6 +30,8 @@ export default function LoginPage() {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Unable to sign in. Please try again.'); }
   };
 
+  const sendLoginOtp=async()=>{if(!otpIdentifier.trim()){toast.error('Enter your email or mobile number');return;}setOtpBusy(true);try{const r=await api.post('/auth/otp/send',{identifier:otpIdentifier,purpose:otpPurpose});setOtpRequestId(r.data.request_id);toast.success('OTP sent');}catch(e:any){toast.error(e.response?.data?.message||'Could not send OTP');}finally{setOtpBusy(false);}};
+  const verifyLoginOtp=async()=>{setOtpBusy(true);try{const v=await api.post('/auth/otp/verify',{request_id:otpRequestId,otp:otpCode});const r=await api.post('/auth/otp/login',{verification_ticket:v.data.verification_ticket});localStorage.setItem('token',r.data.token);useAuthStore.setState({token:r.data.token,user:r.data.user});toast.success('Signed in');navigate(r.data.user.role==='admin'||r.data.user.role==='staff'?'/admin':(from==='/login'?'/':from),{replace:true});}catch(e:any){toast.error(e.response?.data?.message||'OTP verification failed');}finally{setOtpBusy(false);}};
   return (
     <div className="bg-background min-h-screen flex flex-col justify-between">
       <header className="w-full py-space-lg px-margin-mobile md:px-margin flex items-center justify-between">
@@ -128,6 +136,17 @@ export default function LoginPage() {
                     </button>
                   </form>
 
+
+                  <section className="mt-5 rounded-xl border border-outline-variant/50 bg-surface-container-low p-4 space-y-3">
+                    <p className="text-sm font-semibold text-primary">Sign in with a one-time code</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={()=>{setOtpPurpose('login');setOtpRequestId('');}} className="rounded-full border px-3 py-2 text-xs font-semibold">Customer</button>
+                      <button type="button" onClick={()=>{setOtpPurpose('admin');setOtpRequestId('');}} className="rounded-full border px-3 py-2 text-xs font-semibold">Admin / staff</button>
+                    </div>
+                    <input value={otpIdentifier} onChange={e=>setOtpIdentifier(e.target.value)} className="input-field" placeholder="Email or 10-digit mobile"/>
+                    <button type="button" onClick={sendLoginOtp} disabled={otpBusy} className="btn-primary w-full disabled:opacity-50">{otpBusy?'Please wait':otpRequestId?'Resend OTP':'Send OTP'}</button>
+                    {otpRequestId&&<div className="flex gap-2"><input value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,8))} inputMode="numeric" maxLength={8} className="input-field" placeholder="Enter OTP"/><button type="button" onClick={verifyLoginOtp} disabled={otpBusy} className="btn-primary">Verify</button></div>}
+                  </section>
                   <div className="pt-4 space-y-3">
                     <div className="flex items-center gap-4">
                       <div className="flex-1 h-px bg-surface-container-high" />
