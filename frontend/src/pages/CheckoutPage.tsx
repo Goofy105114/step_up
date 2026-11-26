@@ -67,7 +67,7 @@ export default function CheckoutPage() {
           document.body.appendChild(script);
         });
         if (!loaded) throw new Error('Secure payment checkout could not be loaded. Please retry or choose Cash on Delivery.');
-        const created = await api.post('/payments/create-order', { shipping_address: addr });
+        const created = await api.post('/payments/create-order', { shipping_address: addr, coupon_code: appliedCoupon?.code });
         const paymentOrder = created.data.data;
         await new Promise<void>((resolve, reject) => {
           const RazorpayConstructor = (window as any).Razorpay;
