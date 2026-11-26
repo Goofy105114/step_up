@@ -6,7 +6,7 @@ import { useCartStore } from '../../store/cartStore';
 const navigation = [
   { label: 'Relief Sandals & Slides', to: '/shop?search=sandals' },
   { label: 'Shop by Condition', to: '/shop-by-condition' },
-  { label: 'Arch Support Technology', to: '/find-your-fit' },
+  { label: 'Arch Support Technology', to: '/shop-by-condition?tag=arch-support' },
   { label: 'Find Your Fit', to: '/find-your-fit' },
   { label: 'Clinical Studies', to: '/clinical-studies' },
 ];
@@ -72,7 +72,7 @@ export default function Navbar() {
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
           {navigation.map((item) => (
-            <NavLink key={item.label} to={item.to} className={navClass}>
+            <NavLink key={item.label} to={item.to} end className={navClass}>
               {item.label}
             </NavLink>
           ))}
@@ -143,7 +143,7 @@ export default function Navbar() {
           </form>
           <nav aria-label="Mobile navigation" className="grid gap-1">
             {navigation.map((item) => (
-              <NavLink key={item.label} to={item.to} className={({ isActive }) => `rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
+              <NavLink key={item.label} to={item.to} end className={({ isActive }) => `rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
                 {item.label}
               </NavLink>
             ))}

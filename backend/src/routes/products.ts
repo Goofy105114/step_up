@@ -69,6 +69,19 @@ router.get('/', async (req: Request, res: Response) => {
   });
 });
 
+// GET /api/products/tags - list distinct tags from active catalogue products
+router.get('/tags', async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT DISTINCT tag.value AS tag
+     FROM products p
+     CROSS JOIN LATERAL UNNEST(COALESCE(p.tags, ARRAY[]::TEXT[])) AS tag(value)
+     WHERE p.is_active = true AND NULLIF(BTRIM(tag.value), '') IS NOT NULL
+     ORDER BY tag.value ASC`
+  );
+
+  return res.json({ success: true, data: result.rows.map(row => row.tag) });
+});
+
 // GET /api/products/:slug
 router.get('/:slug', async (req: Request, res: Response) => {
   const result = await query(
