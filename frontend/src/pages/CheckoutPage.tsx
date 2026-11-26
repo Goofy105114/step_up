@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeMessage, setPincodeMessage] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [addressChoiceInitialized, setAddressChoiceInitialized] = useState(false);
   const { data: savedAddressesData } = useQuery({
     queryKey: ['user-addresses'],
     queryFn: () => api.get('/users/addresses').then(r => r.data),
@@ -29,11 +30,12 @@ export default function CheckoutPage() {
   const savedAddresses = savedAddressesData?.data || [];
 
   useEffect(() => {
-    if (!savedAddresses.length || selectedAddressId) return;
+    if (!savedAddresses.length || addressChoiceInitialized) return;
     const preferred = savedAddresses.find((address: any) => address.is_default) || savedAddresses[0];
     if (!preferred) return;
     setSelectedAddressId(preferred.id);
-    setAddr(current => current.line1 ? current : ({
+    setAddressChoiceInitialized(true);
+    setAddr(current => (current.full_name || current.phone || current.line1 || current.city || current.state || current.postal_code) ? current : ({
       ...current,
       full_name: preferred.full_name || current.full_name,
       phone: preferred.phone || current.phone,
@@ -43,12 +45,13 @@ export default function CheckoutPage() {
       postal_code: preferred.postal_code || '',
       country: preferred.country || 'India',
     }));
-  }, [savedAddresses, selectedAddressId]);
+  }, [savedAddresses, addressChoiceInitialized]);
 
 
   const setA = (k: string, v: string) => setAddr(a => ({ ...a, [k]: v }));
 
   const chooseSavedAddress = (id: string) => {
+    setAddressChoiceInitialized(true);
     setSelectedAddressId(id);
     const selected = savedAddresses.find((address: any) => address.id === id);
     if (!selected) return;
