@@ -76,15 +76,24 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
          AND (user_id IS NULL OR user_id=$2)
          FOR UPDATE`, [String(coupon_code).trim().toUpperCase(), req.user!.userId]);
       const coupon = couponResult.rows[0];
-      if (coupon && subtotal >= Number(coupon.min_order_amount)) {
-        couponId = coupon.id;
-        discountAmount = coupon.discount_type === 'percentage'
-          ? (subtotal * Number(coupon.discount_value)) / 100
-          : Number(coupon.discount_value);
-        discountAmount = Math.min(discountAmount, subtotal);
-      } else if (coupon_code) {
+      if (!coupon || subtotal < Number(coupon.min_order_amount)) {
         throw new AppError('Coupon is invalid, expired, or does not meet the minimum order amount', 400);
       }
+      const couponValue = Number(coupon.discount_value);
+      const minimumOrderAmount = Number(coupon.min_order_amount);
+      if (
+        !Number.isFinite(couponValue) || couponValue <= 0 ||
+        !Number.isFinite(minimumOrderAmount) || minimumOrderAmount < 0 ||
+        !['percentage', 'fixed'].includes(coupon.discount_type) ||
+        (coupon.discount_type === 'percentage' && couponValue > 100)
+      ) {
+        throw new AppError('This coupon is not configured correctly. Please contact support.', 503);
+      }
+      couponId = coupon.id;
+      discountAmount = coupon.discount_type === 'percentage'
+        ? (subtotal * couponValue) / 100
+        : couponValue;
+      discountAmount = Math.min(discountAmount, subtotal);
     }
 
     const pricingResult = await client.query(
