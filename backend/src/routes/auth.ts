@@ -26,10 +26,10 @@ router.post('/otp/send',otpLimiter,async(req:Request,res:Response)=>{
  if(!['register','login','admin','checkout'].includes(purpose))throw new AppError('Unsupported verification purpose',400);
  const contact=identifier.includes('@')?identifier:identifier.slice(-10);
  if(purpose==='register'){
-  const existing=identifier.includes('@')?await query('SELECT id FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id FROM users WHERE regexp_replace(phone,'\\D','','g') LIKE $1",['%'+contact]);
+  const existing=identifier.includes('@')?await query('SELECT id FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id FROM users WHERE regexp_replace(phone,'[^0-9]','','g') LIKE $1",['%'+contact]);
   if(existing.rows.length)throw new AppError('An account already exists for this contact',409);
  }else{
-  const found=identifier.includes('@')?await query('SELECT id,role FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id,role FROM users WHERE regexp_replace(phone,'\\D','','g') LIKE $1",['%'+contact]);
+  const found=identifier.includes('@')?await query('SELECT id,role FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id,role FROM users WHERE regexp_replace(phone,'[^0-9]','','g') LIKE $1",['%'+contact]);
   if(!found.rows.length)throw new AppError('No account found for this contact',404);
   if(purpose==='admin'&&!['admin','staff'].includes(found.rows[0].role))throw new AppError('Admin access is not available for this account',403);
  }
@@ -53,7 +53,8 @@ router.post('/otp/verify',authAttemptLimiter,async(req:Request,res:Response)=>{
  const accessToken=await verifyOtp(requestId,otp);
  const verifiedIdentifier=await verifyOtpAccessToken(accessToken);
  if(!sameIdentifier(challenge.identifier,verifiedIdentifier))throw new AppError('Verified contact does not match the requested contact',403);
- await query('UPDATE auth_otp_challenges SET verified_at=NOW() WHERE id=$1',[challenge.id]);
+ const marked=await query('UPDATE auth_otp_challenges SET verified_at=NOW() WHERE id=$1 AND verified_at IS NULL AND consumed_at IS NULL AND expires_at>NOW() RETURNING id',[challenge.id]);
+ if(!marked.rowCount)throw new AppError('OTP request has already been verified or used',410);
  res.json({success:true,verification_ticket:issueVerifiedTicket(challenge,challenge.identifier),purpose:challenge.purpose});
 });
 router.post('/otp/login',authAttemptLimiter,async(req:Request,res:Response)=>{
@@ -63,7 +64,7 @@ router.post('/otp/login',authAttemptLimiter,async(req:Request,res:Response)=>{
  const challenge=await query('SELECT * FROM auth_otp_challenges WHERE id=$1 AND verified_at IS NOT NULL AND consumed_at IS NULL AND expires_at>NOW()',[claims.sub]);
  if(!challenge.rows.length)throw new AppError('OTP verification has expired or was already used',410);
  const identifier=String(claims.identifier),contact=identifier.includes('@')?identifier:identifier.slice(-10);
- const found=identifier.includes('@')?await query('SELECT id,email,first_name,last_name,role,phone,avatar_url FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id,email,first_name,last_name,role,phone,avatar_url FROM users WHERE regexp_replace(phone,'\\D','','g') LIKE $1",['%'+contact]);
+ const found=identifier.includes('@')?await query('SELECT id,email,first_name,last_name,role,phone,avatar_url FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id,email,first_name,last_name,role,phone,avatar_url FROM users WHERE regexp_replace(phone,'[^0-9]','','g') LIKE $1",['%'+contact]);
  const user=found.rows[0];if(!user)throw new AppError('Account not found',404);
  if(claims.purpose==='admin'&&!['admin','staff'].includes(user.role))throw new AppError('Admin access required',403);
  const consumed=await query('UPDATE auth_otp_challenges SET consumed_at=NOW() WHERE id=$1 AND consumed_at IS NULL AND expires_at>NOW() RETURNING id',[claims.sub]);if(!consumed.rowCount)throw new AppError('OTP verification has already been used',410);
@@ -77,12 +78,18 @@ router.post('/register',authAttemptLimiter,[emailRules,body('password').custom(s
  const email=String(req.body.email).trim().toLowerCase(),phone=req.body.phone?String(req.body.phone).replace(/\s/g,''):null;
  const matches=claims.identifier.includes('@')?claims.identifier===email:sameIdentifier(claims.identifier,phone||'');
  if(!matches)throw new AppError('Verified email or mobile must match your account details',403);
- const challenge=await query('SELECT id FROM auth_otp_challenges WHERE id=$1 AND verified_at IS NOT NULL AND consumed_at IS NULL AND expires_at>NOW()',[claims.sub]);
- if(!challenge.rows.length)throw new AppError('Registration verification expired or already used',410);
  const existing=await query('SELECT id FROM users WHERE lower(email)=lower($1)',[email]);if(existing.rows.length)throw new AppError('Email already registered',409);
  const hash=await bcrypt.hash(req.body.password,12);
- const result=await query('INSERT INTO users(email,password_hash,first_name,last_name,phone,is_verified) VALUES($1,$2,$3,$4,$5,true) RETURNING id,email,first_name,last_name,role,phone,avatar_url',[email,hash,req.body.first_name.trim(),req.body.last_name.trim(),phone]);
- await query('UPDATE auth_otp_challenges SET consumed_at=NOW() WHERE id=$1',[claims.sub]);
+ const result=await query(`WITH claimed AS (
+   UPDATE auth_otp_challenges
+   SET consumed_at=NOW()
+   WHERE id=$1 AND verified_at IS NOT NULL AND consumed_at IS NULL AND expires_at>NOW()
+   RETURNING id
+ ) INSERT INTO users(email,password_hash,first_name,last_name,phone,is_verified)
+   SELECT $2,$3,$4,$5,$6,true FROM claimed
+   RETURNING id,email,first_name,last_name,role,phone,avatar_url`,
+ [claims.sub,email,hash,req.body.first_name.trim(),req.body.last_name.trim(),phone]);
+ if(!result.rows[0])throw new AppError('Registration verification expired or already used',410);
  const user=result.rows[0];return res.status(201).json({success:true,token:issueToken(user),user});
 });
 router.post('/login',authAttemptLimiter,[emailRules,body('password').isLength({min:1,max:72})],async(req:Request,res:Response)=>{
