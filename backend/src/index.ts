@@ -28,17 +28,29 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Render runs behind a reverse proxy.
+app.set('trust proxy', 1);
+
 // Security Middleware
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    const configured = process.env.FRONTEND_URL;
+    const allowed = !origin ||
+      origin === configured ||
+      origin === 'http://localhost:5173' ||
+      origin === 'http://localhost:3000' ||
+      /^https:\/\/[^/]+\.vercel\.app$/.test(origin);
+    callback(null, allowed);
+  },
   credentials: true,
 }));
 
 // Rate Limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
+  standardHeaders: true,
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
@@ -50,13 +62,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // Logging
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
-// Health Check
-app.get('/health', (_req, res) => {
+// Health checks: keep both paths during the deployment transition.
+const healthCheck = (_req: express.Request, res: express.Response) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
+};
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -76,8 +90,8 @@ app.use('/api/patient-profile', patientProfileRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
 });
 
