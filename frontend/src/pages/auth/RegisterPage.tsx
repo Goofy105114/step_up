@@ -63,7 +63,7 @@ export default function RegisterPage() {
                 Create Your Orthopedic Profile
               </h1>
               <p className="text-body-md text-on-surface-variant leading-relaxed">
-                Join 8,400+ verified patients. Get access to HSA/FSA eligible footwear, 60-day trial guarantee, and your personal arch calibration profile.
+                Create an account to save your details, manage orders, and keep your footwear preferences together.
               </p>
             </div>
 
