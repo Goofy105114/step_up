@@ -120,6 +120,26 @@ CREATE TABLE IF NOT EXISTS lab_settings (
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS store_settings (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  setting_key   VARCHAR(120) UNIQUE NOT NULL,
+  setting_value JSONB NOT NULL DEFAULT '{}'::jsonb,
+  description   TEXT,
+  updated_by    UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Preserve the current checkout defaults as initial database values.
+-- ON CONFLICT keeps any company-managed settings intact on later migrations.
+INSERT INTO store_settings (setting_key, setting_value, description)
+VALUES (
+  'checkout_pricing',
+  '{"free_shipping_threshold_inr":599,"shipping_fee_inr":99,"gst_rate_percent":5}'::jsonb,
+  'Checkout shipping threshold, shipping fee and GST rate. Applies to new orders.'
+)
+ON CONFLICT (setting_key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS patient_fit_profiles (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id           UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
