@@ -239,6 +239,20 @@ router.post('/products', authorize('admin'), async (req: Request, res: Response)
 
 router.patch('/products/:id', authorize('admin'), async (req: Request, res: Response) => {
   const fields = ['name','slug','description','short_description','category_id','base_price','sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
+  const textFields = ['name','slug','description','short_description','sku','material','care_instructions','calibration_reference','calibration_notes'];
+  for (const field of textFields) {
+    if (req.body[field] !== undefined && req.body[field] !== null && typeof req.body[field] !== 'string') {
+      throw new AppError(`Product ${field.replace(/_/g, ' ')} must be text`, 400);
+    }
+  }
+  for (const field of ['is_active','is_featured','is_new_arrival','is_bestseller']) {
+    if (req.body[field] !== undefined && typeof req.body[field] !== 'boolean') {
+      throw new AppError(`${field.replace(/_/g, ' ')} must be a boolean`, 400);
+    }
+  }
+  if (req.body.tags !== undefined && (!Array.isArray(req.body.tags) || req.body.tags.some((tag: unknown) => typeof tag !== 'string'))) {
+    throw new AppError('Product tags must be an array of text values', 400);
+  }
   const available = await getProductColumnNames();
   const updates: string[] = [];
   const params: unknown[] = [];
