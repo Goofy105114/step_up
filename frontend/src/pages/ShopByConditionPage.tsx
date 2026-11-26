@@ -53,7 +53,6 @@ export default function ShopByConditionPage() {
 
   const products: Product[] = Array.isArray(productsData?.data) ? productsData.data : [];
   const activeCategory = categories.find(category => category.slug === selectedCategory);
-  const activeTagLabel = selectedTag.replace(/[-_]/g, ' ');
   const hasFilters = Boolean(selectedTag || selectedCategory);
 
   const updateFilters = (tag: string, category: string) => {
