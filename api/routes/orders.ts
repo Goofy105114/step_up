@@ -210,7 +210,10 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
 
 
 router.post('/:id/return', authenticate, async (req: Request, res: Response) => {
-  const reason = String(req.body?.reason || '').trim();
+  if (typeof req.body?.reason !== 'string') {
+    throw new AppError('Please provide a return reason between 5 and 1000 characters', 400);
+  }
+  const reason = req.body.reason.trim();
   if (reason.length < 5 || reason.length > 1000) {
     throw new AppError('Please provide a return reason between 5 and 1000 characters', 400);
   }
