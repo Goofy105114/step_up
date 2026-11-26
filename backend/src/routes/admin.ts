@@ -193,7 +193,7 @@ const getProductColumnNames = async () => {
   return new Set<string>(result.rows.map((row: { column_name: string }) => row.column_name));
 };
 
-router.post('/products', async (req: Request, res: Response) => {
+router.post('/products', authorize('admin'), async (req: Request, res: Response) => {
   const { name, slug, description, short_description, category_id, base_price, sale_price, sku, material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a, calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
   const base = Number(base_price);
   const sale = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
@@ -219,7 +219,7 @@ router.post('/products', async (req: Request, res: Response) => {
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
-router.patch('/products/:id', async (req: Request, res: Response) => {
+router.patch('/products/:id', authorize('admin'), async (req: Request, res: Response) => {
   const fields = ['name','slug','description','short_description','category_id','base_price','sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
   const available = await getProductColumnNames();
   const updates: string[] = [];
@@ -247,7 +247,7 @@ router.patch('/products/:id', async (req: Request, res: Response) => {
 });
 
 /* ── Variants ────────────────────────────────────────────────────────── */
-router.post('/products/:id/variants', async (req: Request, res: Response) => {
+router.post('/products/:id/variants', authorize('admin'), async (req: Request, res: Response) => {
   const { size, color, color_hex, stock_qty, price_adj, sku } = req.body;
   const normalizedSize = String(size || '').trim();
   const normalizedColor = String(color || '').trim();
@@ -269,7 +269,7 @@ router.post('/products/:id/variants', async (req: Request, res: Response) => {
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
-router.patch('/products/:id/variants/:variantId', async (req: Request, res: Response) => {
+router.patch('/products/:id/variants/:variantId', authorize('admin'), async (req: Request, res: Response) => {
   const { stock_qty, price_adj, sku, size, color, color_hex } = req.body;
   const fields: Record<string, unknown> = {};
   if (stock_qty !== undefined) fields.stock_qty = Number(stock_qty);
@@ -302,7 +302,7 @@ router.patch('/products/:id/variants/:variantId', async (req: Request, res: Resp
   return res.json({ success: true, data: result.rows[0] });
 });
 
-router.delete('/products/:id/variants/:variantId', async (req: Request, res: Response) => {
+router.delete('/products/:id/variants/:variantId', authorize('admin'), async (req: Request, res: Response) => {
   const result = await query('DELETE FROM product_variants WHERE id=$1 AND product_id=$2 RETURNING id',
     [req.params.variantId, req.params.id]);
   if (!result.rows[0]) throw new AppError('Product variant not found', 404);
@@ -320,7 +320,7 @@ const normalizeProductImageUrl = (value: unknown) => {
   return parsed.toString();
 };
 
-router.post('/products/:id/images', async (req: Request, res: Response) => {
+router.post('/products/:id/images', authorize('admin'), async (req: Request, res: Response) => {
   const { url, alt_text, is_primary, sort_order } = req.body;
   const imageUrl = normalizeProductImageUrl(url);
   if (alt_text !== undefined && alt_text !== null && (typeof alt_text !== 'string' || alt_text.length > 255)) {
@@ -352,7 +352,7 @@ router.post('/products/:id/images', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/products/:id/images/:imageId', async (req: Request, res: Response) => {
+router.delete('/products/:id/images/:imageId', authorize('admin'), async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -592,7 +592,7 @@ router.get('/return-requests', async (_req: Request, res: Response) => {
   return res.json({ success: true, data: result.rows });
 });
 
-router.patch('/return-requests/:id', async (req: Request, res: Response) => {
+router.patch('/return-requests/:id', authorize('admin'), async (req: Request, res: Response) => {
   const { status, admin_note } = req.body;
   if (!['approved','rejected','received'].includes(status)) {
     throw new AppError('Choose approved, rejected or received', 400);
