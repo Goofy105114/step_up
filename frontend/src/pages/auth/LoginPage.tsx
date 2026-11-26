@@ -56,11 +56,11 @@ export default function LoginPage() {
               <div className="flex items-center justify-between mb-8">
                 <div className="inline-flex items-center gap-2 bg-surface-container-low px-3.5 py-1.5 rounded-full">
                   <span className="material-symbols-outlined text-secondary text-[16px]">verified_user</span>
-                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Podiatrist Verified Access • v3.8</span>
+                  <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">STEPUP ACCOUNT</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-on-surface-variant text-label-md font-semibold">
                   <span className="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  <span>Encrypted Portal</span>
+                  <span>Account sign-in</span>
                 </div>
               </div>
 
@@ -95,7 +95,7 @@ export default function LoginPage() {
                 <div className="space-y-6">
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="label" htmlFor="email">Clinical Account Email</label>
+                      <label className="label" htmlFor="email">Email Address</label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-4 text-outline text-[20px] pointer-events-none">mail</span>
                         <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
@@ -119,15 +119,7 @@ export default function LoginPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <label className="flex items-center gap-3 cursor-pointer select-none">
-                        <input type="checkbox" className="w-4 h-4 rounded accent-primary" />
-                        <span className="text-body-sm text-on-surface-variant">Keep me authenticated on this device</span>
-                      </label>
-                      <div className="hidden sm:flex items-center gap-1 text-label-badge font-bold uppercase tracking-[0.06em] text-outline">
-                        <span>HSA / FSA eligible</span>
-                      </div>
-                    </div>
+
                     <button type="submit" disabled={isLoading}
                       className="w-full h-[52px] bg-primary text-on-primary rounded-full text-label-md font-semibold tracking-[0.04em] uppercase shadow-md hover:bg-primary-container transition-all flex items-center justify-center gap-2 group mt-2 disabled:opacity-50">
                       {isLoading ? 'Signing in...' : (
