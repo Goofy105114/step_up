@@ -53,6 +53,9 @@ router.get('/featured', async (_req: Request, res: Response) => {
 });
 
 router.get('/:productId', async (req: Request, res: Response) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.productId)) {
+    throw new AppError('Invalid product ID', 400);
+  }
   const { page = '1', limit = '10' } = req.query as Record<string, string>;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
