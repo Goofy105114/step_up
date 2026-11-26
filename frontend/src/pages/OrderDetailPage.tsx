@@ -77,7 +77,7 @@ export default function OrderDetailPage() {
             <span className={`text-xs px-3 py-1.5 font-bold uppercase tracking-widest ${getStatusColor(order.status)}`}>
               {formatOrderStatus(order.status)}
             </span>
-            {['pending', 'confirmed'].includes(order.status) && (
+            {['pending', 'confirmed'].includes(order.status) && !(order.payment_method === 'razorpay' && order.payment_status === 'pending') && (
               <button type="button" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}
                 className="text-xs text-red-500 hover:text-red-700 font-semibold uppercase tracking-wider border border-red-200 px-3 py-1.5 hover:bg-red-50 transition-colors">
                 {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Order'}
@@ -91,6 +91,13 @@ export default function OrderDetailPage() {
             )}
           </div>
         </div>
+
+        {order.payment_method === 'razorpay' && order.payment_status === 'pending' && (
+          <div role="status" className="mb-6 border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">Online payment status is being confirmed</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">Do not submit another payment for this order yet. Refresh this page or check My Orders while STEPUP reconciles the payment with the payment provider.</p>
+          </div>
+        )}
 
         {/* Progress tracker */}
         {!['cancelled', 'refunded', 'returned'].includes(order.status) && (
@@ -193,6 +200,15 @@ export default function OrderDetailPage() {
               <div className="flex justify-between text-xs text-gray-400 pt-1">
                 <span>Method</span>
                 <span className="capitalize">{order.payment_method?.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 pt-1">
+                <span>Payment status</span>
+                <span className="font-semibold capitalize">
+                  {order.payment_status === 'paid' ? 'Paid' :
+                    order.payment_status === 'failed' ? 'Failed' :
+                    order.payment_status === 'refunded' ? 'Refunded' :
+                    order.payment_method === 'cod' ? 'Pay on delivery' : 'Pending confirmation'}
+                </span>
               </div>
             </div>
           </div>
