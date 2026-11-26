@@ -31,11 +31,23 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
     if (!items.rows.length || Number(count.rows[0].count)!==items.rows.length) throw new AppError('Cart contains unavailable products',409);
     for (const item of items.rows) if (Number(item.stock_qty)<Number(item.quantity)) throw new AppError(`Insufficient stock for ${item.name}`,409);
     const subtotal=items.rows.reduce((sum:number,item:any)=>sum+Number(item.unit_price)*Number(item.quantity),0);
-    const shipping=subtotal>=599?0:99, tax=subtotal*0.05, total=subtotal+shipping+tax;
+    let discount=0, couponId:string|null=null;
+    const couponCode=String(req.body?.coupon_code||'').trim().toUpperCase();
+    if(couponCode){
+      const couponResult=await client.query(`SELECT * FROM coupons WHERE code=$1 AND is_active=true
+        AND valid_from<=NOW() AND (valid_until IS NULL OR valid_until>NOW())
+        AND (max_uses IS NULL OR used_count<max_uses) AND (user_id IS NULL OR user_id=$2) FOR UPDATE`,[couponCode,req.user!.userId]);
+      const coupon=couponResult.rows[0];
+      if(!coupon||subtotal<Number(coupon.min_order_amount)) throw new AppError('Coupon is invalid, expired, or does not meet the minimum order amount',400);
+      couponId=coupon.id;
+      discount=coupon.discount_type==='percentage'?subtotal*Number(coupon.discount_value)/100:Number(coupon.discount_value);
+      discount=Math.min(discount,subtotal);
+    }
+    const shipping=subtotal-discount>=599?0:99, tax=(subtotal-discount)*0.05, total=subtotal-discount+shipping+tax;
     const orderNo='ORD-'+Date.now()+'-'+Math.floor(Math.random()*1000);
-    const inserted=await client.query(`INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,shipping_address,billing_address,payment_method,payment_status)
-      VALUES ($1,$2,$3,0,$4,$5,$6,$7,$7,'razorpay','pending') RETURNING *`,
-      [orderNo,req.user!.userId,subtotal,shipping,tax,total,JSON.stringify(address)]);
+    const inserted=await client.query(`INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,coupon_id,shipping_address,billing_address,payment_method,payment_status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'razorpay','pending') RETURNING *`,
+      [orderNo,req.user!.userId,subtotal,discount,shipping,tax,total,couponId,JSON.stringify(address)]);
     order=inserted.rows[0];
     for (const item of items.rows) {
       const stock=await client.query('UPDATE product_variants SET stock_qty=stock_qty-$1 WHERE id=$2 AND stock_qty >= $1 RETURNING id',[item.quantity,item.variant_id]);
@@ -45,6 +57,7 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
         [order.id,item.product_id,item.variant_id,item.name,item.size,item.color,item.quantity,item.unit_price,Number(item.unit_price)*Number(item.quantity),item.image_url]);
     }
     await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'pending','Awaiting online payment confirmation']);
+    if(couponId) await client.query('UPDATE coupons SET used_count=used_count+1 WHERE id=$1',[couponId]);
     await client.query('COMMIT');
   } catch(error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
