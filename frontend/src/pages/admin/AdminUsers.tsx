@@ -13,7 +13,14 @@ export default function AdminUsers() {
       <h1 className="text-2xl font-display font-bold text-gray-900">Customers</h1>
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading…</div>
+          <div role="status" className="p-8 text-center text-gray-400">Loading customers…</div>
+        ) : isError ? (
+          <div role="alert" className="p-8 text-center">
+            <p className="text-sm text-red-600">Unable to load customer records. No customer data has been changed.</p>
+            <button type="button" onClick={() => refetch()} disabled={isFetching} className="btn-outline mt-3 px-4 py-2 text-xs">
+              {isFetching ? 'Retrying…' : 'Try again'}
+            </button>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -48,7 +55,7 @@ export default function AdminUsers() {
                 ))}
               </tbody>
             </table>
-            {!data?.data?.length && <div className="text-center py-12 text-gray-400">No users found</div>}
+            {data?.data?.length === 0 && <div className="text-center py-12 text-gray-400">No customer records found.</div>}
           </div>
         )}
       </div>
