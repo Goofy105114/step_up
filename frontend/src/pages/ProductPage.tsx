@@ -35,9 +35,11 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (product?.variants?.length) {
-      const first = product.variants.find((variant: any) => Number(variant.stock_qty) > 0) || product.variants[0];
-      setSelectedColor(first.color);
-      setSelectedVariant(first);
+      setSelectedColor(product.variants[0].color);
+      setSelectedVariant(null);
+    } else {
+      setSelectedColor('');
+      setSelectedVariant(null);
     }
   }, [product]);
 
@@ -46,9 +48,7 @@ export default function ProductPage() {
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
-    const colorVariants = product.variants.filter((v: any) => v.color === color);
-    const v = colorVariants.find((variant: any) => Number(variant.stock_qty) > 0) || colorVariants[0];
-    setSelectedVariant(v);
+    setSelectedVariant(null);
   };
 
   const addToCart = async (goToCheckout = false) => {
@@ -256,6 +256,7 @@ export default function ProductPage() {
                     </button>
                   ))}
                 </div>
+                {!selectedVariant && <p className="text-body-sm text-on-surface-variant mt-space-sm">Choose an available size to continue.</p>}
                 {selectedVariant && (
                   <p className={`text-body-sm font-semibold mt-space-sm flex items-center gap-1 ${selectedVariant.stock_qty > 10 ? 'text-secondary' : selectedVariant.stock_qty > 0 ? 'text-tertiary' : 'text-error'}`}>
                     <span className="material-symbols-outlined text-[16px]">{selectedVariant.stock_qty > 0 ? 'check_circle' : 'cancel'}</span>
@@ -269,7 +270,7 @@ export default function ProductPage() {
 
             {/* CTA buttons */}
             <div className="flex gap-space-sm">
-              <button onClick={() => addToCart()} disabled={addingCart || (selectedVariant && selectedVariant.stock_qty < 1)}
+              <button onClick={() => addToCart()} disabled={addingCart || !selectedVariant || Number(selectedVariant.stock_qty) < 1}
                 className="flex-1 h-14 bg-surface-container-high text-on-surface rounded-full text-label-md font-semibold flex items-center justify-center gap-space-xs hover:bg-surface-container-highest transition-all border border-outline-variant disabled:opacity-50">
                 <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 {addingCart ? 'Adding...' : 'Add to Bag'}
