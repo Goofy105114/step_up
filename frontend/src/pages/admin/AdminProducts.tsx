@@ -8,7 +8,7 @@ import { Package } from 'lucide-react';
 export default function AdminProducts() {
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'products'],
     queryFn: () => api.get('/admin/products').then((r) => r.data),
   });
@@ -16,12 +16,13 @@ export default function AdminProducts() {
   const toggleMutation = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       api.patch(`/admin/products/${id}`, { is_active }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'products'] }); toast.success('Updated'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'products'] }); toast.success('Product status updated'); },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to update product status'),
   });
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-bold uppercase tracking-widest text-gray-900">Products</h1>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400">{data?.data?.length || 0} products</span>
@@ -69,7 +70,7 @@ export default function AdminProducts() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => toggleMutation.mutate({ id: p.id, is_active: !p.is_active })}
+                      <button type="button" disabled={toggleMutation.isPending} aria-label={`${p.is_active ? 'Deactivate' : 'Activate'} ${p.name}`} onClick={() => toggleMutation.mutate({ id: p.id, is_active: !p.is_active })}
                         className={`badge cursor-pointer ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {p.is_active ? 'Active' : 'Inactive'}
                       </button>

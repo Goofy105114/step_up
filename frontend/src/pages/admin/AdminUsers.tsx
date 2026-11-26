@@ -3,7 +3,7 @@ import api from '../../lib/api';
 import { formatPrice, formatDate } from '../../lib/formatters';
 
 export default function AdminUsers() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => api.get('/admin/users').then((r) => r.data),
   });
@@ -28,7 +28,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
-                          <span className="text-xs font-bold text-brand-600">{u.first_name[0]}</span>
+                          <span className="text-xs font-bold text-brand-600">{u.first_name?.[0]?.toUpperCase() || 'C'}</span>
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{u.first_name} {u.last_name}</p>

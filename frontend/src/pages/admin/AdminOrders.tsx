@@ -11,7 +11,7 @@ export default function AdminOrders() {
   const [updating, setUpdating] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'orders', filterStatus],
     queryFn: () => api.get(`/admin/orders${filterStatus ? `?status=${filterStatus}` : ''}`).then((r) => r.data),
   });
@@ -25,9 +25,9 @@ export default function AdminOrders() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-display font-bold text-gray-900">Orders</h1>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+        <select aria-label="Filter orders by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
           className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
           <option value="">All Statuses</option>
           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
@@ -66,7 +66,7 @@ export default function AdminOrders() {
                           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
                         </select>
                       ) : (
-                        <button onClick={() => setUpdating(order.id)}
+                        <button type="button" onClick={() => setUpdating(order.id)}
                           className="text-xs text-brand-600 hover:text-brand-800 font-medium">Update</button>
                       )}
                     </td>
