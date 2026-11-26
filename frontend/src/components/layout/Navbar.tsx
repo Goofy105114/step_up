@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 
@@ -11,10 +11,20 @@ const navigation = [
   { label: 'Clinical Studies', to: '/clinical-studies' },
 ];
 
-const navClass = ({ isActive }: { isActive: boolean }) =>
+const navClass = (isActive: boolean) =>
   `whitespace-nowrap rounded-full px-3 py-2 text-[12px] font-semibold tracking-[0.015em] transition-colors ${
     isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'
   }`;
+
+const isNavigationActive = (to: string, pathname: string, search: string) => {
+  const target = new URL(to, 'https://stepup.local');
+  if (target.pathname !== pathname) return false;
+  const targetTag = target.searchParams.get('tag');
+  const currentTag = new URLSearchParams(search).get('tag');
+  if (targetTag) return targetTag === currentTag;
+  if (target.pathname === '/shop-by-condition') return currentTag !== 'arch-support';
+  return true;
+};
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -72,9 +82,9 @@ export default function Navbar() {
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
           {navigation.map((item) => (
-            <NavLink key={item.label} to={item.to} end className={navClass}>
+            <Link key={item.label} to={item.to} aria-current={isNavigationActive(item.to, location.pathname, location.search) ? 'page' : undefined} className={navClass(isNavigationActive(item.to, location.pathname, location.search))}>
               {item.label}
-            </NavLink>
+            </Link>
           ))}
         </nav>
 
@@ -143,9 +153,9 @@ export default function Navbar() {
           </form>
           <nav aria-label="Mobile navigation" className="grid gap-1">
             {navigation.map((item) => (
-              <NavLink key={item.label} to={item.to} end className={({ isActive }) => `rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
+              <Link key={item.label} to={item.to} aria-current={isNavigationActive(item.to, location.pathname, location.search) ? 'page' : undefined} className={`rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isNavigationActive(item.to, location.pathname, location.search) ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
                 {item.label}
-              </NavLink>
+              </Link>
             ))}
           </nav>
           <div className="mt-4 flex gap-3 border-t border-outline-variant/30 pt-4">

@@ -131,60 +131,63 @@ router.get('/products/:id', async (req: Request, res: Response) => {
   return res.json({ success: true, data: result.rows[0] });
 });
 
+const getProductColumnNames = async () => {
+  const result = await query(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'products'`
+  );
+  return new Set<string>(result.rows.map((row: { column_name: string }) => row.column_name));
+};
+
 router.post('/products', async (req: Request, res: Response) => {
-  const { name, slug, description, short_description, category_id, base_price, sale_price, sku,
-          material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a,
-          calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
-  const parsedBasePrice = Number(base_price);
-  const parsedSalePrice = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
-  if (!String(name || '').trim() || !String(slug || '').trim() || !Number.isFinite(parsedBasePrice) || parsedBasePrice <= 0) {
-    throw new AppError('Name, slug and a positive base price are required', 400);
-  }
-  if (parsedSalePrice !== null && (!Number.isFinite(parsedSalePrice) || parsedSalePrice <= 0 || parsedSalePrice > parsedBasePrice)) {
-    throw new AppError('Sale price must be positive and cannot exceed the base price', 400);
-  }
+  const { name, slug, description, short_description, category_id, base_price, sale_price, sku, material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a, calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
+  const base = Number(base_price);
+  const sale = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
+  if (!String(name || '').trim() || !String(slug || '').trim() || !Number.isFinite(base) || base <= 0) throw new AppError('Name, slug and a positive base price are required', 400);
+  if (sale !== null && (!Number.isFinite(sale) || sale <= 0 || sale > base)) throw new AppError('Sale price must be positive and cannot exceed the base price', 400);
   if (arch_support_level && !['low', 'medium', 'high'].includes(arch_support_level)) throw new AppError('Invalid arch support level', 400);
   if (arch_height_mm !== undefined && arch_height_mm !== null && arch_height_mm !== '' && (!Number.isFinite(Number(arch_height_mm)) || Number(arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (durometer_shore_a !== undefined && durometer_shore_a !== null && durometer_shore_a !== '' && (!Number.isFinite(Number(durometer_shore_a)) || Number(durometer_shore_a) < 0 || Number(durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
-  const result = await query(
-    `INSERT INTO products (name,slug,description,short_description,category_id,base_price,sale_price,sku,
-                           material,care_instructions,arch_support_level,arch_height_mm,durometer_shore_a,
-                           calibration_reference,calibrated_at,calibration_notes,tags,is_featured,is_new_arrival,is_bestseller)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
-    [name, slug, description || null, short_description || null, category_id || null,
-     base_price, sale_price || null, sku || null, material || null, care_instructions || null,
-     arch_support_level || null, arch_height_mm === '' ? null : arch_height_mm ?? null, durometer_shore_a === '' ? null : durometer_shore_a ?? null,
-     calibration_reference || null, calibrated_at || null, calibration_notes || null, tags || [],
-     is_featured || false, is_new_arrival || false, is_bestseller || false]);
+  const payload: Record<string, unknown> = {
+    name: String(name).trim(), slug: String(slug).trim(), description: description || null, short_description: short_description || null,
+    category_id: category_id || null, base_price: base, sale_price: sale, sku: sku || null, material: material || null,
+    care_instructions: care_instructions || null, tags: Array.isArray(tags) ? tags : [], is_featured: Boolean(is_featured),
+    is_new_arrival: Boolean(is_new_arrival), is_bestseller: Boolean(is_bestseller), arch_support_level: arch_support_level || null,
+    arch_height_mm: arch_height_mm === '' || arch_height_mm === undefined ? null : arch_height_mm,
+    durometer_shore_a: durometer_shore_a === '' || durometer_shore_a === undefined ? null : durometer_shore_a,
+    calibration_reference: calibration_reference || null, calibrated_at: calibrated_at || null, calibration_notes: calibration_notes || null,
+  };
+  const available = await getProductColumnNames();
+  const columns = Object.keys(payload).filter(column => available.has(column));
+  const values = columns.map(column => payload[column]);
+  const placeholders = columns.map((_, index) => `$${index + 1}`);
+  const result = await query(`INSERT INTO products (${columns.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`, values);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
 router.patch('/products/:id', async (req: Request, res: Response) => {
-  const fields = ['name','slug','description','short_description','category_id','base_price',
-                  'sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
+  const fields = ['name','slug','description','short_description','category_id','base_price','sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
+  const available = await getProductColumnNames();
   const updates: string[] = [];
   const params: unknown[] = [];
-  let pIdx = 1;
-  for (const f of fields) {
-    if (req.body[f] !== undefined) { updates.push(`${f}=$${pIdx++}`); params.push(req.body[f]); }
-  }
+  let index = 1;
+  for (const field of fields) { if (req.body[field] !== undefined && available.has(field)) { updates.push(`${field}=$${index++}`); params.push(req.body[field]); } }
   if (req.body.base_price !== undefined && (!Number.isFinite(Number(req.body.base_price)) || Number(req.body.base_price) <= 0)) throw new AppError('Base price must be a positive number', 400);
   if (req.body.sale_price !== undefined && req.body.sale_price !== null && req.body.sale_price !== '' && (!Number.isFinite(Number(req.body.sale_price)) || Number(req.body.sale_price) <= 0)) throw new AppError('Sale price must be a positive number', 400);
   if (req.body.base_price !== undefined || req.body.sale_price !== undefined) {
-    const current = await query('SELECT base_price,sale_price FROM products WHERE id=$1',[req.params.id]);
-    if (!current.rows[0]) throw new AppError('Product not found',404);
+    const current = await query('SELECT base_price,sale_price FROM products WHERE id=$1', [req.params.id]);
+    if (!current.rows[0]) throw new AppError('Product not found', 404);
     const nextBase = req.body.base_price !== undefined ? Number(req.body.base_price) : Number(current.rows[0].base_price);
     const nextSaleRaw = req.body.sale_price !== undefined ? req.body.sale_price : current.rows[0].sale_price;
     const nextSale = nextSaleRaw === null || nextSaleRaw === '' ? null : Number(nextSaleRaw);
-    if (nextSale !== null && (!Number.isFinite(nextSale) || nextSale <= 0 || nextSale > nextBase)) throw new AppError('Sale price must be positive and cannot exceed the base price',400);
+    if (nextSale !== null && (!Number.isFinite(nextSale) || nextSale <= 0 || nextSale > nextBase)) throw new AppError('Sale price must be positive and cannot exceed the base price', 400);
   }
   if (req.body.arch_support_level !== undefined && req.body.arch_support_level !== null && !['low', 'medium', 'high'].includes(req.body.arch_support_level)) throw new AppError('Invalid arch support level', 400);
   if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
-  if (!updates.length) throw new AppError('No fields to update', 400);
+  if (!updates.length) throw new AppError('No supported product fields to update', 400);
   params.push(req.params.id);
-  const result = await query(
-    `UPDATE products SET ${updates.join(',')},updated_at=NOW() WHERE id=$${pIdx} RETURNING *`, params);
+  const result = await query(`UPDATE products SET ${updates.join(',')},updated_at=NOW() WHERE id=$${index} RETURNING *`, params);
+  if (!result.rows[0]) throw new AppError('Product not found', 404);
   return res.json({ success: true, data: result.rows[0] });
 });
 

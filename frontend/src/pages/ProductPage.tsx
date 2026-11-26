@@ -44,7 +44,12 @@ export default function ProductPage() {
   }, [product]);
 
   const colors = product ? [...new Set<string>(product.variants?.map((v: any) => v.color))] : [];
-  const sizesForColor = product ? product.variants?.filter((v: any) => v.color === selectedColor) : [];
+  const sizesForColor = product ? product.variants?.filter((v: any) => v.color === selectedColor).sort((a: any, b: any) => {
+    const aSize = Number(a.size);
+    const bSize = Number(b.size);
+    if (Number.isFinite(aSize) && Number.isFinite(bSize)) return aSize - bSize;
+    return String(a.size).localeCompare(String(b.size));
+  }) : [];
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
@@ -165,9 +170,12 @@ export default function ProductPage() {
               {images[activeImg] ? (
                 <img src={images[activeImg]} alt={product.name} className="w-full max-h-[420px] object-contain transition-all duration-300 hover:scale-[1.02] p-space-lg" />
               ) : (
-                <div className="flex min-h-[420px] w-full flex-col items-center justify-center gap-3 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-5xl text-outline-variant">image</span>
-                  <span className="text-sm">No product images available</span>
+                <div className="relative flex min-h-[420px] w-full flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_42%,#ffffff_0%,#edf2ed_48%,#dce7df_100%)] text-primary">
+                  <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full border border-primary/10" />
+                  <div className="absolute -bottom-20 -left-12 h-72 w-72 rounded-full border border-primary/10" />
+                  <span className="material-symbols-outlined relative text-[112px] text-primary/40">steps</span>
+                  <span className="relative mt-4 text-xs font-bold uppercase tracking-[0.24em]">STEPUP</span>
+                  <span className="relative mt-2 text-xs text-on-surface-variant">Product photography coming soon</span>
                 </div>
               )}
 
@@ -253,7 +261,7 @@ export default function ProductPage() {
             {sizesForColor?.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-space-sm">
-                  <label className="label mb-0">Select US Size</label>
+                  <label className="label mb-0">Select UK Size</label>
                   <button onClick={() => setSizeGuideOpen(true)} className="text-label-md font-semibold text-secondary hover:text-primary transition-colors">↑ Size Guide</button>
                 </div>
                 <div className="flex flex-wrap gap-space-sm">

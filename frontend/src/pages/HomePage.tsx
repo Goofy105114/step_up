@@ -49,9 +49,8 @@ export default function HomePage() {
   const categories: Category[] = categoriesData?.data || [];
   const bestsellerProducts = bestsellers?.data || [];
   const newArrivalProducts = newArrivals?.data || [];
-  // Editorial visual extracted from the supplied Stitch landing-page code; catalogue product imagery always takes precedence.
-  const stitchEditorialImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAcMrHTF7CDnQi3dqN1LXjoDMN2KTZkimZ4ZKkU7l_Nnuo5uki9KJZR4xOr-Dp4szNlpbMqS-dn13rQOWYhSyLosdcIb_A_hUYEe2mxsJQkTMiSJqRHXhld4X79tCg9DUBlVS2Apg87Yv6BIgFA6SuOAOtTMBCnIz1x-qUlp-LP7YBR6AFhhcdClnc4O9owVpvqC73XrSxl2OOBvP4w7Gp2k_bhD8MUj7prlyH5KY';
-  const heroImage = featuredProducts[0]?.primary_image || stitchEditorialImage;
+  // Use verified catalogue photography when available; otherwise keep the hero on-brand until product images are supplied.
+  const heroImage = featuredProducts[0]?.primary_image || '';
 
   return (
     <main className="bg-surface text-on-surface">

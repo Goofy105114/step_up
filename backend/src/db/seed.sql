@@ -108,6 +108,7 @@ ON CONFLICT (slug) DO NOTHING;
 -- Product Variants
 INSERT INTO product_variants (product_id, size, color, color_hex, stock_qty, sku) VALUES
   -- CloudStep Runner Pro (Men's)
+  ('b1000000-0000-0000-0000-000000000001', '6',  'Black/White', '#000000', 0,  'CSR-BW-6'),
   ('b1000000-0000-0000-0000-000000000001', '7',  'Black/White', '#000000', 25, 'CSR-BW-7'),
   ('b1000000-0000-0000-0000-000000000001', '8',  'Black/White', '#000000', 30, 'CSR-BW-8'),
   ('b1000000-0000-0000-0000-000000000001', '9',  'Black/White', '#000000', 28, 'CSR-BW-9'),
@@ -120,15 +121,28 @@ INSERT INTO product_variants (product_id, size, color, color_hex, stock_qty, sku
   ('b1000000-0000-0000-0000-000000000002', '5',  'Black',       '#111111', 15, 'UGH-BK-5'),
   ('b1000000-0000-0000-0000-000000000002', '6',  'Black',       '#111111', 20, 'UGH-BK-6'),
   ('b1000000-0000-0000-0000-000000000002', '7',  'Black',       '#111111', 18, 'UGH-BK-7'),
+  ('b1000000-0000-0000-0000-000000000002', '8',  'Black',       '#111111', 0, 'UGH-BK-8'),
+  ('b1000000-0000-0000-0000-000000000002', '9',  'Black',       '#111111', 0, 'UGH-BK-9'),
+  ('b1000000-0000-0000-0000-000000000002', '10', 'Black',       '#111111', 0, 'UGH-BK-10'),
+  ('b1000000-0000-0000-0000-000000000002', '11', 'Black',       '#111111', 0, 'UGH-BK-11'),
   ('b1000000-0000-0000-0000-000000000002', '6',  'Nude',        '#D4A574', 12, 'UGH-NU-6'),
   ('b1000000-0000-0000-0000-000000000002', '7',  'Nude',        '#D4A574', 10, 'UGH-NU-7'),
+  ('b1000000-0000-0000-0000-000000000002', '8',  'Nude',        '#D4A574', 0, 'UGH-NU-8'),
+  ('b1000000-0000-0000-0000-000000000002', '9',  'Nude',        '#D4A574', 0, 'UGH-NU-9'),
+  ('b1000000-0000-0000-0000-000000000002', '10', 'Nude',        '#D4A574', 0, 'UGH-NU-10'),
+  ('b1000000-0000-0000-0000-000000000002', '11', 'Nude',        '#D4A574', 0, 'UGH-NU-11'),
   -- StreetVibe Sneaker
   ('b1000000-0000-0000-0000-000000000005', '6',  'White',       '#FFFFFF', 40, 'SVS-WH-6'),
   ('b1000000-0000-0000-0000-000000000005', '7',  'White',       '#FFFFFF', 45, 'SVS-WH-7'),
   ('b1000000-0000-0000-0000-000000000005', '8',  'White',       '#FFFFFF', 38, 'SVS-WH-8'),
   ('b1000000-0000-0000-0000-000000000005', '9',  'White',       '#FFFFFF', 30, 'SVS-WH-9'),
+  ('b1000000-0000-0000-0000-000000000005', '10', 'White',       '#FFFFFF', 0, 'SVS-WH-10'),
+  ('b1000000-0000-0000-0000-000000000005', '11', 'White',       '#FFFFFF', 0, 'SVS-WH-11'),
   ('b1000000-0000-0000-0000-000000000005', '7',  'Black',       '#111111', 35, 'SVS-BK-7'),
   ('b1000000-0000-0000-0000-000000000005', '8',  'Black',       '#111111', 32, 'SVS-BK-8'),
+  ('b1000000-0000-0000-0000-000000000005', '9',  'Black',       '#111111', 0, 'SVS-BK-9'),
+  ('b1000000-0000-0000-0000-000000000005', '10', 'Black',       '#111111', 0, 'SVS-BK-10'),
+  ('b1000000-0000-0000-0000-000000000005', '11', 'Black',       '#111111', 0, 'SVS-BK-11'),
   -- CloudFloat Slide
   ('b1000000-0000-0000-0000-000000000006', 'S',  'Black',       '#111111', 60, 'CFS-BK-S'),
   ('b1000000-0000-0000-0000-000000000006', 'M',  'Black',       '#111111', 80, 'CFS-BK-M'),
@@ -144,20 +158,8 @@ INSERT INTO product_variants (product_id, size, color, color_hex, stock_qty, sku
 ON CONFLICT (sku) DO NOTHING;
 
 -- Product Images (using placeholder URLs — replace with real CDN in production)
-INSERT INTO product_images (product_id, url, alt_text, is_primary, sort_order) VALUES
-  ('b1000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800', 'CloudStep Runner Pro - Black', true,  1),
-  ('b1000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800', 'CloudStep Runner Pro - Side', false, 2),
-  ('b1000000-0000-0000-0000-000000000002', 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800', 'UrbanGrace Heel - Black', true,  1),
-  ('b1000000-0000-0000-0000-000000000003', 'https://images.unsplash.com/photo-1486915309851-b0cc1f8a0084?w=800', 'TerraTrek Hiker', true,  1),
-  ('b1000000-0000-0000-0000-000000000004', 'https://images.unsplash.com/photo-1555384843-9e44cdde36b6?w=800', 'SoftStep Kids Velcro', true,  1),
-  ('b1000000-0000-0000-0000-000000000005', 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800', 'StreetVibe Sneaker - White', true,  1),
-  ('b1000000-0000-0000-0000-000000000005', 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=800', 'StreetVibe Sneaker - Side', false, 2),
-  ('b1000000-0000-0000-0000-000000000006', 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=800', 'CloudFloat Slide', true,  1),
-  ('b1000000-0000-0000-0000-000000000007', 'https://images.unsplash.com/photo-1556906781-9a414e2a9c86?w=800', 'BlazeKick Football Boot', true,  1),
-  ('b1000000-0000-0000-0000-000000000008', 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=800', 'ElegantStep Ballerina', true,  1)
-ON CONFLICT DO NOTHING;
-
--- Coupon
+-- Product images intentionally omitted for the initial catalogue.
+-- Add product photography later through the STEPUP admin product editor.
 INSERT INTO coupons (code, description, discount_type, discount_value, min_order_amount, max_uses) VALUES
   ('WELCOME10', 'Welcome discount for new customers', 'percentage', 10, 999, 1000),
   ('FLAT500',   'Flat ₹500 off on orders above ₹3000',  'fixed',      500, 3000, 500),

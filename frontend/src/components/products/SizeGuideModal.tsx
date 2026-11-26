@@ -4,14 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface Props { isOpen: boolean; onClose: () => void; }
 
 const sizes = [
-  { uk: '5', eu: '38', us: '6', cm: '24.0' },
   { uk: '6', eu: '39', us: '7', cm: '24.6' },
   { uk: '7', eu: '40', us: '8', cm: '25.4' },
   { uk: '8', eu: '41', us: '9', cm: '26.0' },
   { uk: '9', eu: '42', us: '10', cm: '26.7' },
   { uk: '10', eu: '43', us: '11', cm: '27.3' },
   { uk: '11', eu: '44', us: '12', cm: '28.0' },
-  { uk: '12', eu: '45', us: '13', cm: '28.6' },
 ];
 
 export default function SizeGuideModal({ isOpen, onClose }: Props) {
