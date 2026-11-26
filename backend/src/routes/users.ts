@@ -46,9 +46,9 @@ router.post('/addresses', authenticate, async (req: Request, res: Response) => {
   if (required.some(value => typeof value !== 'string' || !value.trim())) {
     throw new AppError('Complete all required delivery address fields', 400);
   }
-  const phoneDigits = String(phone).replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '');
-  if (!/^[6-9]\\d{9}$/.test(phoneDigits)) throw new AppError('Enter a valid Indian mobile number', 400);
-  if (!/^\\d{6}$/.test(String(postal_code).trim())) throw new AppError('Enter a valid 6-digit Indian PIN code', 400);
+  const phoneDigits = String(phone).replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(phoneDigits)) throw new AppError('Enter a valid Indian mobile number', 400);
+  if (!/^\d{6}$/.test(String(postal_code).trim())) throw new AppError('Enter a valid 6-digit Indian PIN code', 400);
   if (String(country || 'India').trim().toLowerCase() !== 'india') throw new AppError('STEPUP currently delivers within India only', 400);
   if (label !== undefined && (typeof label !== 'string' || label.trim().length > 50)) throw new AppError('Address label must be 50 characters or fewer', 400);
   if (String(full_name).trim().length > 200 || String(line1).trim().length > 255 ||
