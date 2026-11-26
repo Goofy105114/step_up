@@ -120,6 +120,7 @@ export default function ProfilePage() {
     { icon: 'favorite', label: 'Saved Wishlist', href: '/wishlist', badge: wishlist.length > 0 ? `${wishlist.length} Items` : null },
     { icon: 'receipt_long', label: 'Order receipts', href: '/orders', badge: null },
     { icon: 'tune', label: 'Fit profile', href: '/profile#fit-profile', badge: null },
+    { icon: 'location_on', label: 'Saved addresses', href: '/profile#saved-addresses', badge: null },
   ];
 
   return (
