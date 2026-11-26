@@ -90,7 +90,7 @@ export default function Navbar() {
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
           {navigation.map((item) => (
-            <Link key={item.label} to={item.to} aria-current={activeNavigationLabel === item.label ? 'page' : undefined} className={navClass(isNavigationActive(item.to, location.pathname, location.search))}>
+            <Link key={item.label} to={item.to} aria-current={activeNavigationLabel === item.label ? 'page' : undefined} className={navClass(activeNavigationLabel === item.label)}>
               {item.label}
             </Link>
           ))}
