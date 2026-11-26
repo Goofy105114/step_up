@@ -16,14 +16,21 @@ const navClass = (isActive: boolean) =>
     isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'
   }`;
 
-const isNavigationActive = (to: string, pathname: string, search: string) => {
-  const target = new URL(to, 'https://stepup.local');
-  if (target.pathname !== pathname) return false;
-  const targetTag = target.searchParams.get('tag');
-  const currentTag = new URLSearchParams(search).get('tag');
-  if (targetTag) return targetTag === currentTag;
-  if (target.pathname === '/shop-by-condition') return currentTag !== 'arch-support';
-  return true;
+const getActiveNavigationLabel = (pathname: string, search: string) => {
+  const params = new URLSearchParams(search);
+
+  if (pathname === '/shop-by-condition') {
+    return params.get('tag') === 'arch-support'
+      ? 'Arch Support Technology'
+      : 'Shop by Condition';
+  }
+  if (pathname === '/find-your-fit') return 'Find Your Fit';
+  if (pathname === '/clinical-studies') return 'Clinical Studies';
+  if (pathname === '/shop' && params.get('search')?.toLowerCase() === 'sandals') {
+    return 'Relief Sandals & Slides';
+  }
+
+  return null;
 };
 
 export default function Navbar() {
@@ -54,6 +61,7 @@ export default function Navbar() {
   };
 
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+  const activeNavigationLabel = getActiveNavigationLabel(location.pathname, location.search);
 
   return (
     <header className={`sticky top-0 z-50 bg-surface/95 backdrop-blur-xl transition-shadow duration-200 ${scrolled ? 'shadow-[0_4px_18px_rgba(10,92,80,0.08)]' : 'shadow-[0_1px_8px_rgba(10,92,80,0.04)]'}`}>
@@ -82,7 +90,7 @@ export default function Navbar() {
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
           {navigation.map((item) => (
-            <Link key={item.label} to={item.to} aria-current={isNavigationActive(item.to, location.pathname, location.search) ? 'page' : undefined} className={navClass(isNavigationActive(item.to, location.pathname, location.search))}>
+            <Link key={item.label} to={item.to} aria-current={activeNavigationLabel === item.label ? 'page' : undefined} className={navClass(activeNavigationLabel === item.label)}>
               {item.label}
             </Link>
           ))}
@@ -153,7 +161,7 @@ export default function Navbar() {
           </form>
           <nav aria-label="Mobile navigation" className="grid gap-1">
             {navigation.map((item) => (
-              <Link key={item.label} to={item.to} aria-current={isNavigationActive(item.to, location.pathname, location.search) ? 'page' : undefined} className={`rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isNavigationActive(item.to, location.pathname, location.search) ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
+              <Link key={item.label} to={item.to} aria-current={activeNavigationLabel === item.label ? 'page' : undefined} className={`rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${activeNavigationLabel === item.label ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
                 {item.label}
               </Link>
             ))}
