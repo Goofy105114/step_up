@@ -17,16 +17,6 @@ export default function CartPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const discount = appliedCoupon
-    ? appliedCoupon.discount_type === 'percentage'
-      ? (subtotal * parseFloat(appliedCoupon.discount_value)) / 100
-      : parseFloat(appliedCoupon.discount_value)
-    : 0;
-  const shipping = (subtotal - discount) >= 599 ? 0 : 99;
-  const tax = (subtotal - discount) * 0.05;
-  const total = subtotal - discount + shipping + tax;
-  const freeShipLeft = Math.max(0, 599 - subtotal);
-  const freeShipPct = Math.min((subtotal / 599) * 100, 100);
   const hasUnavailableItems = items.some((item: any) => !item.is_active);
 
   const handleUpdate = async (itemId: string, qty: number) => {
@@ -125,19 +115,6 @@ export default function CartPage() {
                 Review product details and order information before checkout.
               </p>
             </div>
-
-            {/* Free shipping bar */}
-            {freeShipLeft > 0 && (
-              <div className="bg-surface-container-low rounded-DEFAULT p-space-md">
-                <p className="text-body-sm text-on-surface-variant mb-2">
-                  Add <strong className="text-primary">₹{freeShipLeft.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</strong> more for{' '}
-                  <strong className="text-secondary">FREE Express Delivery</strong>
-                </p>
-                <div className="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${freeShipPct}%` }} />
-                </div>
-              </div>
-            )}
 
             {items.map((item: any) => (
               <div key={item.id} className="card p-space-lg hover:shadow-card-hover">
@@ -241,19 +218,10 @@ export default function CartPage() {
             <div className="card p-space-lg">
               <h3 className="text-title-md font-semibold text-primary mb-space-md">Order Summary</h3>
               <div className="space-y-space-sm">
-                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
-                {discount > 0 && <div className="flex justify-between text-body-md text-secondary font-semibold"><span>Discount</span><span>-{formatPrice(discount)}</span></div>}
-                <div className="flex justify-between text-body-md text-on-surface-variant">
-                  <span>Estimated Shipping</span>
-                  <span className={shipping === 0 ? 'text-secondary font-semibold' : ''}>{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
-                </div>
-                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Estimated Tax (5%)</span><span>{formatPrice(tax)}</span></div>
-                <div className="flex justify-between text-title-md font-semibold text-on-surface pt-space-sm border-t border-outline-variant/20">
-                  <div>
-                    <span className="text-on-surface">Total</span>
-                    <p className="text-body-sm text-on-surface-variant font-normal">Includes of local taxes</p>
-                  </div>
-                  <span className="text-headline-sm font-semibold text-primary">{formatPrice(total)}</span>
+                <div className="flex justify-between text-body-md text-on-surface-variant"><span>Cart subtotal</span><span>{formatPrice(subtotal)}</span></div>
+                {appliedCoupon && <p className="text-body-sm text-secondary font-semibold">Coupon {appliedCoupon.code} applied. The final discount will be confirmed at checkout.</p>}
+                <div className="border-t border-outline-variant/20 pt-space-sm">
+                  <p className="text-body-sm text-on-surface-variant">Shipping charges, applicable taxes and the final payable amount are calculated and confirmed at checkout.</p>
                 </div>
               </div>
 
@@ -262,7 +230,7 @@ export default function CartPage() {
               ) : (
                 <Link to="/checkout" className="mt-space-lg flex items-center justify-center gap-space-sm w-full bg-primary-container text-on-primary py-4 rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all duration-200 group">
                   <span className="material-symbols-outlined text-[18px]">lock</span>
-                  Proceed to Checkout {formatPrice(total)}
+                  Proceed to Checkout
                   <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </Link>
               )}
