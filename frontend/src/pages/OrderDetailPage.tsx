@@ -207,6 +207,23 @@ export default function OrderDetailPage() {
           </div>
         )}
 
+        {order.return_request && (
+          <section className="mt-5 border border-gray-200 bg-white p-5" aria-labelledby="return-status-heading">
+            <h3 id="return-status-heading" className="text-xs font-bold uppercase tracking-widest text-gray-700">Return request status</h3>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-sm font-semibold capitalize text-gray-900">{String(order.return_request.status).replace(/_/g, ' ')}</span>
+              <span className="text-xs text-gray-400">Requested {formatDate(order.return_request.created_at)}</span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-gray-600">{order.return_request.reason}</p>
+            <p className="mt-3 border-t border-gray-100 pt-3 text-xs leading-5 text-gray-500">
+              {order.return_request.status === 'requested' && 'Your request is waiting for review by the STEPUP team.'}
+              {order.return_request.status === 'approved' && 'Your return has been approved. Follow the instructions provided by the STEPUP team to send the item back.'}
+              {order.return_request.status === 'received' && 'The returned item has been marked as received. Any applicable refund is handled separately and is not automatic.'}
+              {order.return_request.status === 'rejected' && 'The return request was not approved. Contact STEPUP support if you need clarification.'}
+            </p>
+          </section>
+        )}
+
         {/* Order history */}
         {order.history?.length > 0 && (
           <div className="border border-gray-200 p-5 mt-5">
