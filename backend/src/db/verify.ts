@@ -12,6 +12,51 @@ async function main() {
     const missing = required.filter(name => !found.has(name));
     if (missing.length) throw new Error(`Missing tables: ${missing.join(', ')}`);
 
+    const publicAccess = await query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM pg_tables
+          WHERE schemaname='public' AND rowsecurity = false) AS tables_without_rls,
+        (SELECT COUNT(*)::int FROM pg_class c
+          JOIN pg_namespace n ON n.oid=c.relnamespace
+          WHERE n.nspname='public' AND c.relkind='r'
+            AND (
+              has_table_privilege('anon', c.oid, 'SELECT') OR
+              has_table_privilege('anon', c.oid, 'INSERT') OR
+              has_table_privilege('anon', c.oid, 'UPDATE') OR
+              has_table_privilege('anon', c.oid, 'DELETE') OR
+              has_table_privilege('anon', c.oid, 'TRUNCATE') OR
+              has_table_privilege('anon', c.oid, 'REFERENCES') OR
+              has_table_privilege('anon', c.oid, 'TRIGGER') OR
+              has_table_privilege('authenticated', c.oid, 'SELECT') OR
+              has_table_privilege('authenticated', c.oid, 'INSERT') OR
+              has_table_privilege('authenticated', c.oid, 'UPDATE') OR
+              has_table_privilege('authenticated', c.oid, 'DELETE') OR
+              has_table_privilege('authenticated', c.oid, 'TRUNCATE') OR
+              has_table_privilege('authenticated', c.oid, 'REFERENCES') OR
+              has_table_privilege('authenticated', c.oid, 'TRIGGER')
+            )) AS tables_with_client_role_privileges,
+        (SELECT COUNT(*)::int FROM pg_class c
+          JOIN pg_namespace n ON n.oid=c.relnamespace
+          WHERE n.nspname='public' AND c.relkind='S'
+            AND (has_sequence_privilege('anon', c.oid, 'USAGE,SELECT,UPDATE')
+              OR has_sequence_privilege('authenticated', c.oid, 'USAGE,SELECT,UPDATE'))) AS sequences_with_client_role_privileges,
+        (SELECT COUNT(*)::int FROM pg_proc p
+          JOIN pg_namespace n ON n.oid=p.pronamespace
+          WHERE n.nspname='public'
+            AND (has_function_privilege('anon', p.oid, 'EXECUTE')
+              OR has_function_privilege('authenticated', p.oid, 'EXECUTE'))) AS functions_with_client_role_execute
+    `);
+    const access = publicAccess.rows[0];
+    if (
+      access.tables_without_rls > 0 ||
+      access.tables_with_client_role_privileges > 0 ||
+      access.sequences_with_client_role_privileges > 0 ||
+      access.functions_with_client_role_execute > 0
+    ) {
+      throw new Error(`Public schema access hardening failed: ${JSON.stringify(access)}`);
+    }
+    console.log('[verify] public schema: RLS enabled and anon/authenticated direct privileges revoked');
+
     const pricing = await query(
       "SELECT setting_value FROM store_settings WHERE setting_key='checkout_pricing'"
     );
