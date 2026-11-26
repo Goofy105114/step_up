@@ -148,6 +148,7 @@ router.post('/webhook',async(req:Request,res:Response)=>{
           if(locked.rows[0]?.payment_status!=='paid'){
             await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
             await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured via verified webhook']);
+            await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[order.user_id]);
           }
           await client.query('COMMIT');
         }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
