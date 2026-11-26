@@ -47,21 +47,38 @@ export default function FindYourFitPage() {
   const currentStep = STEPS[step];
   const progress = ((step) / STEPS.length) * 100;
 
-  // Determine recommended category from answers
-  const getRecommendedTag = () => {
+  const { data: catalogueTagsData } = useQuery({
+    queryKey: ['product-tags', 'fit-assessment'],
+    queryFn: () => api.get('/products/tags').then(response => response.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const catalogueTags: string[] = Array.isArray(catalogueTagsData?.data) ? catalogueTagsData.data : [];
+
+  // Match preference votes only against tags that actually exist in the live catalogue.
+  // If none of the mapped tags exist, show general catalogue products rather than inventing a tag.
+  const getRecommendedTag = (): string | null => {
     const tagVotes: Record<string, number> = {};
     answers.forEach((answerId, stepIdx) => {
       const opt = STEPS[stepIdx].options.find(o => o.id === answerId);
-      if (opt?.tag) {
+      if (opt?.tag && catalogueTags.includes(opt.tag)) {
         tagVotes[opt.tag] = (tagVotes[opt.tag] || 0) + 1;
       }
     });
-    return Object.entries(tagVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || 'arch-support';
+    return Object.entries(tagVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   };
 
-  const { data: recommendedProducts } = useQuery({
-    queryKey: ['quiz-results', answers],
-    queryFn: () => api.get(`/products?tags=${encodeURIComponent(getRecommendedTag())}&limit=4`).then(r => r.data),
+  const recommendedTag = getRecommendedTag();
+  const {
+    data: recommendedProducts,
+    isLoading: recommendationsLoading,
+    isError: recommendationsError,
+    refetch: refetchRecommendations,
+  } = useQuery({
+    queryKey: ['quiz-results', answers, recommendedTag],
+    queryFn: () => api.get(recommendedTag
+      ? `/products?tags=${encodeURIComponent(recommendedTag)}&limit=4`
+      : '/products?limit=4'
+    ).then(response => response.data),
     enabled: showResult,
   });
 
@@ -80,7 +97,6 @@ export default function FindYourFitPage() {
   };
 
   if (showResult) {
-    const tag = getRecommendedTag();
     const products = recommendedProducts?.data || [];
     return (
       <div className="bg-surface min-h-screen py-space-xl">
@@ -119,11 +135,18 @@ export default function FindYourFitPage() {
           </div>
 
           {/* Recommended products */}
-          {products.length > 0 && (
-            <div>
-              <h2 className="text-headline-md font-semibold text-primary text-center mb-space-lg">
-                Products to explore
-              </h2>
+          <div>
+            <h2 className="text-headline-md font-semibold text-primary text-center mb-space-lg">
+              Products to explore
+            </h2>
+            {recommendationsLoading ? (
+              <p className="py-10 text-center text-body-md text-on-surface-variant" role="status">Finding products in the current STEPUP catalogue…</p>
+            ) : recommendationsError ? (
+              <div role="alert" className="mx-auto max-w-xl rounded-xl border border-outline-variant bg-surface-container-lowest p-6 text-center">
+                <p className="text-body-md text-on-surface-variant">We couldn't load matching products just now.</p>
+                <button type="button" onClick={() => refetchRecommendations()} className="btn-primary mt-4">Try again</button>
+              </div>
+            ) : products.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md md:gap-space-lg mb-space-xl">
                 {products.map((p: any) => (
                   <Link key={p.id} to={`/product/${p.slug}`} className="card overflow-hidden group">
@@ -150,8 +173,14 @@ export default function FindYourFitPage() {
                   </Link>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="mx-auto max-w-xl rounded-xl border border-dashed border-outline-variant p-8 text-center">
+                <p className="text-title-md font-semibold text-primary">No matching products are available right now</p>
+                <p className="mt-2 text-body-sm text-on-surface-variant">Your preferences are ready. Browse the full live catalogue to explore other options.</p>
+                <Link to="/shop" className="btn-primary mt-4 inline-flex">Browse all products</Link>
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-space-md justify-center">
             <Link to="/shop-by-condition" className="btn-primary px-10 py-4 text-title-md font-semibold">
