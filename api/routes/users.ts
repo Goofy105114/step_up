@@ -43,6 +43,20 @@ router.post('/addresses', authenticate, async (req: Request, res: Response) => {
       [req.user!.userId, label || 'Home', full_name, phone, line1, line2 || null, city, state, postal_code, country || 'India', makeDefault]);
     await client.query('COMMIT');
     return res.status(201).json({ success: true, data: result.rows[0] });
+  const required = [full_name, phone, line1, city, state, postal_code];
+  if (required.some(value => typeof value !== 'string' || !value.trim())) {
+    throw new AppError('Complete all required delivery address fields', 400);
+  }
+  const phoneDigits = String(phone).replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(phoneDigits)) throw new AppError('Enter a valid Indian mobile number', 400);
+  if (!/^\d{6}$/.test(String(postal_code).trim())) throw new AppError('Enter a valid 6-digit Indian PIN code', 400);
+  if (String(country || 'India').trim().toLowerCase() !== 'india') throw new AppError('STEPUP currently delivers within India only', 400);
+  if (label !== undefined && (typeof label !== 'string' || label.trim().length > 50)) throw new AppError('Address label must be 50 characters or fewer', 400);
+  if (String(full_name).trim().length > 200 || String(line1).trim().length > 255 ||
+      (line2 !== undefined && line2 !== null && (typeof line2 !== 'string' || line2.trim().length > 255)) ||
+      String(city).trim().length > 100 || String(state).trim().length > 100) {
+    throw new AppError('One or more address fields exceed the allowed length', 400);
+  }
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import api from '../lib/api';
@@ -17,11 +18,57 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponLoading, setCouponLoading] = useState(false);
-  const [addr, setAddr] = useState({ full_name: '', email: '', phone: '', line1: '', city: '', state: '', postal_code: '', country: 'India' });
+  const [addr, setAddr] = useState({ full_name: '', email: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'India' });
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeMessage, setPincodeMessage] = useState('');
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [addressChoiceInitialized, setAddressChoiceInitialized] = useState(false);
+  const { data: savedAddressesData } = useQuery({
+    queryKey: ['user-addresses'],
+    queryFn: () => api.get('/users/addresses').then(r => r.data),
+  });
+  const savedAddresses = savedAddressesData?.data || [];
+
+  useEffect(() => {
+    if (!savedAddresses.length || addressChoiceInitialized) return;
+    const preferred = savedAddresses.find((address: any) => address.is_default) || savedAddresses[0];
+    if (!preferred) return;
+    setSelectedAddressId(preferred.id);
+    setAddressChoiceInitialized(true);
+    setAddr(current => (current.full_name || current.phone || current.line1 || current.city || current.state || current.postal_code) ? current : ({
+      ...current,
+      full_name: preferred.full_name || current.full_name,
+      phone: preferred.phone || current.phone,
+      line1: preferred.line1 || '',
+      line2: preferred.line2 || '',
+      city: preferred.city || '',
+      state: preferred.state || '',
+      postal_code: preferred.postal_code || '',
+      country: preferred.country || 'India',
+    }));
+  }, [savedAddresses, addressChoiceInitialized]);
+
 
   const setA = (k: string, v: string) => setAddr(a => ({ ...a, [k]: v }));
+
+  const chooseSavedAddress = (id: string) => {
+    setAddressChoiceInitialized(true);
+    setSelectedAddressId(id);
+    const selected = savedAddresses.find((address: any) => address.id === id);
+    if (!selected) return;
+    setAddr(current => ({
+      ...current,
+      full_name: selected.full_name || '',
+      phone: selected.phone || '',
+      line1: selected.line1 || '',
+      line2: selected.line2 || '',
+      city: selected.city || '',
+      state: selected.state || '',
+      postal_code: selected.postal_code || '',
+      country: selected.country || 'India',
+    }));
+    setPincodeMessage('');
+  };
 
   const lookupPincode = async () => {
     const pin = addr.postal_code.trim();
@@ -211,6 +258,17 @@ export default function CheckoutPage() {
                   <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-on-surface-variant">Step 01 • Delivery Address</span>
                 </div>
                 <div className="space-y-space-md">
+                  {savedAddresses.length > 0 && (
+                    <div>
+                      <label className="label" htmlFor="checkout-saved-address">Use a saved delivery address</label>
+                      <select id="checkout-saved-address" value={selectedAddressId} onChange={e => chooseSavedAddress(e.target.value)} className="input-field">
+                        <option value="">Enter a different address</option>
+                        {savedAddresses.map((address: any) => (
+                          <option key={address.id} value={address.id}>{address.label || 'Address'} · {address.city} · {address.postal_code}{address.is_default ? ' (Default)' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
                     {[
                       { key: 'full_name', label: 'Full Name *', placeholder: 'Name for delivery', icon: 'person', autoComplete: 'name', required: true },
@@ -240,6 +298,10 @@ export default function CheckoutPage() {
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none">my_location</span>
                       <input id="checkout-line1" type="text" required autoComplete="address-line1" placeholder="House number and street name" value={addr.line1} onChange={e => setA('line1', e.target.value)} className="input-field pl-12" />
                     </div>
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="checkout-line2">Apartment / landmark</label>
+                    <input id="checkout-line2" type="text" autoComplete="address-line2" placeholder="Apartment, floor or nearby landmark" value={addr.line2} onChange={e => setA('line2', e.target.value)} className="input-field" />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-space-md">
                     <div className="col-span-2 sm:col-span-1">

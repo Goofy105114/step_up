@@ -10,6 +10,8 @@ export default function ProfilePage() {
   const { user, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const [fitForm, setFitForm] = useState({ foot_length_mm: '', usual_size: '', arch_preference: '', comfort_focus: '', daily_activity: '', consent: false });
+  const [addressForm, setAddressForm] = useState({ label: 'Home', full_name: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'India', is_default: false });
+
 
   const { data: ordersData } = useQuery({
     queryKey: ['orders'],
@@ -19,6 +21,11 @@ export default function ProfilePage() {
   const { data: wishlistData } = useQuery({
     queryKey: ['wishlist'],
     queryFn: () => api.get('/wishlist').then(r => r.data),
+    enabled: !!user,
+  });
+  const { data: addressesData, isLoading: addressesLoading, isError: addressesError, refetch: refetchAddresses } = useQuery({
+    queryKey: ['user-addresses'],
+    queryFn: () => api.get('/users/addresses').then(r => r.data),
     enabled: !!user,
   });
   const { data: fitProfileData, isLoading: fitProfileLoading, isError: fitProfileError, refetch: refetchFitProfile, isFetching: fitProfileFetching } = useQuery({
@@ -39,6 +46,25 @@ export default function ProfilePage() {
       consent: false,
     });
   }, [fitProfileData]);
+
+  const saveAddress = useMutation({
+    mutationFn: () => api.post('/users/addresses', addressForm),
+    onSuccess: () => {
+      toast.success('Delivery address saved');
+      setAddressForm({ label: 'Home', full_name: '', phone: '', line1: '', line2: '', city: '', state: '', postal_code: '', country: 'India', is_default: false });
+      queryClient.invalidateQueries({ queryKey: ['user-addresses'] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to save address'),
+  });
+
+  const deleteAddress = useMutation({
+    mutationFn: (id: string) => api.delete('/users/addresses/' + id),
+    onSuccess: () => {
+      toast.success('Address deleted');
+      queryClient.invalidateQueries({ queryKey: ['user-addresses'] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to delete address'),
+  });
 
   const saveFitProfile = useMutation({
     mutationFn: () => api.put('/patient-profile', {
@@ -94,6 +120,7 @@ export default function ProfilePage() {
     { icon: 'favorite', label: 'Saved Wishlist', href: '/wishlist', badge: wishlist.length > 0 ? `${wishlist.length} Items` : null },
     { icon: 'receipt_long', label: 'Order receipts', href: '/orders', badge: null },
     { icon: 'tune', label: 'Fit profile', href: '/profile#fit-profile', badge: null },
+    { icon: 'location_on', label: 'Saved addresses', href: '/profile#saved-addresses', badge: null },
   ];
 
   return (
@@ -193,6 +220,66 @@ export default function ProfilePage() {
               <button type="submit" disabled={!fitForm.consent || saveFitProfile.isPending} className="btn-primary px-6 py-3">{saveFitProfile.isPending ? 'Saving…' : 'Save fit profile'}</button>
               {fitProfileData?.data ? <button type="button" disabled={deleteFitProfile.isPending} onClick={() => { if (window.confirm('Delete your saved fit profile?')) deleteFitProfile.mutate(); }} className="btn-outline px-6 py-3 text-error">{deleteFitProfile.isPending ? 'Deleting…' : 'Delete profile'}</button> : null}
             </div>
+          </form>
+        </section>
+
+        <section id="saved-addresses" className="card mb-space-xl p-space-lg md:p-space-xl">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-space-md">
+            <div>
+              <p className="text-label-badge font-bold uppercase tracking-[0.14em] text-secondary">Your delivery details</p>
+              <h2 className="mt-2 text-xl font-semibold text-primary">Saved addresses</h2>
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant">Keep delivery addresses in your account for a quicker checkout. Only you can view and manage these addresses.</p>
+            </div>
+            <span className="text-xs text-on-surface-variant">{(addressesData?.data || []).length} saved</span>
+          </div>
+
+          {addressesLoading ? <p className="text-sm text-on-surface-variant" aria-live="polite">Loading your addresses…</p> : null}
+          {addressesError ? (
+            <div role="alert" className="rounded-xl border border-error/30 bg-surface-container-low p-4 mb-space-md">
+              <p className="text-sm text-on-surface-variant">Your saved addresses could not be loaded.</p>
+              <button type="button" onClick={() => refetchAddresses()} className="btn-outline mt-3 px-4 py-2 text-xs">Try again</button>
+            </div>
+          ) : null}
+          {!addressesLoading && !addressesError && (addressesData?.data || []).length === 0 ? (
+            <p className="text-sm text-on-surface-variant mb-space-md">No saved addresses yet. Add one below to make checkout easier.</p>
+          ) : null}
+
+          {(addressesData?.data || []).map((address: any) => (
+            <div key={address.id} className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded-xl border border-outline-variant/40 p-space-md mb-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <p className="font-semibold text-primary">{address.label || 'Address'}</p>
+                  {address.is_default && <span className="rounded-full bg-secondary-container px-2 py-0.5 text-[11px] font-bold text-on-secondary-container">Default</span>}
+                </div>
+                <p className="text-sm text-on-surface">{address.full_name} · {address.phone}</p>
+                <p className="text-sm text-on-surface-variant break-words">{address.line1}{address.line2 ? ', ' + address.line2 : ''}, {address.city}, {address.state} - {address.postal_code}, {address.country}</p>
+              </div>
+              <button type="button" onClick={() => { if (window.confirm('Delete this saved address?')) deleteAddress.mutate(address.id); }}
+                disabled={deleteAddress.isPending} className="btn-outline px-4 py-2 text-xs text-error shrink-0">Delete</button>
+            </div>
+          ))}
+
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            const phone = addressForm.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+            if (!addressForm.full_name.trim() || !addressForm.line1.trim() || !addressForm.city.trim() || !addressForm.state.trim()) { toast.error('Complete the required address fields'); return; }
+            if (!/^[6-9]\d{9}$/.test(phone)) { toast.error('Enter a valid 10-digit Indian mobile number'); return; }
+            if (!/^\d{6}$/.test(addressForm.postal_code)) { toast.error('Enter a valid 6-digit PIN code'); return; }
+            saveAddress.mutate();
+          }} className="border-t border-outline-variant/30 pt-space-md mt-space-md space-y-space-md">
+            <h3 className="font-semibold text-primary">Add a delivery address</h3>
+            <div className="grid gap-space-md sm:grid-cols-2">
+              <div><label className="label" htmlFor="address-label">Address label</label><select id="address-label" className="input-field" value={addressForm.label} onChange={e => setAddressForm(v => ({ ...v, label: e.target.value }))}><option>Home</option><option>Work</option><option>Other</option></select></div>
+              <div><label className="label" htmlFor="address-name">Full name *</label><input id="address-name" required className="input-field" value={addressForm.full_name} onChange={e => setAddressForm(v => ({ ...v, full_name: e.target.value }))} /></div>
+              <div><label className="label" htmlFor="address-phone">Mobile number *</label><input id="address-phone" required inputMode="numeric" className="input-field" value={addressForm.phone} onChange={e => setAddressForm(v => ({ ...v, phone: e.target.value }))} /></div>
+              <div><label className="label" htmlFor="address-line1">Street address *</label><input id="address-line1" required className="input-field" value={addressForm.line1} onChange={e => setAddressForm(v => ({ ...v, line1: e.target.value }))} /></div>
+              <div><label className="label" htmlFor="address-line2">Apartment / landmark</label><input id="address-line2" className="input-field" value={addressForm.line2} onChange={e => setAddressForm(v => ({ ...v, line2: e.target.value }))} /></div>
+              <div><label className="label" htmlFor="address-city">City *</label><input id="address-city" required className="input-field" value={addressForm.city} onChange={e => setAddressForm(v => ({ ...v, city: e.target.value }))} /></div>
+              <div><label className="label" htmlFor="address-state">State *</label><input id="address-state" required className="input-field" value={addressForm.state} onChange={e => setAddressForm(v => ({ ...v, state: e.target.value }))} /></div>
+              <div><label className="label" htmlFor="address-pin">PIN code *</label><input id="address-pin" required maxLength={6} inputMode="numeric" className="input-field" value={addressForm.postal_code} onChange={e => setAddressForm(v => ({ ...v, postal_code: e.target.value.replace(/\D/g, '').slice(0, 6) }))} /></div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-on-surface-variant"><input type="checkbox" checked={addressForm.is_default} onChange={e => setAddressForm(v => ({ ...v, is_default: e.target.checked }))} /> Make this my default address</label>
+            <button type="submit" disabled={saveAddress.isPending} className="btn-primary px-6 py-3">{saveAddress.isPending ? 'Saving…' : 'Save address'}</button>
           </form>
         </section>
 
