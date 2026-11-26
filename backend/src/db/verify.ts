@@ -6,11 +6,22 @@ async function main() {
       SELECT table_name FROM information_schema.tables
       WHERE table_schema = current_schema()
         AND table_name = ANY($1::text[])
-    `, [['users','categories','products','product_variants','product_images','orders','order_items','clinical_studies','lab_settings','patient_fit_profiles','return_requests','stepup_schema_migrations']]);
+    `, [['users','categories','products','product_variants','product_images','orders','order_items','clinical_studies','lab_settings','patient_fit_profiles','return_requests','store_settings','stepup_schema_migrations']]);
     const found = new Set(tables.rows.map((row: { table_name: string }) => row.table_name));
-    const required = ['users','categories','products','product_variants','product_images','orders','order_items','clinical_studies','lab_settings','patient_fit_profiles','return_requests','stepup_schema_migrations'];
+    const required = ['users','categories','products','product_variants','product_images','orders','order_items','clinical_studies','lab_settings','patient_fit_profiles','return_requests','store_settings','stepup_schema_migrations'];
     const missing = required.filter(name => !found.has(name));
     if (missing.length) throw new Error(`Missing tables: ${missing.join(', ')}`);
+
+    const pricing = await query(
+      "SELECT setting_value FROM store_settings WHERE setting_key='checkout_pricing'"
+    );
+    const pricingValue = pricing.rows[0]?.setting_value;
+    if (
+      !pricingValue ||
+      !Number.isFinite(Number(pricingValue.free_shipping_threshold_inr)) ||
+      !Number.isFinite(Number(pricingValue.shipping_fee_inr)) ||
+      !Number.isFinite(Number(pricingValue.gst_rate_percent))
+    ) throw new Error('Checkout pricing settings are missing or invalid');
 
     const columns = await query(`
       SELECT table_name, column_name FROM information_schema.columns
