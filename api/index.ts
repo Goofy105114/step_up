@@ -22,6 +22,7 @@ import adminRoutes      from './routes/admin';
 import wishlistRoutes   from './routes/wishlist';
 import clinicalStudiesRoutes from './routes/clinical-studies';
 import patientProfileRoutes from './routes/patient-profile';
+import pincodeRoutes from './routes/pincode';
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/admin',      adminRoutes);
 app.use('/api/wishlist',   wishlistRoutes);
 app.use('/api/clinical-studies', clinicalStudiesRoutes);
 app.use('/api/patient-profile', patientProfileRoutes);
+app.use('/api/pincode', pincodeRoutes);
 
 /* ── Error handling ───────────────────────────────────────────────────── */
 app.use(notFound);

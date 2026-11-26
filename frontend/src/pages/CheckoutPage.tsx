@@ -18,8 +18,27 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [addr, setAddr] = useState({ full_name: '', email: '', phone: '', line1: '', city: '', state: '', postal_code: '', country: 'India' });
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeMessage, setPincodeMessage] = useState('');
 
   const setA = (k: string, v: string) => setAddr(a => ({ ...a, [k]: v }));
+
+  const lookupPincode = async () => {
+    const pin = addr.postal_code.trim();
+    if (!/^\\d{6}$/.test(pin)) return;
+    setPincodeLoading(true);
+    setPincodeMessage('');
+    try {
+      const response = await api.get('/pincode/' + pin);
+      const location = response.data.data;
+      setAddr(current => ({ ...current, city: location.district || current.city, state: location.state || current.state }));
+      setPincodeMessage('Location found: ' + location.district + ', ' + location.state);
+    } catch (error: any) {
+      setPincodeMessage(error.response?.data?.message || 'Could not verify this PIN code. You can still enter city and state manually.');
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -233,7 +252,9 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label className="label" htmlFor="checkout-postal-code">Pincode *</label>
-                      <input id="checkout-postal-code" type="text" required autoComplete="postal-code" placeholder="6-digit PIN code" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => setA('postal_code', e.target.value)} className="input-field" />
+                      <input id="checkout-postal-code" type="text" required autoComplete="postal-code" placeholder="6-digit PIN code" inputMode="numeric" maxLength={6} value={addr.postal_code} onChange={e => { setA('postal_code', e.target.value.replace(/\D/g, '').slice(0, 6)); setPincodeMessage(''); }} onBlur={lookupPincode} className="input-field" />
+                      {pincodeLoading && <p className="text-body-sm text-on-surface-variant mt-1">Looking up PIN code…</p>}
+                      {!!pincodeMessage && <p className="text-body-sm text-on-surface-variant mt-1" role="status">{pincodeMessage}</p>}
                     </div>
                   </div>
                   <button onClick={() => { if (validateAddress()) setStep(2); }} className="w-full h-[52px] bg-primary-container text-on-primary rounded-full text-label-md font-semibold uppercase tracking-[0.04em] shadow-primary hover:bg-primary transition-all flex items-center justify-center gap-2 group mt-2">
