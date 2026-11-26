@@ -1,268 +1,168 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 
-const categories = [
-  { name: "Men's",    slug: 'mens',    sub: ['Formal Shoes', 'Casual Shoes', 'Sneakers', 'Boots'] },
-  { name: "Women's",  slug: 'womens',  sub: ['Heels', 'Flats', 'Sneakers', 'Sandals'] },
-  { name: "Kids'",    slug: 'kids',    sub: ['Boys', 'Girls', 'School Shoes', 'Sports'] },
-  { name: 'Sports',   slug: 'sports',  sub: ['Running', 'Football', 'Cricket', 'Training'] },
-  { name: 'Casual',   slug: 'casual',  sub: ['Loafers', 'Canvas', 'Sneakers'] },
-  { name: 'Formal',   slug: 'formal',  sub: ['Oxford', 'Derby', 'Monk Strap'] },
-  { name: 'Sandals',  slug: 'sandals', sub: ['Slides', 'Flip Flops', 'Wedges'] },
+const navigation = [
+  { label: 'Relief Sandals & Slides', to: '/shop?search=sandals' },
+  { label: 'Shop by Condition', to: '/shop-by-condition' },
+  { label: 'Arch Support Technology', to: '/find-your-fit' },
+  { label: 'Find Your Fit', to: '/find-your-fit' },
+  { label: 'Clinical Studies', to: '/clinical-studies' },
 ];
+
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  `whitespace-nowrap rounded-full px-3 py-2 text-[12px] font-semibold tracking-[0.015em] transition-colors ${
+    isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'
+  }`;
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user, logout } = useAuthStore();
   const { items, setOpen, fetchCart } = useCartStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll);
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  useEffect(() => { if (user) fetchCart(); }, [user]);
-  useEffect(() => { setMobileOpen(false); setActiveDropdown(null); }, [location.pathname]);
+  useEffect(() => { if (user) fetchCart(); }, [user, fetchCart]);
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-    }
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+    navigate(`/shop?search=${encodeURIComponent(query)}`);
+    setSearchQuery('');
+    setMobileOpen(false);
   };
 
-  const cartCount = items.reduce((s, i) => s + i.quantity, 0);
-  const enterDropdown = (slug: string) => {
-    if (dropdownTimer.current) clearTimeout(dropdownTimer.current);
-    setActiveDropdown(slug);
-  };
-  const leaveDropdown = () => {
-    dropdownTimer.current = setTimeout(() => setActiveDropdown(null), 150);
-  };
+  const cartCount = items.reduce((total, item) => total + item.quantity, 0);
 
   return (
-    <>
-      {/* Announcement bar */}
-      <div className="w-full bg-primary text-on-primary py-space-xs px-margin-mobile md:px-margin">
-        <div className="max-w-site mx-auto flex items-center justify-between font-label-badge text-label-badge uppercase tracking-wider">
-          <div className="flex items-center gap-space-sm overflow-hidden">
-            <span className="material-symbols-outlined text-[13px] text-primary-fixed shrink-0">verified</span>
-            <div className="ticker-inner flex whitespace-nowrap gap-16 w-max">
-              {Array(2).fill([
-                'Thoughtful footwear for everyday movement',
-                'Explore the STEPUP collection',
-                'Find your fit with STEPUP',
-                'Comfort-led design, everyday style',
-              ]).flat().map((t, i) => (
-                <span key={i}>{t}</span>
-              ))}
-            </div>
+    <header className={`sticky top-0 z-50 bg-surface/95 backdrop-blur-xl transition-shadow duration-200 ${scrolled ? 'shadow-[0_4px_18px_rgba(10,92,80,0.08)]' : 'shadow-[0_1px_8px_rgba(10,92,80,0.04)]'}`}>
+      <div className="w-full bg-primary px-margin-mobile py-2 text-on-primary md:px-margin">
+        <div className="mx-auto flex max-w-site items-center justify-between gap-4 text-[9px] font-semibold uppercase tracking-[0.12em] md:text-[10px]">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="material-symbols-outlined shrink-0 text-[14px] text-primary-fixed">verified</span>
+            <span className="truncate">Thoughtful support. Confident movement. Every day.</span>
           </div>
-          <div className="hidden md:flex items-center gap-space-lg shrink-0">
-            <Link to="/find-your-fit" className="text-primary-fixed hover:text-on-primary transition-colors flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px]">psychology_alt</span>
-              Find Your Fit
+          <div className="hidden shrink-0 items-center gap-4 sm:flex">
+            <Link to="/clinical-studies" className="flex items-center gap-1 text-primary-fixed transition-colors hover:text-on-primary">
+              <span className="material-symbols-outlined text-[13px]">medical_services</span>
+              Evidence & Research
             </Link>
             <span className="opacity-40">|</span>
-            <span className="text-surface-container-highest">Free Express Delivery Over ₹599</span>
+            <Link to="/find-your-fit" className="text-surface-container-highest transition-colors hover:text-on-primary">Find your fit</Link>
           </div>
         </div>
       </div>
 
-      {/* Main header */}
-      <header className={`sticky top-0 z-50 bg-surface/90 backdrop-blur-xl transition-shadow duration-300 ${scrolled ? 'shadow-nav' : ''}`}>
-        <div className="max-w-site mx-auto px-margin-mobile md:px-margin h-20 flex items-center justify-between gap-space-lg">
+      <div className="mx-auto flex min-h-[76px] max-w-site items-center justify-between gap-4 px-margin-mobile py-3 md:px-margin">
+        <Link to="/" aria-label="STEPUP home" className="flex shrink-0 flex-col leading-none">
+          <span className="font-headline-sm text-[27px] font-bold tracking-[-0.055em] text-primary">STEPUP</span>
+          <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.19em] text-secondary">Supportive Footwear</span>
+        </Link>
 
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-space-sm shrink-0">
-            <div className="flex flex-col">
-              <span className="font-headline-sm text-headline-sm text-primary tracking-tight leading-none">StepUp</span>
-              <span className="font-label-badge text-label-badge text-secondary tracking-widest uppercase leading-none mt-0.5">Supportive Footwear</span>
-            </div>
-          </Link>
+        <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">
+          {navigation.map((item) => (
+            <NavLink key={item.label} to={item.to} className={navClass}>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
 
-          {/* Desktop nav */}
-          <nav className="hidden xl:flex items-center gap-space-xs">
-            <Link to="/shop" className="px-space-md py-space-sm rounded-full font-label-md text-label-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors">
-              All Products
+        <div className="flex shrink-0 items-center gap-2 md:gap-3">
+          <form onSubmit={handleSearch} role="search" className="hidden h-10 items-center gap-2 rounded-full bg-surface-container-low px-3 shadow-[0_1px_4px_rgba(10,92,80,0.04)] lg:flex">
+            <span className="material-symbols-outlined text-[18px] text-outline">search</span>
+            <input
+              type="search"
+              aria-label="Search products"
+              placeholder="Search supportive footwear"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-40 bg-transparent text-xs text-on-surface outline-none placeholder:text-outline xl:w-48"
+            />
+          </form>
+
+          {user && (
+            <Link to="/wishlist" aria-label="Wishlist" className="hidden h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary sm:flex">
+              <span className="material-symbols-outlined text-[21px]">favorite</span>
             </Link>
-            {categories.slice(0, 4).map((cat) => (
-              <div
-                key={cat.slug}
-                className="relative"
-                onMouseEnter={() => enterDropdown(cat.slug)}
-                onMouseLeave={leaveDropdown}
-              >
-                <Link
-                  to={`/shop/${cat.slug}`}
-                  className={`px-space-md py-space-sm rounded-full font-label-md text-label-md transition-colors ${
-                    activeDropdown === cat.slug
-                      ? 'bg-primary-container text-on-primary'
-                      : 'text-on-surface-variant hover:text-primary'
-                  }`}
-                >
-                  {cat.name}
-                </Link>
-                {activeDropdown === cat.slug && (
-                  <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest shadow-card-hover rounded-DEFAULT border border-outline-variant/30 w-52 py-space-sm z-50 animate-fade-in">
-                    {cat.sub.map((s) => (
-                      <Link
-                        key={s}
-                        to={`/shop/${cat.slug}?search=${encodeURIComponent(s)}`}
-                        className="block px-space-lg py-space-xs font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors"
-                      >
-                        {s}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-            <Link to="/find-your-fit" className="px-space-md py-space-sm rounded-full font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">
-              Find Your Fit
-            </Link>
-          </nav>
+          )}
 
-          {/* Right section */}
-          <div className="flex items-center gap-space-md">
-            {/* Search */}
-            <form onSubmit={handleSearch} className="hidden lg:flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-full shadow-nav">
-              <span className="material-symbols-outlined text-[18px] text-outline">search</span>
-              <input
-                type="text"
-                placeholder="Search shoes, brands..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none w-44"
-              />
-            </form>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label={`Open shopping bag, ${cartCount} items`}
+            className="relative flex h-10 items-center gap-2 rounded-full bg-surface-container-low px-3 text-primary transition-colors hover:bg-surface-container"
+          >
+            <span className="material-symbols-outlined text-[21px]">shopping_bag</span>
+            <span className="hidden text-xs font-semibold text-on-surface-variant sm:inline">Bag</span>
+            {cartCount > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-on-primary">{cartCount}</span>}
+          </button>
 
-            {/* Find Your Fit CTA */}
-            <Link
-              to="/find-your-fit"
-              className="hidden md:inline-flex items-center justify-center bg-primary-container text-on-primary px-space-lg py-space-sm rounded-full font-label-md text-label-md shadow-primary hover:bg-primary transition-all duration-200"
-            >
-              Take Size Quiz
-            </Link>
-
-            {/* Wishlist */}
-            {user && (
-              <Link
-                to="/wishlist"
-                aria-label="Wishlist"
-                className="hidden sm:flex w-10 h-10 rounded-full items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">favorite</span>
+          {user ? (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link to="/profile" aria-label="My account" className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-container text-sm font-bold text-on-primary transition-colors hover:bg-primary">
+                {user.first_name?.[0]?.toUpperCase() || 'U'}
               </Link>
-            )}
+              <button type="button" onClick={logout} className="hidden text-xs font-semibold text-on-surface-variant hover:text-error 2xl:block">Sign out</button>
+            </div>
+          ) : (
+            <div className="hidden items-center gap-3 sm:flex">
+              <Link to="/login" className="text-xs font-semibold text-on-surface-variant transition-colors hover:text-primary">Sign in</Link>
+              <Link to="/register" className="rounded-full bg-primary-container px-4 py-2.5 text-xs font-semibold text-on-primary shadow-primary transition-colors hover:bg-primary">Create account</Link>
+            </div>
+          )}
 
-            {/* Cart */}
-            <button
-              onClick={() => setOpen(true)}
-              className="relative flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px] text-primary">shopping_bag</span>
-              {cartCount > 0 && (
-                <span className="font-label-badge text-label-badge text-on-secondary-container bg-secondary-container px-space-xs py-0.5 rounded-full">{cartCount}</span>
-              )}
-              <span className="hidden 2xl:inline font-label-badge text-label-badge text-on-surface-variant">Bag</span>
-            </button>
+          <button
+            type="button"
+            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((open) => !open)}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low xl:hidden"
+          >
+            <span className="material-symbols-outlined text-[23px]">{mobileOpen ? 'close' : 'menu'}</span>
+          </button>
+        </div>
+      </div>
 
-            {/* Account */}
+      {mobileOpen && (
+        <div className="border-t border-outline-variant/30 bg-surface-container-lowest px-margin-mobile py-4 shadow-lg xl:hidden">
+          <form onSubmit={handleSearch} role="search" className="mb-4 flex h-11 items-center gap-2 rounded-full bg-surface-container-low px-4">
+            <span className="material-symbols-outlined text-[18px] text-outline">search</span>
+            <input type="search" aria-label="Search products" placeholder="Search supportive footwear" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+            <button type="submit" className="text-xs font-semibold text-primary">Search</button>
+          </form>
+          <nav aria-label="Mobile navigation" className="grid gap-1">
+            {navigation.map((item) => (
+              <NavLink key={item.label} to={item.to} className={({ isActive }) => `rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${isActive ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="mt-4 flex gap-3 border-t border-outline-variant/30 pt-4">
             {user ? (
-              <div className="relative group">
-                <button className="flex items-center gap-space-xs">
-                  <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
-                    <span className="font-label-md text-label-md text-on-primary">{user.first_name[0]}</span>
-                  </div>
-                  <span className="hidden md:block font-label-md text-label-md text-on-surface-variant">{user.first_name}</span>
-                  <span className="material-symbols-outlined text-[18px] text-outline">expand_more</span>
-                </button>
-                <div className="absolute right-0 top-full pt-2 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <div className="bg-surface-container-lowest shadow-card-hover border border-outline-variant/30 rounded-DEFAULT w-52 py-space-sm">
-                    <div className="px-space-lg py-space-xs mb-space-xs border-b border-outline-variant/20">
-                      <p className="font-label-md text-label-md text-on-surface">{user.first_name} {user.last_name}</p>
-                      <p className="font-body-sm text-body-sm text-on-surface-variant truncate">{user.email}</p>
-                    </div>
-                    <Link to="/profile" className="flex items-center gap-space-sm px-space-lg py-space-xs font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors">
-                      <span className="material-symbols-outlined text-[16px]">account_circle</span>My Account
-                    </Link>
-                    <Link to="/orders" className="flex items-center gap-space-sm px-space-lg py-space-xs font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors">
-                      <span className="material-symbols-outlined text-[16px]">package_2</span>My Orders
-                    </Link>
-                    <Link to="/wishlist" className="flex items-center gap-space-sm px-space-lg py-space-xs font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors">
-                      <span className="material-symbols-outlined text-[16px]">favorite</span>Wishlist
-                    </Link>
-                    {(user.role === 'admin' || user.role === 'staff') && (
-                      <Link to="/admin" className="flex items-center gap-space-sm px-space-lg py-space-xs font-body-sm text-body-sm text-primary font-semibold hover:bg-surface-container-low transition-colors">
-                        <span className="material-symbols-outlined text-[16px]">admin_panel_settings</span>Admin Panel
-                      </Link>
-                    )}
-                    <hr className="my-space-xs border-outline-variant/20" />
-                    <button onClick={logout} className="w-full flex items-center gap-space-sm px-space-lg py-space-xs font-body-sm text-body-sm text-error hover:bg-error-container/30 transition-colors">
-                      <span className="material-symbols-outlined text-[16px]">logout</span>Sign Out
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <>
+                <Link to="/profile" className="btn-outline flex-1">My account</Link>
+                <Link to="/orders" className="btn-primary flex-1">My orders</Link>
+              </>
             ) : (
-              <div className="hidden sm:flex items-center gap-space-sm">
-                <Link to="/login" className="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">Sign In</Link>
-                <span className="text-outline-variant">|</span>
-                <Link to="/register" className="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">Register</Link>
-              </div>
+              <>
+                <Link to="/login" className="btn-outline flex-1">Sign in</Link>
+                <Link to="/register" className="btn-primary flex-1">Create account</Link>
+              </>
             )}
-
-            {/* Mobile menu toggle */}
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="xl:hidden p-2 text-on-surface-variant hover:text-on-surface transition-colors">
-              <span className="material-symbols-outlined text-[24px]">{mobileOpen ? 'close' : 'menu'}</span>
-            </button>
           </div>
         </div>
-
-        {/* Mobile nav */}
-        {mobileOpen && (
-          <div className="xl:hidden border-t border-outline-variant/20 bg-surface-container-lowest animate-slide-up">
-            <div className="container-site py-space-lg space-y-space-xs">
-              <form onSubmit={handleSearch} className="flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-full mb-space-md">
-                <span className="material-symbols-outlined text-[18px] text-outline">search</span>
-                <input type="text" placeholder="Search shoes..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent flex-1 font-body-sm text-body-sm focus:outline-none" />
-              </form>
-              <Link to="/shop" className="block py-space-sm font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">All Products</Link>
-              {categories.map((cat) => (
-                <Link key={cat.slug} to={`/shop/${cat.slug}`} className="block py-space-sm font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors pl-space-md">
-                  {cat.name}
-                </Link>
-              ))}
-              <Link to="/find-your-fit" className="block py-space-sm font-label-md text-label-md text-secondary">Find Your Fit →</Link>
-              <div className="border-t border-outline-variant/20 pt-space-md mt-space-md">
-                {user ? (
-                  <div className="space-y-space-xs">
-                    <Link to="/profile" className="block py-space-xs font-body-sm text-body-sm text-on-surface-variant">My Account</Link>
-                    <Link to="/orders" className="block py-space-xs font-body-sm text-body-sm text-on-surface-variant">My Orders</Link>
-                    <button onClick={logout} className="block py-space-xs font-body-sm text-body-sm text-error">Sign Out</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-space-md">
-                    <Link to="/login" className="btn-primary flex-1 justify-center py-space-sm">Sign In</Link>
-                    <Link to="/register" className="btn-outline flex-1 justify-center py-space-sm">Register</Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
-    </>
+      )}
+    </header>
   );
 }

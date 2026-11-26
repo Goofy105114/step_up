@@ -45,50 +45,64 @@ export default function HomePage() {
 
   return (
     <main className="bg-surface text-on-surface">
-      <section className="relative overflow-hidden bg-[#e9eee9]">
-        <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#c6d8ce] blur-3xl opacity-70" />
-        <div className="container-site relative grid min-h-[560px] grid-cols-1 items-center gap-10 py-16 lg:grid-cols-2 lg:py-20">
-          <div className="max-w-2xl">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+      <section className="relative overflow-hidden bg-[#f5f4f0]">
+        <div className="pointer-events-none absolute -right-28 -top-24 h-[28rem] w-[28rem] rounded-full bg-[#dce8df] blur-3xl opacity-70" />
+        <div className="container-site relative grid min-h-[570px] grid-cols-1 items-center gap-10 py-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14 lg:py-16">
+          <div className="max-w-xl">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/80 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
               <span className="h-2 w-2 rounded-full bg-secondary" />
-              Comfort that moves with you
+              Supportive footwear, thoughtfully designed
             </p>
-            <h1 className="max-w-xl text-4xl font-bold leading-[1.08] tracking-tight text-primary md:text-6xl">
-              Every step deserves a better foundation.
+            <h1 className="max-w-xl text-[2.65rem] font-semibold leading-[1.08] tracking-[-0.045em] text-primary md:text-6xl">
+              Supportive design meets everyday style.
             </h1>
-            <p className="mt-6 max-w-lg text-base leading-8 text-[#52645d] md:text-lg">
-              Discover thoughtfully designed footwear with supportive shapes, considered materials and comfort made for everyday movement.
+            <p className="mt-5 max-w-lg text-sm leading-7 text-on-surface-variant md:text-base">
+              Explore supportive footwear shaped around comfort, considered materials and the way you move every day.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/shop" className="btn-primary px-7 py-4">
-                Explore the collection <span aria-hidden="true">→</span>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link to="/shop?search=sandals" className="btn-primary px-6 py-3.5">
+                Shop supportive sandals <span aria-hidden="true">→</span>
               </Link>
-              <Link to="/find-your-fit" className="btn-outline px-7 py-4">
+              <Link to="/find-your-fit" className="btn-outline px-6 py-3.5">
                 Find your fit
               </Link>
             </div>
-            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-[#52645d]">
-              <span className="flex items-center gap-2"><span className="text-primary">✓</span> Support-led designs</span>
-              <span className="flex items-center gap-2"><span className="text-primary">✓</span> Everyday versatility</span>
-              <span className="flex items-center gap-2"><span className="text-primary">✓</span> Easy online shopping</span>
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-on-surface-variant">
+              <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-secondary">footprint</span> Everyday comfort</span>
+              <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-secondary">tune</span> Fit-led discovery</span>
+              <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-secondary">local_shipping</span> Shop online</span>
             </div>
           </div>
-          <div className="relative mx-auto w-full max-w-[560px]">
-            <div className="absolute inset-8 rounded-full bg-[#c6d8ce] blur-2xl" />
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-[#dce5df] shadow-2xl">
+
+          <div className="relative mx-auto w-full max-w-[620px]">
+            <div className="absolute inset-5 rounded-[2.5rem] bg-[#dce8df] blur-2xl" />
+            <div className="relative aspect-[1.12/1] overflow-hidden rounded-[1.75rem] bg-[#e8e5dd] shadow-[0_22px_65px_rgba(27,65,54,0.14)]">
               {heroImage ? (
-                <img src={heroImage} alt={featuredProducts[0]?.name || 'StepUp featured footwear'} className="h-full w-full object-cover" />
+                <img
+                  src={heroImage}
+                  alt={featuredProducts[0]?.name || 'Featured STEPUP footwear'}
+                  className="h-full w-full object-cover"
+                  fetchPriority="high"
+                />
               ) : (
-                <div className="flex h-full flex-col items-center justify-center gap-3 text-primary/60">
-                  <span className="text-6xl" aria-hidden="true">✳</span>
-                  <span className="text-sm font-semibold tracking-wide">STEPUP</span>
+                <div className="flex h-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#e8e5dd] to-[#dce8df] text-primary/65">
+                  <span className="material-symbols-outlined text-6xl" aria-hidden="true">footprint</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em]">STEPUP</span>
                 </div>
               )}
             </div>
-            <div className="absolute -bottom-5 left-5 rounded-2xl bg-white px-5 py-4 shadow-xl sm:left-0">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-secondary">Made for daily movement</p>
-              <p className="mt-1 text-lg font-semibold text-primary">Find your everyday comfort</p>
-            </div>
+            {featuredProducts[0] && (
+              <Link
+                to={`/product/${featuredProducts[0].slug}`}
+                className="absolute -bottom-4 left-4 right-4 flex items-center justify-between gap-4 rounded-2xl border border-black/5 bg-white/95 px-4 py-3 shadow-xl backdrop-blur sm:left-6 sm:right-6 sm:px-5"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-secondary">Featured in STEPUP</span>
+                  <span className="mt-1 block truncate text-sm font-semibold text-primary">{featuredProducts[0].name}</span>
+                </span>
+                <span className="material-symbols-outlined shrink-0 text-primary" aria-hidden="true">arrow_forward</span>
+              </Link>
+            )}
           </div>
         </div>
       </section>
