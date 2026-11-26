@@ -89,7 +89,7 @@ router.post('/cancel', authenticate, async (req: Request, res: Response) => {
   if(order.payment_status==='paid') throw new AppError('This order is already paid and cannot be cancelled here',409);
   if(order.payment_intent_id){
     const payments=await fetchRazorpayOrderPayments(order.payment_intent_id);
-    if(payments.some((payment:any)=>['authorized','captured'].includes(payment.status))) throw new AppError('A payment is already authorized or captured. Refresh your orders before retrying.',409);
+    if(payments.some((payment:any)=>payment.status!=='failed')) throw new AppError('A payment attempt is still active or has been captured. Refresh My Orders and contact support if the status does not update.',409);
   }
   const client=await pool.connect();
   try{
@@ -114,6 +114,7 @@ router.post('/verify', authenticate, async (req: Request,res: Response) => {
   const order=found.rows[0];
   if(!order) throw new AppError('Payment order not found',404);
   if(order.payment_status==='paid') return res.json({success:true,data:{order_number:order.order_number,payment_status:'paid'}});
+  if(order.status==='cancelled'||order.payment_status!=='pending') throw new AppError('This payment session is no longer active. Refresh My Orders before retrying.',409);
   if(!verifyCheckoutSignature(razorpay_order_id,razorpay_payment_id,razorpay_signature)) throw new AppError('Payment signature verification failed',400);
   const payment=await fetchRazorpayPayment(razorpay_payment_id);
   if(payment.order_id!==razorpay_order_id||payment.status!=='captured'||Number(payment.amount)!==Math.round(Number(order.total_amount)*100)||payment.currency!=='INR') throw new AppError('Payment is not captured for the expected order amount',409);
@@ -121,7 +122,7 @@ router.post('/verify', authenticate, async (req: Request,res: Response) => {
   try {
     await client.query('BEGIN');
     const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
-    if(locked.rows[0].payment_status!=='paid'){
+    if(locked.rows[0].payment_status==='pending'&&locked.rows[0].status!=='cancelled'){
       await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
       await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured and verified']);
       await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[req.user!.userId]);
@@ -145,7 +146,7 @@ router.post('/webhook',async(req:Request,res:Response)=>{
         try{
           await client.query('BEGIN');
           const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
-          if(locked.rows[0]?.payment_status!=='paid'){
+          if(locked.rows[0]?.payment_status==='pending'&&locked.rows[0]?.status!=='cancelled'){
             await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
             await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured via verified webhook']);
             await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[order.user_id]);
