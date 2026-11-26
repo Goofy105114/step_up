@@ -64,6 +64,9 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     if (status === 'cancelled' && order.payment_status === 'paid') {
       throw new AppError('Refund the payment through the payment provider before cancelling this order.', 409);
     }
+    if (status === 'cancelled' && order.payment_method === 'razorpay' && order.payment_status === 'pending' && order.payment_intent_id) {
+      throw new AppError('This Razorpay payment session must be reconciled before cancellation. Do not release its reserved stock while payment is pending.', 409);
+    }
     if (status === 'refunded') {
       throw new AppError('Refund status must be confirmed by the payment provider integration.', 409);
     }
