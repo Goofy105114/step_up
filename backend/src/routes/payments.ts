@@ -103,21 +103,31 @@ router.post('/cancel', authenticate, async (req: Request, res: Response) => {
   const found = await query('SELECT * FROM orders WHERE id=$1 AND user_id=$2 AND payment_method=$3',[orderId,req.user!.userId,'razorpay']);
   const order=found.rows[0];
   if(!order) throw new AppError('Payment order not found',404);
-  if(order.payment_status==='paid') throw new AppError('This order is already paid and cannot be cancelled here',409);
-  if(order.payment_intent_id){
-    const payments=await fetchRazorpayOrderPayments(order.payment_intent_id);
-    if(payments.some((payment:any)=>['authorized','captured'].includes(payment.status))) throw new AppError('A payment is already authorized or captured. Refresh your orders before retrying.',409);
-  }
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
-    const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
-    if(locked.rows[0].payment_status==='pending'){
-      const items=await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[order.id]);
+    const locked=await client.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE',[order.id,req.user!.userId]);
+    const current=locked.rows[0];
+    if(!current) throw new AppError('Payment order not found',404);
+    if(current.payment_status==='paid') throw new AppError('This order is already paid and cannot be cancelled here',409);
+    if(current.status==='cancelled' || current.payment_status==='failed'){
+      await client.query('COMMIT');
+      return res.json({success:true});
+    }
+    if(current.payment_status==='pending' && current.payment_intent_id){
+      // Re-check provider state while holding the order lock. The initial lookup alone
+      // is not sufficient: a payment can become authorized/captured while cancellation waits.
+      const payments=await fetchRazorpayOrderPayments(current.payment_intent_id);
+      if(payments.some((payment:any)=>['authorized','captured'].includes(payment.status))) {
+        throw new AppError('A payment is already authorized or captured. Refresh your orders before retrying.',409);
+      }
+    }
+    if(current.payment_status==='pending'){
+      const items=await client.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[current.id]);
       for(const item of items.rows) await client.query('UPDATE product_variants SET stock_qty=stock_qty+$1 WHERE id=$2',[item.quantity,item.variant_id]);
-      await client.query("UPDATE orders SET status='cancelled',payment_status='failed',updated_at=NOW() WHERE id=$1",[order.id]);
-      if(order.coupon_id) await client.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',[order.coupon_id]);
-      await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Customer closed the payment window; reserved stock released']);
+      await client.query("UPDATE orders SET status='cancelled',payment_status='failed',updated_at=NOW() WHERE id=$1 AND payment_status='pending'",[current.id]);
+      if(current.coupon_id) await client.query('UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=$1',[current.coupon_id]);
+      await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[current.id,'cancelled','Customer closed the payment window; reserved stock released']);
     }
     await client.query('COMMIT');
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
@@ -138,10 +148,16 @@ router.post('/verify', authenticate, async (req: Request,res: Response) => {
   try {
     await client.query('BEGIN');
     const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
-    if(locked.rows[0].payment_status!=='paid'){
-      await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
-      await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured and verified']);
-      await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[req.user!.userId]);
+    const current=locked.rows[0];
+    if(current.payment_status!=='paid'){
+      if(current.status==='cancelled'){
+        await client.query("UPDATE orders SET payment_status='paid',updated_at=NOW() WHERE id=$1",[order.id]);
+        await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Payment was captured after the order was cancelled. Manual refund review is required; fulfilment remains cancelled.']);
+      } else {
+        await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
+        await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured and verified']);
+        await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[req.user!.userId]);
+      }
     }
     await client.query('COMMIT');
   } catch(error){await client.query('ROLLBACK');throw error;} finally{client.release();}
@@ -162,10 +178,16 @@ router.post('/webhook',async(req:Request,res:Response)=>{
         try{
           await client.query('BEGIN');
           const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
-          if(locked.rows[0]?.payment_status!=='paid'){
-            await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
-            await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured via verified webhook']);
-            await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[order.user_id]);
+          const current=locked.rows[0];
+          if(current && current.payment_status!=='paid'){
+            if(current.status==='cancelled'){
+              await client.query("UPDATE orders SET payment_status='paid',updated_at=NOW() WHERE id=$1",[order.id]);
+              await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Razorpay captured payment after order cancellation. Manual refund review is required; fulfilment remains cancelled.']);
+            } else {
+              await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
+              await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured via verified webhook']);
+              await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[order.user_id]);
+            }
           }
           await client.query('COMMIT');
         }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
