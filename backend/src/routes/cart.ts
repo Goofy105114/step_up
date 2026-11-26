@@ -41,27 +41,30 @@ router.post('/items', authenticate, async (req: Request, res: Response) => {
   if (!product_id || !variant_id) throw new AppError('product_id and variant_id required', 400);
   if (!Number.isInteger(quantity) || quantity < 1) throw new AppError('Quantity must be a positive integer', 400);
 
-  const variantCheck = await query(
-    'SELECT stock_qty FROM product_variants WHERE id = $1 AND product_id = $2',
-    [variant_id, product_id]
-  );
-  if (!variantCheck.rows[0]) throw new AppError('Variant not found for this product', 404);
-  if (variantCheck.rows[0].stock_qty < quantity) throw new AppError('Insufficient stock', 400);
-
   const cartId = await getOrCreateCart(req.user!.userId);
   const updated = await query(
     `INSERT INTO cart_items (cart_id, product_id, variant_id, quantity)
-     VALUES ($1, $2, $3, $4)
+     SELECT $1, $2, pv.id, $4
+     FROM product_variants pv
+     JOIN products p ON p.id = pv.product_id
+     WHERE pv.id = $3 AND pv.product_id = $2 AND p.is_active = true AND pv.stock_qty >= $4
      ON CONFLICT (cart_id, variant_id) DO UPDATE
        SET quantity = cart_items.quantity + EXCLUDED.quantity
+       WHERE cart_items.quantity + EXCLUDED.quantity <= (
+         SELECT stock_qty FROM product_variants WHERE id = EXCLUDED.variant_id
+       )
      RETURNING id`,
     [cartId, product_id, variant_id, quantity]
   );
-  const items = await getCartData(cartId);
-  const item = items.rows.find((row: { id: string }) => row.id === updated.rows[0].id);
-  if (item && item.quantity > variantCheck.rows[0].stock_qty) {
-    throw new AppError('Insufficient stock for the requested cart quantity', 400);
+  if (!updated.rows[0]) {
+    const variant = await query(
+      'SELECT id FROM product_variants WHERE id = $1 AND product_id = $2',
+      [variant_id, product_id]
+    );
+    if (!variant.rows[0]) throw new AppError('Variant not found for this product', 404);
+    throw new AppError('Product is unavailable or requested quantity exceeds available stock', 400);
   }
+  const items = await getCartData(cartId);
   return res.json({ success: true, data: items.rows });
 });
 
