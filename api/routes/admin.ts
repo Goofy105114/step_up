@@ -202,6 +202,17 @@ const getProductColumnNames = async () => {
 
 router.post('/products', authorize('admin'), async (req: Request, res: Response) => {
   const { name, slug, description, short_description, category_id, base_price, sale_price, sku, material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a, calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
+  if (typeof name !== 'string' || typeof slug !== 'string') throw new AppError('Product name and slug must be text', 400);
+  const optionalTextFields = { description, short_description, sku, material, care_instructions, calibration_reference, calibration_notes };
+  for (const [field, value] of Object.entries(optionalTextFields)) {
+    if (value !== undefined && value !== null && typeof value !== 'string') throw new AppError(`Product ${field.replace(/_/g, ' ')} must be text`, 400);
+  }
+  if (tags !== undefined && (!Array.isArray(tags) || tags.some((tag: unknown) => typeof tag !== 'string'))) {
+    throw new AppError('Product tags must be an array of text values', 400);
+  }
+  for (const [field, value] of Object.entries({ is_featured, is_new_arrival, is_bestseller })) {
+    if (value !== undefined && typeof value !== 'boolean') throw new AppError(`${field.replace(/_/g, ' ')} must be a boolean`, 400);
+  }
   const base = Number(base_price);
   const sale = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
   if (!String(name || '').trim() || !String(slug || '').trim() || !Number.isFinite(base) || base <= 0) throw new AppError('Name, slug and a positive base price are required', 400);
