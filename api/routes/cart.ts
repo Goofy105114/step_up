@@ -49,9 +49,9 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 
 router.post('/items', authenticate, async (req: Request, res: Response) => {
   const { product_id, variant_id, quantity = 1 } = req.body;
-  const requestedQuantity = Number(quantity);
+  const requestedQuantity = quantity;
   if (!product_id || !variant_id) throw new AppError('product_id and variant_id required', 400);
-  if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+  if (typeof requestedQuantity !== 'number' || !Number.isSafeInteger(requestedQuantity) || requestedQuantity < 1) {
     throw new AppError('Quantity must be a positive whole number', 400);
   }
 
@@ -93,8 +93,10 @@ router.post('/items', authenticate, async (req: Request, res: Response) => {
 });
 
 router.patch('/items/:id', authenticate, async (req: Request, res: Response) => {
-  const quantity = Number(req.body.quantity);
-  if (!Number.isInteger(quantity)) throw new AppError('Quantity must be a whole number', 400);
+  const quantity = req.body?.quantity;
+  if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 0) {
+    throw new AppError('Quantity must be a non-negative whole number', 400);
+  }
 
   const client = await pool.connect();
   let cartId: string;
@@ -109,7 +111,7 @@ router.patch('/items/:id', authenticate, async (req: Request, res: Response) => 
       [req.params.id, cartId]);
     if (!existing.rows[0]) throw new AppError('Cart item not found', 404);
 
-    if (quantity < 1) {
+    if (quantity === 0) {
       await client.query('DELETE FROM cart_items WHERE id=$1 AND cart_id=$2', [req.params.id, cartId]);
     } else {
       if (quantity > Number(existing.rows[0].stock_qty)) {
