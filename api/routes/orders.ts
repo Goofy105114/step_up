@@ -73,9 +73,25 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       }
     }
 
-    const shippingAmount = subtotal - discountAmount >= 599 ? 0 : 99;
-    const taxAmount = (subtotal - discountAmount) * 0.05;
-    const totalAmount = subtotal - discountAmount + shippingAmount + taxAmount;
+    const pricingResult = await client.query(
+      "SELECT setting_value FROM store_settings WHERE setting_key='checkout_pricing' FOR SHARE"
+    );
+    const pricing = pricingResult.rows[0]?.setting_value;
+    const freeShippingThreshold = Number(pricing?.free_shipping_threshold_inr);
+    const shippingFee = Number(pricing?.shipping_fee_inr);
+    const gstRatePercent = Number(pricing?.gst_rate_percent);
+    if (
+      !Number.isFinite(freeShippingThreshold) || freeShippingThreshold < 0 ||
+      !Number.isFinite(shippingFee) || shippingFee < 0 ||
+      !Number.isFinite(gstRatePercent) || gstRatePercent < 0 || gstRatePercent > 100
+    ) {
+      throw new AppError('Checkout pricing is not configured correctly. Please contact support.', 503);
+    }
+
+    const taxableAmount = Math.max(0, subtotal - discountAmount);
+    const shippingAmount = taxableAmount >= freeShippingThreshold ? 0 : shippingFee;
+    const taxAmount = taxableAmount * (gstRatePercent / 100);
+    const totalAmount = taxableAmount + shippingAmount + taxAmount;
 
     const orderRes = await client.query(
       `INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,
