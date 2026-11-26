@@ -205,13 +205,13 @@ router.post('/products', authorize('admin'), async (req: Request, res: Response)
   if (typeof name !== 'string' || typeof slug !== 'string') throw new AppError('Product name and slug must be text', 400);
   const optionalTextFields = { description, short_description, sku, material, care_instructions, calibration_reference, calibration_notes };
   for (const [field, value] of Object.entries(optionalTextFields)) {
-    if (value !== undefined && value !== null && typeof value !== 'string') throw new AppError(`Product ${field.replaceAll('_', ' ')} must be text`, 400);
+    if (value !== undefined && value !== null && typeof value !== 'string') throw new AppError(`Product ${field.replace(/_/g, ' ')} must be text`, 400);
   }
   if (tags !== undefined && (!Array.isArray(tags) || tags.some((tag: unknown) => typeof tag !== 'string'))) {
     throw new AppError('Product tags must be an array of text values', 400);
   }
   for (const [field, value] of Object.entries({ is_featured, is_new_arrival, is_bestseller })) {
-    if (value !== undefined && typeof value !== 'boolean') throw new AppError(`${field.replaceAll('_', ' ')} must be a boolean`, 400);
+    if (value !== undefined && typeof value !== 'boolean') throw new AppError(`${field.replace(/_/g, ' ')} must be a boolean`, 400);
   }
   const base = Number(base_price);
   const sale = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
