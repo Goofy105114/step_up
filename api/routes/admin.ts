@@ -344,6 +344,8 @@ const deleteCloudinaryAsset = async (imageUrl: string) => {
   const publicId = cloudinaryPublicIdFromUrl(imageUrl);
   if (!publicId) return;
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
+  const parsed = new URL(imageUrl);
+  if (parsed.pathname.split('/').filter(Boolean)[0] !== cloudName) return;
   const timestamp = String(Math.floor(Date.now() / 1000));
   const signature = cloudinarySignature({ public_id: publicId, timestamp }, apiSecret);
   const body = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
@@ -374,8 +376,9 @@ router.post('/products/:id/images/upload-signature', authorize('admin'), async (
   if (!product.rows[0]) throw new AppError('Product not found', 404);
   const timestamp = String(Math.floor(Date.now() / 1000));
   const folder = `stepup/products/${req.params.id}`;
-  const signature = cloudinarySignature({ folder, timestamp }, apiSecret);
-  return res.json({ success: true, data: { cloud_name: cloudName, api_key: apiKey, folder, timestamp, signature } });
+  const allowed_formats = 'jpg,png,webp,avif';
+  const signature = cloudinarySignature({ allowed_formats, folder, timestamp }, apiSecret);
+  return res.json({ success: true, data: { cloud_name: cloudName, api_key: apiKey, folder, timestamp, allowed_formats, signature } });
 });
 
 router.post('/products/:id/images', authorize('admin'), async (req: Request, res: Response) => {
