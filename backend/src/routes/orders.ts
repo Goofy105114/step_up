@@ -152,6 +152,9 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
     if (order.payment_status === 'paid') {
       throw new AppError('This order has a recorded payment. Contact support to arrange a refund before cancellation.', 409);
     }
+    if (order.payment_method === 'razorpay' && order.payment_status === 'pending' && order.payment_intent_id) {
+      throw new AppError('This online payment session is still active. Close the payment window and use its payment-status result before cancelling.', 409);
+    }
 
     await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2', ['cancelled', order.id]);
     await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
