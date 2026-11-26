@@ -182,6 +182,7 @@ export default function AdminProductForm() {
       uploadBody.append('api_key', signature.api_key);
       uploadBody.append('timestamp', String(signature.timestamp));
       uploadBody.append('folder', signature.folder);
+      uploadBody.append('allowed_formats', signature.allowed_formats);
       uploadBody.append('signature', signature.signature);
 
       const cloudResponse = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloud_name}/image/upload`, {
