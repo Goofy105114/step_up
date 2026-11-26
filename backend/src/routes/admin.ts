@@ -129,7 +129,14 @@ router.post('/products', async (req: Request, res: Response) => {
   const { name, slug, description, short_description, category_id, base_price, sale_price, sku,
           material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a,
           calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
-  if (!name || !slug || !base_price) throw new AppError('Name, slug and base_price required', 400);
+  const parsedBasePrice = Number(base_price);
+  const parsedSalePrice = sale_price === undefined || sale_price === null || sale_price === '' ? null : Number(sale_price);
+  if (!String(name || '').trim() || !String(slug || '').trim() || !Number.isFinite(parsedBasePrice) || parsedBasePrice <= 0) {
+    throw new AppError('Name, slug and a positive base price are required', 400);
+  }
+  if (parsedSalePrice !== null && (!Number.isFinite(parsedSalePrice) || parsedSalePrice <= 0 || parsedSalePrice > parsedBasePrice)) {
+    throw new AppError('Sale price must be positive and cannot exceed the base price', 400);
+  }
   if (arch_support_level && !['low', 'medium', 'high'].includes(arch_support_level)) throw new AppError('Invalid arch support level', 400);
   if (arch_height_mm !== undefined && arch_height_mm !== null && arch_height_mm !== '' && (!Number.isFinite(Number(arch_height_mm)) || Number(arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (durometer_shore_a !== undefined && durometer_shore_a !== null && durometer_shore_a !== '' && (!Number.isFinite(Number(durometer_shore_a)) || Number(durometer_shore_a) < 0 || Number(durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
@@ -155,6 +162,16 @@ router.patch('/products/:id', async (req: Request, res: Response) => {
   for (const f of fields) {
     if (req.body[f] !== undefined) { updates.push(`${f}=$${pIdx++}`); params.push(req.body[f]); }
   }
+  if (req.body.base_price !== undefined && (!Number.isFinite(Number(req.body.base_price)) || Number(req.body.base_price) <= 0)) throw new AppError('Base price must be a positive number', 400);
+  if (req.body.sale_price !== undefined && req.body.sale_price !== null && req.body.sale_price !== '' && (!Number.isFinite(Number(req.body.sale_price)) || Number(req.body.sale_price) <= 0)) throw new AppError('Sale price must be a positive number', 400);
+  if (req.body.base_price !== undefined || req.body.sale_price !== undefined) {
+    const current = await query('SELECT base_price,sale_price FROM products WHERE id=$1',[req.params.id]);
+    if (!current.rows[0]) throw new AppError('Product not found',404);
+    const nextBase = req.body.base_price !== undefined ? Number(req.body.base_price) : Number(current.rows[0].base_price);
+    const nextSaleRaw = req.body.sale_price !== undefined ? req.body.sale_price : current.rows[0].sale_price;
+    const nextSale = nextSaleRaw === null || nextSaleRaw === '' ? null : Number(nextSaleRaw);
+    if (nextSale !== null && (!Number.isFinite(nextSale) || nextSale <= 0 || nextSale > nextBase)) throw new AppError('Sale price must be positive and cannot exceed the base price',400);
+  }
   if (req.body.arch_support_level !== undefined && req.body.arch_support_level !== null && !['low', 'medium', 'high'].includes(req.body.arch_support_level)) throw new AppError('Invalid arch support level', 400);
   if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
@@ -168,11 +185,19 @@ router.patch('/products/:id', async (req: Request, res: Response) => {
 /* ── Variants ────────────────────────────────────────────────────────── */
 router.post('/products/:id/variants', async (req: Request, res: Response) => {
   const { size, color, color_hex, stock_qty, price_adj, sku } = req.body;
-  if (!size || !color) throw new AppError('Size and color required', 400);
+  if (!String(size || '').trim() || !String(color || '').trim()) throw new AppError('Size and color required', 400);
+  const parsedStock = stock_qty === undefined ? 0 : Number(stock_qty);
+  const parsedAdjustment = price_adj === undefined ? 0 : Number(price_adj);
+  if (!Number.isInteger(parsedStock) || parsedStock < 0) throw new AppError('Stock quantity must be a non-negative whole number', 400);
+  if (!Number.isFinite(parsedAdjustment)) throw new AppError('Price adjustment must be a valid number', 400);
+  if (color_hex && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value', 400);
+  const product = await query('SELECT COALESCE(sale_price,base_price) AS price FROM products WHERE id=$1',[req.params.id]);
+  if (!product.rows[0]) throw new AppError('Product not found',404);
+  if (Number(product.rows[0].price) + parsedAdjustment <= 0) throw new AppError('Variant price must remain above zero',400);
   const result = await query(
     `INSERT INTO product_variants (product_id,size,color,color_hex,stock_qty,price_adj,sku)
      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [req.params.id, size, color, color_hex || null, stock_qty || 0, price_adj || 0, sku || null]);
+    [req.params.id, String(size).trim(), String(color).trim(), color_hex || null, parsedStock, parsedAdjustment, sku || null]);
   return res.status(201).json({ success: true, data: result.rows[0] });
 });
 
@@ -186,9 +211,20 @@ router.patch('/products/:id/variants/:variantId', async (req: Request, res: Resp
     if (v !== undefined) { updates.push(`${k}=$${pIdx++}`); params.push(v); }
   }
   if (!updates.length) throw new AppError('No fields to update', 400);
+  if (stock_qty !== undefined && (!Number.isInteger(Number(stock_qty)) || Number(stock_qty) < 0)) throw new AppError('Stock quantity must be a non-negative whole number',400);
+  if (price_adj !== undefined && !Number.isFinite(Number(price_adj))) throw new AppError('Price adjustment must be a valid number',400);
+  if (size !== undefined && !String(size).trim()) throw new AppError('Size cannot be empty',400);
+  if (color !== undefined && !String(color).trim()) throw new AppError('Color cannot be empty',400);
+  if (color_hex !== undefined && color_hex !== null && !/^#[0-9a-fA-F]{6}$/.test(color_hex)) throw new AppError('Color must use a six-digit hex value',400);
+  const existing = await query(`SELECT pv.price_adj,pv.size,pv.color,pv.color_hex,COALESCE(p.sale_price,p.base_price) AS price
+    FROM product_variants pv JOIN products p ON p.id=pv.product_id WHERE pv.id=$1 AND pv.product_id=$2`,
+    [req.params.variantId,req.params.id]);
+  if (!existing.rows[0]) throw new AppError('Product variant not found',404);
+  const finalAdjustment = price_adj === undefined ? Number(existing.rows[0].price_adj) : Number(price_adj);
+  if (Number(existing.rows[0].price) + finalAdjustment <= 0) throw new AppError('Variant price must remain above zero',400);
   params.push(req.params.variantId, req.params.id);
   const result = await query(
-    `UPDATE product_variants SET ${updates.join(',')} WHERE id=$${pIdx} AND product_id=$${pIdx+1} RETURNING *`, params);
+    `UPDATE product_variants SET ${updates.join(',')} WHERE id=${pIdx} AND product_id=${pIdx+1} RETURNING *`, params);
   return res.json({ success: true, data: result.rows[0] });
 });
 
@@ -201,7 +237,11 @@ router.delete('/products/:id/variants/:variantId', async (req: Request, res: Res
 /* ── Product Images ──────────────────────────────────────────────────── */
 router.post('/products/:id/images', async (req: Request, res: Response) => {
   const { url, alt_text, is_primary, sort_order } = req.body;
-  if (!url) throw new AppError('Image URL required', 400);
+  if (typeof url !== 'string' || !url.trim()) throw new AppError('Image URL required', 400);
+  if (!isHttpsUrl(url)) throw new AppError('Product image URL must use HTTPS',400);
+  const product = await query('SELECT id FROM products WHERE id=$1',[req.params.id]);
+  if (!product.rows[0]) throw new AppError('Product not found',404);
+  if (sort_order !== undefined && (!Number.isInteger(Number(sort_order)) || Number(sort_order) < 0)) throw new AppError('Image sort order must be a non-negative whole number',400);
   if (is_primary) {
     await query('UPDATE product_images SET is_primary=false WHERE product_id=$1', [req.params.id]);
   }
