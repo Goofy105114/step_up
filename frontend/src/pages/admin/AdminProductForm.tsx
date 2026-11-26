@@ -390,6 +390,7 @@ export default function AdminProductForm() {
         <div className="bg-white border border-gray-200 p-6 space-y-4 mt-6">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700">Variants & Stock</h2>
+            <button type="button" onClick={addStandardSizes} disabled={addingStandardSizes} className="btn-outline text-xs py-1.5 px-4">{addingStandardSizes ? "Adding sizes…" : "Quick add sizes 6–11"}</button>
             <button type="button" onClick={() => setShowAddVariant(!showAddVariant)}
               className="btn-outline text-xs py-1.5 px-4 flex items-center gap-1.5">
               <Plus size={13} /> Add Variant
