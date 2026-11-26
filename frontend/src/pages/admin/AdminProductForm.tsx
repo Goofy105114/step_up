@@ -44,6 +44,7 @@ export default function AdminProductForm() {
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newVariant, setNewVariant] = useState<Variant>(emptyVariant);
   const [showAddVariant, setShowAddVariant] = useState(false);
+  const [addingStandardSizes, setAddingStandardSizes] = useState(false);
 
   const { data: categories, isLoading: categoriesLoading, isError: categoriesError, refetch: refetchCategories, isFetching: categoriesFetching } = useQuery({
     queryKey: ['categories'],
@@ -116,6 +117,35 @@ export default function AdminProductForm() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to add variant'),
   });
 
+
+  const addStandardSizes = async () => {
+    if (!id || addingStandardSizes) return;
+    setAddingStandardSizes(true);
+    const existing = new Set(variants.filter(v => v.color.trim().toLowerCase() === 'black').map(v => String(v.size)));
+    const missing = ['6', '7', '8', '9', '10', '11'].filter(size => !existing.has(size));
+    if (!missing.length) {
+      toast.success('Sizes 6–11 are already set up for Black');
+      setAddingStandardSizes(false);
+      return;
+    }
+    try {
+      for (const size of missing) {
+        const skuBase = (form.sku || form.slug || 'STEPUP').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+        await api.post(`/admin/products/${id}/variants`, {
+          size, color: 'Black', color_hex: '#202820', stock_qty: 0, price_adj: 0,
+          sku: `${skuBase}-BLK-${size}`.slice(0, 150),
+        });
+      }
+      toast.success(`Added sizes ${missing.join(', ')} with zero stock. Set actual stock quantities before publishing.`);
+      await qc.invalidateQueries({ queryKey: ['admin-product', id] });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Some sizes could not be added. Refresh the product to review variants.');
+      await qc.invalidateQueries({ queryKey: ['admin-product', id] });
+    } finally {
+      setAddingStandardSizes(false);
+    }
+  };
+
   const deleteVariantMutation = useMutation({
     mutationFn: (variantId: string) => api.delete(`/admin/products/${id}/variants/${variantId}`),
     onSuccess: () => { toast.success('Variant removed'); qc.invalidateQueries({ queryKey: ['admin-product', id] }); },
@@ -186,7 +216,7 @@ export default function AdminProductForm() {
 
         {/* Basic info */}
         <div className="bg-white border border-gray-200 p-6 space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700 pb-3 border-b border-gray-100">Basic Information</h2>
+          <div><h2 className="text-xs font-bold uppercase tracking-widest text-gray-700 pb-3 border-b border-gray-100">Basic Information</h2><p className="mt-2 text-xs text-gray-500">Product photos are optional. You can create the product now and add photography later.</p></div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Product Name *</label>
@@ -453,7 +483,7 @@ export default function AdminProductForm() {
               <div className="text-center py-8 text-xs text-gray-400">No variants yet — click "Add Variant" to add sizes and colors</div>
             )}
           </div>
-          <p className="text-xs text-gray-400">Click the stock number and type a new value, then click away to save.</p>
+          <p className="text-xs text-gray-400">The quick size shortcut adds UK sizes 6–11 in Black with stock set to 0. Enter verified stock quantities before making them available to customers.</p>
         </div>
       )}
     </div>
