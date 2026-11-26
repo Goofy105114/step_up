@@ -7,8 +7,9 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "db:migrate": "node -r ts-node/register src/db/migrate.ts",
-    "db:seed": "node -r ts-node/register src/db/seed.ts"
+    "db:migrate": "npm run build && node dist/db/migrate.js",
+    "db:seed": "npm run build && node dist/db/seed.js",
+    "db:verify": "npm run build && node dist/db/verify.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

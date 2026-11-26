@@ -11,14 +11,14 @@ dotenv.config();
 
 const connectionString = process.env.DATABASE_URL;
 
-const isSupabase = connectionString?.includes('supabase.co');
-const isLocal    = !connectionString;
+// Supabase direct hosts use *.supabase.co; its poolers use *.pooler.supabase.com.
+const isSupabase = Boolean(connectionString && /supabase\.(co|com)/i.test(connectionString));
 
 const pool = new Pool(
   connectionString
     ? {
         connectionString,
-        ssl: isSupabase ? { rejectUnauthorized: false } : false,
+        ssl: isSupabase ? { rejectUnauthorized: true } : false,
         max: 10,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,

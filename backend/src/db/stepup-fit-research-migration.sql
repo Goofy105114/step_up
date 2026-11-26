@@ -2,6 +2,7 @@
 -- Apply to the existing database before deploying code that uses these features.
 -- No existing table is dropped and no existing rows are rewritten.
 BEGIN;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ALTER TABLE products ADD COLUMN IF NOT EXISTS care_instructions TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS arch_support_level VARCHAR(20);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS arch_height_mm DECIMAL(5,2);
