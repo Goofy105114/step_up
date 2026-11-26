@@ -66,7 +66,7 @@ router.post('/otp/login',authAttemptLimiter,async(req:Request,res:Response)=>{
  const found=identifier.includes('@')?await query('SELECT id,email,first_name,last_name,role,phone,avatar_url FROM users WHERE lower(email)=lower($1)',[contact]):await query("SELECT id,email,first_name,last_name,role,phone,avatar_url FROM users WHERE regexp_replace(phone,'\\D','','g') LIKE $1",['%'+contact]);
  const user=found.rows[0];if(!user)throw new AppError('Account not found',404);
  if(claims.purpose==='admin'&&!['admin','staff'].includes(user.role))throw new AppError('Admin access required',403);
- await query('UPDATE auth_otp_challenges SET consumed_at=NOW() WHERE id=$1',[claims.sub]);
+ const consumed=await query('UPDATE auth_otp_challenges SET consumed_at=NOW() WHERE id=$1 AND consumed_at IS NULL AND expires_at>NOW() RETURNING id',[claims.sub]);if(!consumed.rowCount)throw new AppError('OTP verification has already been used',410);
  res.json({success:true,token:issueToken(user),user});
 });
 
