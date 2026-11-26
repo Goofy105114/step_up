@@ -22,7 +22,7 @@ interface AuthState {
 }
 
 interface RegisterData {
-  email: string; password: string; first_name: string; last_name: string; phone?: string; verification_ticket: string;
+  email: string; password: string; first_name: string; last_name: string; phone?: string; verification_ticket: string; verification_ticket: string;
 }
 
 export const useAuthStore = create<AuthState>()(
