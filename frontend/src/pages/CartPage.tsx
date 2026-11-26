@@ -17,7 +17,7 @@ export default function CartPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const hasUnavailableItems = items.some((item: any) => !item.is_active);
+  const hasUnavailableItems = items.some((item: any) => item.is_active === false || Number(item.stock_qty) < 1 || Number(item.quantity) > Number(item.stock_qty));
 
   const handleUpdate = async (itemId: string, qty: number) => {
     setUpdatingId(itemId);
@@ -101,7 +101,7 @@ export default function CartPage() {
               <div className="flex items-baseline justify-between mb-space-xs">
                 <h1 className="text-headline-lg font-semibold text-primary tracking-tight">Your shopping bag</h1>
                 <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary bg-surface-container px-space-md py-space-xs rounded-full">
-                  {items.length} item{items.length !== 1 ? 's' : ''}
+                  {items.reduce((total: number, item: any) => total + Number(item.quantity || 0), 0)} item{items.reduce((total: number, item: any) => total + Number(item.quantity || 0), 0) !== 1 ? 's' : ''}
                 </span>
               </div>
               <p className="text-body-md text-on-surface-variant flex items-center gap-space-xs">
@@ -126,7 +126,7 @@ export default function CartPage() {
                         <div>
                           <span className="text-label-badge font-bold uppercase tracking-[0.06em] text-secondary">Selected footwear</span>
                           <h2 className="text-title-md font-semibold text-primary">{item.name}</h2>
-                          {!item.is_active && <p className="mt-1 text-xs font-semibold text-error">This product is no longer available. Remove it to continue.</p>}
+                          {(item.is_active === false || Number(item.stock_qty) < 1 || Number(item.quantity) > Number(item.stock_qty)) && <p className="mt-1 text-xs font-semibold text-error">{item.is_active === false ? 'This product is no longer available.' : Number(item.stock_qty) < 1 ? 'This size is currently out of stock.' : `Only ${item.stock_qty} available. Reduce the quantity to continue.`} Remove this item or adjust its quantity before checkout.</p>}
                         </div>
                         <span className="text-title-md font-semibold text-primary shrink-0">{formatPrice(item.unit_price)}</span>
                       </div>
@@ -141,14 +141,14 @@ export default function CartPage() {
                     </div>
                     <div className="flex items-center justify-between pt-space-sm">
                       <div className="flex items-center bg-surface-container-low rounded-full p-1 shadow-sm">
-                        <button onClick={() => handleUpdate(item.id, item.quantity - 1)} disabled={updatingId === item.id}
+                        <button onClick={() => handleUpdate(item.id, item.quantity - 1)} disabled={updatingId === item.id} aria-label={item.quantity === 1 ? `Remove ${item.name}` : `Decrease quantity of ${item.name}`}
                           className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
                           <span className="material-symbols-outlined text-[16px]">{item.quantity === 1 ? 'delete_outline' : 'remove'}</span>
                         </button>
                         <span className="w-8 text-center text-label-md font-semibold text-on-surface">
                           {updatingId === item.id ? '…' : item.quantity}
                         </span>
-                        <button onClick={() => handleUpdate(item.id, item.quantity + 1)} disabled={updatingId === item.id}
+                        <button onClick={() => handleUpdate(item.id, item.quantity + 1)} disabled={updatingId === item.id || Number(item.quantity) >= Number(item.stock_qty)} aria-label={`Increase quantity of ${item.name}`}
                           className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
                           <span className="material-symbols-outlined text-[16px]">add</span>
                         </button>
