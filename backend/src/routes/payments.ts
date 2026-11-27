@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { randomBytes } from 'crypto';
 import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
@@ -67,7 +68,7 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
     const shipping = taxableAmount >= freeShippingThreshold ? 0 : shippingFee;
     const tax = taxableAmount * (gstRatePercent / 100);
     const total = taxableAmount + shipping + tax;
-    const orderNo='ORD-'+Date.now()+'-'+Math.floor(Math.random()*1000);
+    const orderNo='ORD-'+Date.now()+'-'+randomBytes(8).toString('hex');
     const inserted=await client.query(`INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,coupon_id,shipping_address,billing_address,payment_method,payment_status)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'razorpay','pending') RETURNING *`,
       [orderNo,req.user!.userId,subtotal,discount,shipping,tax,total,couponId,JSON.stringify(address)]);
