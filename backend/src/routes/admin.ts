@@ -331,6 +331,11 @@ router.patch('/products/:id', authorize('admin'), async (req: Request, res: Resp
   if (req.body.calibrated_at !== undefined && req.body.calibrated_at !== null && typeof req.body.calibrated_at !== 'string') {
     throw new AppError('Calibration date must be text', 400);
   }
+  const declarationFields = ['generic_product_name','manufacturer_name','packer_name','importer_name','country_of_origin','consumer_care_details','mrp_inr'];
+  const declarationChanged = declarationFields.some(field => req.body[field] !== undefined);
+  if (declarationChanged && req.body.declarations_verified !== true) {
+    req.body.declarations_verified = false;
+  }
   const available = await getProductColumnNames();
   const updates: string[] = [];
   const params: unknown[] = [];
@@ -350,14 +355,17 @@ router.patch('/products/:id', authorize('admin'), async (req: Request, res: Resp
   if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
   if (req.body.mrp_inr !== undefined && req.body.mrp_inr !== null && req.body.mrp_inr !== '' && (!Number.isFinite(Number(req.body.mrp_inr)) || Number(req.body.mrp_inr) <= 0)) throw new AppError('MRP must be a positive INR amount', 400);
-  if (req.body.declarations_verified === true) {
+  if (req.body.declarations_verified === true || req.body.mrp_inr !== undefined) {
     const current = await query('SELECT * FROM products WHERE id=$1', [req.params.id]);
     if (!current.rows[0]) throw new AppError('Product not found', 404);
     const merged = { ...current.rows[0], ...req.body };
     const sellingPrice = Number(merged.sale_price ?? merged.base_price);
-    if (!Number.isFinite(Number(merged.mrp_inr)) || Number(merged.mrp_inr) < sellingPrice) throw new AppError('MRP must be at least the selling price before verification', 400);
-    if (![merged.generic_product_name, merged.country_of_origin, merged.consumer_care_details].every(value => typeof value === 'string' && value.trim())) throw new AppError('Generic product name, country of origin and consumer-care details are required before verification', 400);
-    if (![merged.manufacturer_name, merged.packer_name, merged.importer_name].some(value => typeof value === 'string' && value.trim())) throw new AppError('Provide the applicable manufacturer, packer or importer details before verification', 400);
+    if (merged.mrp_inr !== null && merged.mrp_inr !== undefined && (!Number.isFinite(Number(merged.mrp_inr)) || Number(merged.mrp_inr) < sellingPrice)) throw new AppError('MRP must be at least the selling price', 400);
+    if (req.body.declarations_verified === true) {
+      if (!Number.isFinite(Number(merged.mrp_inr)) || Number(merged.mrp_inr) < sellingPrice) throw new AppError('A valid MRP at least equal to the selling price is required before verification', 400);
+      if (![merged.generic_product_name, merged.country_of_origin, merged.consumer_care_details].every(value => typeof value === 'string' && value.trim())) throw new AppError('Generic product name, country of origin and consumer-care details are required before verification', 400);
+      if (![merged.manufacturer_name, merged.packer_name, merged.importer_name].some(value => typeof value === 'string' && value.trim())) throw new AppError('Provide the applicable manufacturer, packer or importer details before verification', 400);
+    }
   }
   if (!updates.length) throw new AppError('No supported product fields to update', 400);
   params.push(req.params.id);
