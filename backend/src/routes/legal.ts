@@ -8,7 +8,16 @@ router.get('/business-disclosures', async (_req: Request, res: Response) => {
   const result = await query("SELECT setting_value FROM store_settings WHERE setting_key='legal_policies'");
   if (!result.rows[0]) return res.json({ success: true, data: null });
   const identity = result.rows[0].setting_value?.business_identity;
-  if (!identity?.confirmed) return res.json({ success: true, data: null });
+  const requiredIdentityFields = [
+    'legal_name', 'registered_address', 'customer_care_email', 'customer_care_phone',
+    'grievance_officer_name', 'grievance_officer_designation', 'grievance_email', 'grievance_phone',
+  ];
+  const validEmail = (value: unknown) => typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  if (!identity?.confirmed || requiredIdentityFields.some(field => !String(identity[field] || '').trim()) ||
+      !validEmail(identity.customer_care_email) || !validEmail(identity.grievance_email) ||
+      identity.gst_status === 'unverified') {
+    return res.json({ success: true, data: null });
+  }
   return res.json({
     success: true,
     data: {
