@@ -12,6 +12,41 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   if (!shipping_address || typeof shipping_address !== 'object' || Array.isArray(shipping_address)) {
     throw new AppError('Shipping address required', 400);
   }
+  if (billing_address !== undefined && billing_address !== null) {
+    if (typeof billing_address !== 'object' || Array.isArray(billing_address)) {
+      throw new AppError('Billing address must be a valid address object', 400);
+    }
+    if (requiredAddressFields.some(field =>
+      typeof billing_address[field] !== 'string' || !billing_address[field].trim()
+    )) {
+      throw new AppError('Complete all required billing address fields', 400);
+    }
+    if (
+      billing_address.full_name.trim().length > 200 ||
+      billing_address.phone.trim().length > 20 ||
+      billing_address.line1.trim().length > 255 ||
+      (billing_address.line2 !== undefined && billing_address.line2 !== null &&
+        (typeof billing_address.line2 !== 'string' || billing_address.line2.trim().length > 255)) ||
+      billing_address.city.trim().length > 100 ||
+      billing_address.state.trim().length > 100 ||
+      (billing_address.country !== undefined &&
+        (typeof billing_address.country !== 'string' || billing_address.country.trim().length > 100)) ||
+      (billing_address.email !== undefined &&
+        (typeof billing_address.email !== 'string' || billing_address.email.trim().length > 255))
+    ) {
+      throw new AppError('One or more billing address fields exceed the allowed length', 400);
+    }
+    const billingPhone = billing_address.phone.replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '');
+    if (!/^[6-9]\\d{9}$/.test(billingPhone)) {
+      throw new AppError('Enter a valid Indian billing mobile number', 400);
+    }
+    if (!/^\\d{6}$/.test(billing_address.postal_code.trim())) {
+      throw new AppError('Enter a valid 6-digit Indian billing PIN code', 400);
+    }
+    if (String(billing_address.country || 'India').trim().toLowerCase() !== 'india') {
+      throw new AppError('STEPUP currently accepts billing addresses within India only', 400);
+    }
+  }
   const requiredAddressFields = ['full_name', 'phone', 'line1', 'city', 'state', 'postal_code'];
   if (requiredAddressFields.some(field => typeof shipping_address[field] !== 'string' || !shipping_address[field].trim())) {
     throw new AppError('Complete all required shipping address fields', 400);
