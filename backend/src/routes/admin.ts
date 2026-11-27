@@ -36,6 +36,42 @@ router.get('/dashboard', authorize('admin'), async (_req: Request, res: Response
 });
 
 /* ── Orders ──────────────────────────────────────────────────────────── */
+/* Read-only Razorpay webhook audit. Sensitive payload/signature material is never returned. */
+router.get('/razorpay/webhook-events', authorize('admin'), async (req: Request, res: Response) => {
+  const pageValue = req.query.page === undefined ? '1' : String(req.query.page);
+  const limitValue = req.query.limit === undefined ? '25' : String(req.query.limit);
+  if (!/^[0-9]+$/.test(pageValue) || !/^[0-9]+$/.test(limitValue)) {
+    throw new AppError('Page and limit must be positive whole numbers', 400);
+  }
+  const page = Number(pageValue);
+  const limit = Number(limitValue);
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1000000) throw new AppError('Page must be between 1 and 1000000', 400);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new AppError('Limit must be between 1 and 100', 400);
+  const status = req.query.processing_status === undefined ? undefined : String(req.query.processing_status);
+  if (status !== undefined && !['processed', 'unmatched'].includes(status)) throw new AppError('Invalid webhook processing status filter', 400);
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (status) { conditions.push(`e.processing_status=${params.length + 1}`); params.push(status); }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const count = await query(`SELECT COUNT(*)::int AS total FROM razorpay_webhook_events e ${where}`, params);
+  params.push(limit, (page - 1) * limit);
+  const events = await query(
+    `SELECT e.event_id,e.event_type,e.razorpay_payment_id,e.razorpay_order_id,
+            e.order_id,e.amount_paise,e.currency,e.processing_status,e.received_at,e.processed_at,
+            o.order_number
+     FROM razorpay_webhook_events e
+     LEFT JOIN orders o ON o.id=e.order_id
+     ${where}
+     ORDER BY e.received_at DESC
+     LIMIT ${params.length - 1} OFFSET ${params.length}`,
+    params
+  );
+  return res.json({ success: true, data: events.rows, pagination: {
+    page, limit, total: count.rows[0]?.total || 0,
+    total_pages: Math.ceil(Number(count.rows[0]?.total || 0) / limit)
+  }});
+});
+
 router.get('/orders', async (req: Request, res: Response) => {
   const { status } = req.query as Record<string, string>;
   const pageValue = req.query.page === undefined ? '1' : String(req.query.page);
