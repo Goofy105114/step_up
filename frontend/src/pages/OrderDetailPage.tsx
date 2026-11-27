@@ -241,6 +241,24 @@ export default function OrderDetailPage() {
           </section>
         )}
 
+        {order.policy_acceptances?.length > 0 && (
+          <section className="mt-5 border border-gray-200 bg-white p-5" aria-labelledby="policy-acceptance-heading">
+            <h3 id="policy-acceptance-heading" className="text-xs font-bold uppercase tracking-widest text-gray-700">Checkout policy acceptance</h3>
+            <p className="mt-2 text-xs leading-5 text-gray-500">The following published policy versions were recorded when this order was placed.</p>
+            <ul className="mt-3 space-y-3">
+              {order.policy_acceptances.map((acceptance: any) => (
+                <li key={acceptance.policy_slug} className="border-t border-gray-100 pt-3 first:border-0 first:pt-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-gray-900">{acceptance.policy_title}</span>
+                    <span className="text-xs text-gray-500">{formatDate(acceptance.accepted_at)}</span>
+                  </div>
+                  <p className="mt-1 break-all font-mono text-[10px] leading-4 text-gray-500">SHA-256: {acceptance.content_sha256}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Order history */}
         {order.history?.length > 0 && (
           <div className="border border-gray-200 p-5 mt-5">
