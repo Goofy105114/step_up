@@ -31,11 +31,11 @@ export default function CheckoutPage() {
   const savedAddresses = savedAddressesData?.data || [];
   const { data: publishedPolicies = [], isLoading: policiesLoading } = useQuery({
     queryKey: ['legal-policy-index'],
-    queryFn: () => api.get('/legal').then(response => response.data.data as Array<{ slug: string; title: string }>),
+    queryFn: () => api.get('/legal').then(response => response.data.data as Array<{ slug: string; title: string; content_hash: string }>),
     retry: false,
   });
   const requiredPolicySlugs = ['privacy', 'terms', 'shipping', 'returns'];
-  const checkoutPoliciesReady = requiredPolicySlugs.every(slug => publishedPolicies.some(policy => policy.slug === slug));
+  const checkoutPoliciesReady = requiredPolicySlugs.every(slug => publishedPolicies.some(policy => policy.slug === slug && /^[a-f0-9]{64}$/.test(policy.content_hash)));
 
   useEffect(() => {
     if (!savedAddresses.length || addressChoiceInitialized) return;
@@ -119,6 +119,10 @@ export default function CheckoutPage() {
 
   const placeOrder = async () => {
     if (!checkoutPoliciesReady || !policyAccepted) { toast.error('Review and accept the published STEPUP policies before placing your order.'); return; }
+    const policy_acceptances = requiredPolicySlugs.map(slug => {
+      const policy = publishedPolicies.find(item => item.slug === slug)!;
+      return { slug, content_hash: policy.content_hash };
+    });
     if (!validateAddress()) return;
     if (items.some((item: any) => item.is_active === false || Number(item.stock_qty) < 1 || Number(item.quantity) > Number(item.stock_qty))) {
       toast.error('One or more cart items are unavailable or exceed current stock. Return to your bag and review quantities.');
@@ -142,7 +146,7 @@ export default function CheckoutPage() {
           document.body.appendChild(script);
         });
         if (!loaded) throw new Error('Secure payment checkout could not be loaded. Please retry or choose Cash on Delivery.');
-        const created = await api.post('/payments/create-order', { shipping_address: addr, coupon_code: appliedCoupon?.code });
+        const created = await api.post('/payments/create-order', { shipping_address: addr, coupon_code: appliedCoupon?.code, policy_acceptances });
         const paymentOrder = created.data.data;
         await new Promise<void>((resolve, reject) => {
           const RazorpayConstructor = (window as any).Razorpay;
@@ -171,7 +175,7 @@ export default function CheckoutPage() {
           checkout.open();
         });
       } else {
-        const res = await api.post('/orders', { shipping_address: addr, payment_method: 'cod', coupon_code: appliedCoupon?.code });
+        const res = await api.post('/orders', { shipping_address: addr, payment_method: 'cod', coupon_code: appliedCoupon?.code, policy_acceptances });
         setOrderId(res.data.data.order_number);
         await clearCart();
         setStep(3);
