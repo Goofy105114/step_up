@@ -45,9 +45,10 @@ export default function AdminLegalPolicies() {
         </div>
         <textarea value={policy.content} onChange={e => update(policy.slug, { content: e.target.value })} rows={13} className="mt-4 w-full rounded-xl border border-gray-300 p-4 text-sm leading-6 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
       </section>)}</div>}
+    {placeholders && <p role="alert" className="text-sm font-medium text-red-700">At least one published policy still contains a company-specific placeholder. Resolve it before saving.</p>}
     {settings && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4">
       <p className="text-xs text-gray-500">Saving updates the database only. It does not execute a migration or deploy the website.</p>
-      <button disabled={save.isPending || isLoading || !settings} onClick={() => save.mutate(settings)} className="btn-primary inline-flex items-center gap-2 px-5 py-3"><Save size={16}/>{save.isPending ? 'Saving…' : 'Save policy settings'}</button>
+      <button disabled={save.isPending || isLoading || !settings || placeholders} onClick={() => save.mutate(settings)} className="btn-primary inline-flex items-center gap-2 px-5 py-3"><Save size={16}/>{save.isPending ? 'Saving…' : 'Save policy settings'}</button>
     </div>}
   </div>;
 }
