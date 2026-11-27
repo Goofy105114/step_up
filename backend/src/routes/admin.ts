@@ -837,6 +837,31 @@ router.get('/fit-operations', authorize('admin'), async (_req: Request, res: Res
 });
 
 
+/* Read-only audit trail of provider-confirmed refunds for an order. */
+router.get('/orders/:id/refunds', authorize('admin'), async (req: Request, res: Response) => {
+  const order = await query(
+    'SELECT id,order_number,total_amount,payment_status,razorpay_payment_id FROM orders WHERE id=$1',
+    [req.params.id]
+  );
+  if (!order.rows[0]) throw new AppError('Order not found', 404);
+  const result = await query(
+    `SELECT r.provider,r.provider_refund_id,r.provider_payment_id,r.amount_paise,r.currency,
+            r.confirmed_at,u.email AS confirmed_by_email
+     FROM payment_refund_reconciliations r
+     LEFT JOIN users u ON u.id=r.confirmed_by
+     WHERE r.order_id=$1
+     ORDER BY r.confirmed_at ASC,r.id ASC`,
+    [req.params.id]
+  );
+  const refundedPaise = result.rows.reduce((sum: number, row: any) => sum + Number(row.amount_paise), 0);
+  return res.json({ success: true, data: {
+    order: order.rows[0],
+    refunds: result.rows,
+    refunded_paise: refundedPaise,
+    remaining_refundable_paise: Math.max(0, Math.round(Number(order.rows[0].total_amount) * 100) - refundedPaise)
+  }});
+});
+
 /* Verify provider refund state and reconcile cumulative partial/full refunds. */
 router.post('/orders/:id/refund-confirmation', authorize('admin'), async (req: Request, res: Response) => {
   const providerRefundId = typeof req.body?.provider_refund_id === 'string' ? req.body.provider_refund_id.trim() : '';
