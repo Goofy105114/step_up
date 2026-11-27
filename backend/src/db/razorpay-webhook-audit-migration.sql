@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS razorpay_webhook_events (
   processing_status     VARCHAR(20) NOT NULL
     CHECK (processing_status IN ('processed', 'unmatched')),
   received_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  processed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  processed_at          TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_razorpay_webhook_events_order
