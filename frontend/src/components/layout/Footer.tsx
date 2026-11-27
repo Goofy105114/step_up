@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 
-type BusinessDisclosures = { legal_name: string; registered_address: string; customer_care_email: string; customer_care_phone: string; grievance_officer_name: string; grievance_officer_designation: string; grievance_email: string; grievance_phone: string; gstin: string | null };\n\ntype Category = {
+type BusinessDisclosures = { legal_name: string; registered_address: string; customer_care_email: string; customer_care_phone: string; grievance_officer_name: string; grievance_officer_designation: string; grievance_email: string; grievance_phone: string; gstin: string | null };
+
+type Category = {
   id: string;
   name: string;
   slug: string;
@@ -13,7 +15,12 @@ export default function Footer() {
     queryKey: ['categories', 'footer'],
     queryFn: () => api.get('/categories').then(response => response.data),
   });
-  const categories: Category[] = categoriesData?.data || [];\n  const { data: disclosures } = useQuery({\n    queryKey: ['legal-business-disclosures'],\n    queryFn: () => api.get('/legal/business-disclosures').then(response => response.data.data as BusinessDisclosures | null),\n    retry: false,\n  });
+  const categories: Category[] = categoriesData?.data || [];
+  const { data: disclosures } = useQuery({
+    queryKey: ['legal-business-disclosures'],
+    queryFn: () => api.get('/legal/business-disclosures').then(response => response.data.data as BusinessDisclosures | null),
+    retry: false,
+  });
 
   return (
     <footer className="bg-inverse-surface text-inverse-on-surface">
