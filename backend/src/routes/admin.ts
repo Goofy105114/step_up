@@ -95,7 +95,7 @@ router.get('/orders', async (req: Request, res: Response) => {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
     throw new AppError('Limit must be between 1 and 100', 400);
   }
-  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
+  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivery_failed', 'return_to_origin', 'delivered', 'cancelled', 'refunded', 'returned'];
   if (status && !allowedStatuses.includes(status)) throw new AppError('Invalid order status filter', 400);
   const offset = (page - 1) * limit;
   const conditions: string[] = [];
@@ -178,13 +178,18 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     throw new AppError('Order status note cannot exceed 1000 characters', 400);
   }
   const normalizedNote = typeof note === 'string' ? note.trim() || null : null;
+  if (['delivery_failed', 'return_to_origin'].includes(status) && !normalizedNote) {
+    throw new AppError('A note explaining the delivery exception is required.', 400);
+  }
 
   const allowedNextStatuses: Record<string, string[]> = {
     pending: ['confirmed', 'cancelled'],
     confirmed: ['processing', 'cancelled'],
     processing: ['shipped', 'cancelled'],
     shipped: ['out_for_delivery'],
-    out_for_delivery: ['delivered'],
+    out_for_delivery: ['delivered', 'delivery_failed'],
+    delivery_failed: ['out_for_delivery', 'return_to_origin'],
+    return_to_origin: [],
     delivered: [],
     cancelled: [],
     refunded: [],
