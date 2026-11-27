@@ -36,6 +36,7 @@ import LegalPolicyPage from './pages/LegalPolicyPage';
 import AdminLegalPolicies from './pages/admin/AdminLegalPolicies';
 import SupportPage from './pages/SupportPage';
 import AdminGrievances from './pages/admin/AdminGrievances';
+import AdminWebhookEvents from './pages/admin/AdminWebhookEvents';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -93,6 +94,7 @@ export default function App() {
           <Route path="/admin/store-settings" element={<AdminStoreSettings />} />
           <Route path="/admin/legal-policies" element={<AdminLegalPolicies />} />
           <Route path="/admin/grievances" element={<AdminGrievances />} />
+          <Route path="/admin/webhook-events" element={<AdminWebhookEvents />} />
           <Route path="/admin/patient-profiles" element={<AdminPatientProfiles />} />
           <Route path="/admin/fit-operations" element={<AdminFitOperations />} />
         </Route>
