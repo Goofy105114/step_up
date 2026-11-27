@@ -87,7 +87,7 @@ export default function AdminLegalPolicies() {
     {settings && <>
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">Business identity & grievance contacts</h2>
-        <p className="mt-1 text-sm leading-6 text-gray-500">Enter details from company records. These fields are not public until policies are published and the public disclosure endpoint is enabled.</p>
+        <p className="mt-1 text-sm leading-6 text-gray-500">Enter details from company records. Complete every field and confirm the details before they appear in the public footer. GSTIN is shown only when the company confirms registration and its supporting proof.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {identityFields.map(field => <label key={field.key} className="block text-sm font-medium text-gray-700">{field.label}<input type={field.type || 'text'} value={settings.business_identity[field.key] || ''} onChange={e => updateIdentity(field.key, e.target.value)} className={fieldClass} /></label>)}
           <label className="block text-sm font-medium text-gray-700">GST registration status
