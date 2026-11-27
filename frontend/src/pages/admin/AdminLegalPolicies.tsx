@@ -35,10 +35,10 @@ export default function AdminLegalPolicies() {
   }) : current);
   const placeholders = settings?.policies.some(policy => policy.status === 'published' && /\[[A-Z][A-Z _-]+\]/.test(policy.content));
   const updateIdentity = (key: keyof BusinessIdentity, value: string | boolean) => setSettings(current => current ? ({
-    ...current, business_identity: { ...current.business_identity, [key]: value }
+    ...current, business_identity: { ...current.business_identity, [key]: value } as BusinessIdentity
   }) : current);
   const updateOperations = (key: keyof Operations, value: string | number | null) => setSettings(current => current ? ({
-    ...current, operational_confirmation: { ...current.operational_confirmation, [key]: value }
+    ...current, operational_confirmation: { ...current.operational_confirmation, [key]: value } as Operations
   }) : current);
   const fieldClass = 'mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100';
   const identityFields: Array<{ key: 'legal_name' | 'registered_address' | 'customer_care_email' | 'customer_care_phone' | 'grievance_officer_name' | 'grievance_officer_designation' | 'grievance_email' | 'grievance_phone'; label: string; type?: string }> = [
