@@ -2,9 +2,10 @@ import { Router, Request, Response } from 'express';
 import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { randomBytes } from 'crypto';
 
 const router = Router();
-const genOrderNo = () => 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+const genOrderNo = () => 'ORD-' + Date.now() + '-' + randomBytes(8).toString('hex');
 
 router.post('/', authenticate, async (req: Request, res: Response) => {
   const { shipping_address, billing_address, payment_method = 'cod', coupon_code } = req.body;
