@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { recordPolicyConsent } from '../services/legal-policy-consent';
 import { createRazorpayOrder, fetchRazorpayPayment, fetchRazorpayOrderPayments, verifyCheckoutSignature, verifyWebhookSignature } from '../services/razorpay';
 
 const router = Router();
@@ -113,6 +114,7 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'razorpay','pending') RETURNING *`,
       [orderNo,req.user!.userId,subtotal,discount,shipping,tax,total,couponId,JSON.stringify(address),JSON.stringify(billingAddress)]);
     order=inserted.rows[0];
+    await recordPolicyConsent(client, order.id, req.user!.userId, req.body?.policy_acceptances);
     for (const item of items.rows) {
       const stock=await client.query('UPDATE product_variants SET stock_qty=stock_qty-$1 WHERE id=$2 AND stock_qty >= $1 RETURNING id',[item.quantity,item.variant_id]);
       if (stock.rowCount!==1) throw new AppError('Stock changed while creating your order. Please retry.',409);

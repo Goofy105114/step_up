@@ -3,12 +3,13 @@ import pool, { query } from '../db/pool';
 import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { randomBytes } from 'crypto';
+import { recordPolicyConsent } from '../services/legal-policy-consent';
 
 const router = Router();
 const genOrderNo = () => 'ORD-' + Date.now() + '-' + randomBytes(8).toString('hex');
 
 router.post('/', authenticate, async (req: Request, res: Response) => {
-  const { shipping_address, billing_address, payment_method = 'cod', coupon_code } = req.body;
+  const { shipping_address, billing_address, payment_method = 'cod', coupon_code, policy_acceptances } = req.body;
   if (!shipping_address || typeof shipping_address !== 'object' || Array.isArray(shipping_address)) {
     throw new AppError('Shipping address required', 400);
   }
@@ -160,6 +161,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
        JSON.stringify(shipping_address), JSON.stringify(billing_address || shipping_address),
        payment_method, couponId]);
     const order = orderRes.rows[0];
+    await recordPolicyConsent(client, order.id, req.user!.userId, policy_acceptances);
 
     for (const item of itemsRes.rows) {
       const stockUpdate = await client.query(

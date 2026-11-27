@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createHash } from 'crypto';
 import { query } from '../db/pool';
 
 const router = Router();
@@ -29,7 +30,11 @@ router.get('/', async (_req: Request, res: Response) => {
   if (!result.rows[0]) return res.status(503).json({ success: false, message: 'Legal policies are not configured yet' });
   const policies = (result.rows[0].setting_value?.policies || [])
     .filter((item: any) => item.status === 'published')
-    .map((item: any) => ({ slug: item.slug, title: item.title }));
+    .map((item: any) => ({
+      slug: item.slug,
+      title: item.title,
+      content_hash: createHash('sha256').update(String(item.content || ''), 'utf8').digest('hex'),
+    }));
   return res.json({ success: true, data: policies });
 });
 
