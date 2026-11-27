@@ -841,6 +841,68 @@ router.put('/legal-policies', authorize('admin'), async (req: Request, res: Resp
     }
   }
   if (allowed.some(slug => !seen.has(slug))) throw new AppError('All four policy documents must be retained', 400);
+
+  const business = value.business_identity;
+  const operations = value.operational_confirmation;
+  if (!business || typeof business !== 'object' || Array.isArray(business) ||
+      !operations || typeof operations !== 'object' || Array.isArray(operations)) {
+    throw new AppError('Business identity and operational confirmation sections are required', 400);
+  }
+  const textFields = [
+    'legal_name', 'registered_address', 'customer_care_email', 'customer_care_phone',
+    'grievance_officer_name', 'grievance_officer_designation', 'grievance_email', 'grievance_phone',
+  ];
+  for (const field of textFields) {
+    if (business[field] !== undefined && typeof business[field] !== 'string') {
+      throw new AppError(`Business identity field ${field} must be text`, 400);
+    }
+  }
+  if (business.gstin !== undefined && typeof business.gstin !== 'string') throw new AppError('GSTIN must be text', 400);
+  if (!['unverified', 'verified', 'not_registered'].includes(business.gst_status)) {
+    throw new AppError('Choose a valid GST registration status', 400);
+  }
+  const gstin = String(business.gstin || '').trim().toUpperCase();
+  if (business.gst_status === 'verified' && !/^\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) {
+    throw new AppError('A GSTIN in the expected 15-character format is required for company-confirmed GST registration', 400);
+  }
+  if (business.gst_status === 'not_registered' && gstin) {
+    throw new AppError('Remove the GSTIN when the company confirms it is not registered', 400);
+  }
+  if (business.confirmed !== undefined && typeof business.confirmed !== 'boolean') {
+    throw new AppError('Business identity confirmation must be a boolean', 400);
+  }
+
+  const operationTextFields = [
+    'shipping_coverage', 'dispatch_sla', 'delivery_estimate', 'return_conditions',
+    'return_shipping_rule', 'refund_sla', 'cod_refund_method', 'confirmed_by',
+  ];
+  for (const field of operationTextFields) {
+    if (operations[field] !== undefined && typeof operations[field] !== 'string') {
+      throw new AppError(`Operational field ${field} must be text`, 400);
+    }
+  }
+  if (operations.return_window_days !== undefined && operations.return_window_days !== null &&
+      (!Number.isInteger(operations.return_window_days) || operations.return_window_days < 0 || operations.return_window_days > 365)) {
+    throw new AppError('Return window must be a whole number between 0 and 365 days', 400);
+  }
+
+  if (value.policies.some((policy: any) => policy.status === 'published')) {
+    const requiredIdentity = [...textFields];
+    if (requiredIdentity.some(field => !String(business[field] || '').trim()) ||
+        !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(business.customer_care_email)) ||
+        !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(business.grievance_email)) ||
+        !business.confirmed || business.gst_status === 'unverified') {
+      throw new AppError('Confirm the complete legal business identity, customer-care and grievance contacts, and GST registration status before publishing policies', 400);
+    }
+    if (!String(operations.shipping_coverage || '').trim() || !String(operations.dispatch_sla || '').trim() ||
+        !String(operations.delivery_estimate || '').trim() || !Number.isInteger(operations.return_window_days) ||
+        !String(operations.return_conditions || '').trim() || !String(operations.return_shipping_rule || '').trim() ||
+        !String(operations.refund_sla || '').trim() || !String(operations.cod_refund_method || '').trim() ||
+        !String(operations.confirmed_by || '').trim()) {
+      throw new AppError('Confirm actual shipping, return, refund and COD operating terms before publishing policies', 400);
+    }
+  }
+
   const result = await query(
     `UPDATE store_settings SET setting_value=$1,updated_by=$2,updated_at=NOW()
      WHERE setting_key='legal_policies' RETURNING setting_value,updated_at`,
