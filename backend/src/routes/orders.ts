@@ -273,6 +273,12 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
        FROM order_status_history osh WHERE osh.order_id=o.id) AS history,
       (SELECT json_build_object('id',rr.id,'reason',rr.reason,'status',rr.status,'request_type',rr.request_type,'admin_note',rr.admin_note,'reviewed_at',rr.reviewed_at,'created_at',rr.created_at)
        FROM return_requests rr WHERE rr.order_id=o.id) AS return_request,
+      (SELECT json_build_object(
+        'refunded_paise', COALESCE(SUM(pr.amount_paise),0)::bigint,
+        'refunds', COALESCE(json_agg(json_build_object(
+          'amount_paise',pr.amount_paise,'currency',pr.currency,'confirmed_at',pr.confirmed_at
+        ) ORDER BY pr.confirmed_at) FILTER (WHERE pr.id IS NOT NULL),'[]'::json)
+      ) FROM payment_refund_reconciliations pr WHERE pr.order_id=o.id) AS refund_summary,
       (SELECT json_agg(json_build_object(
         'policy_slug', opa.policy_slug,
         'policy_title', opa.policy_title,
