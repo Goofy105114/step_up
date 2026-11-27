@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { CheckCircle2, LifeBuoy } from 'lucide-react';
 import api from '../lib/api';
 
-type GrievanceReceipt = {
+type TrackingResult = { ticket_number: string; subject: string; status: string; acknowledged_at: string; resolution_due_at: string; resolved_at: string | null; created_at: string };\n\ntype GrievanceReceipt = {
   ticket_number: string;
   status: string;
   acknowledged_at: string;
@@ -31,7 +31,7 @@ export default function SupportPage() {
     subject: '',
     message: '',
   });
-  const [receipt, setReceipt] = useState<GrievanceReceipt | null>(null);
+  const [receipt, setReceipt] = useState<GrievanceReceipt | null>(null);\n  const [trackingTicket, setTrackingTicket] = useState('');\n  const [trackingEmail, setTrackingEmail] = useState('');\n  const track = useMutation({\n    mutationFn: () => api.post('/grievances/track', { ticket_number: trackingTicket, customer_email: trackingEmail }).then(response => response.data.data as TrackingResult),\n  });
   const submit = useMutation({
     mutationFn: () => api.post('/grievances', form).then(response => response.data.data as GrievanceReceipt),
     onSuccess: data => setReceipt(data),
@@ -69,6 +69,22 @@ export default function SupportPage() {
           <div><p className="text-xs font-bold uppercase tracking-widest text-secondary">Customer care</p><h1 className="text-3xl font-bold text-primary">Contact STEPUP support</h1></div>
         </div>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-on-surface-variant">Use this form for order, delivery, payment, returns, product, fit-feature or privacy concerns. We’ll create a complaint reference so you can keep track of your submission.</p>
+        <section className="mt-7 rounded-2xl border border-outline-variant/50 bg-surface-container-low p-5 md:p-6">
+          <h2 className="text-lg font-bold text-primary">Track an existing complaint</h2>
+          <p className="mt-1 text-sm leading-6 text-on-surface-variant">Enter the reference shown after submission and the same email address you used.</p>
+          <form onSubmit={event => { event.preventDefault(); track.mutate(); }} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <input required value={trackingTicket} onChange={event => setTrackingTicket(event.target.value.toUpperCase())} placeholder="SUP- reference" aria-label="Complaint reference" className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm" />
+            <input required type="email" value={trackingEmail} onChange={event => setTrackingEmail(event.target.value)} placeholder="Submission email" aria-label="Email used for complaint" className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm" />
+            <button type="submit" disabled={track.isPending} className="btn-outline px-5 py-3 disabled:opacity-50">{track.isPending ? 'Checking…' : 'Track complaint'}</button>
+          </form>
+          {track.isError && <p role="alert" className="mt-3 text-sm text-red-600">{(track.error as any)?.response?.data?.message || 'Unable to find that complaint.'}</p>}
+          {track.data && <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4" aria-live="polite">
+            <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-mono text-sm font-bold text-gray-900">{track.data.ticket_number}</p><span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold capitalize text-amber-800">{track.data.status.replace('_', ' ')}</span></div>
+            <p className="mt-2 text-sm font-medium text-gray-800">{track.data.subject}</p>
+            <p className="mt-2 text-xs text-gray-500">Received and acknowledged: {new Date(track.data.acknowledged_at).toLocaleString('en-IN')}</p>
+            <p className="mt-1 text-xs text-gray-500">{track.data.resolved_at ? `Resolved: ${new Date(track.data.resolved_at).toLocaleString('en-IN')}` : `Resolution target: ${new Date(track.data.resolution_due_at).toLocaleDateString('en-IN')}`}</p>
+          </div>}
+        </section>
         <form onSubmit={event => { event.preventDefault(); submit.mutate(); }} className="mt-8 rounded-2xl border border-outline-variant/50 bg-white p-6 shadow-sm md:p-8">
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="text-sm font-semibold text-gray-700">Your name<input required minLength={2} maxLength={200} value={form.customer_name} onChange={event => update('customer_name', event.target.value)} className={inputClass} autoComplete="name" /></label>
