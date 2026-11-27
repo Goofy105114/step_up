@@ -230,13 +230,24 @@ router.post('/verify', authenticate, async (req: Request,res: Response) => {
 router.post('/webhook',async(req:Request,res:Response)=>{
   const raw=Buffer.isBuffer(req.body)?req.body:Buffer.from('');
   if(!verifyWebhookSignature(raw,req.headers['x-razorpay-signature'] as string|undefined)) return res.status(400).json({error:'Webhook signature verification failed'});
-  const event=JSON.parse(raw.toString('utf8'));
-  if(event.event==='payment.captured'){
+  let event: any;
+  try {
+    event = JSON.parse(raw.toString('utf8'));
+  } catch {
+    return res.status(400).json({error:'Invalid webhook payload'});
+  }
+  if(event?.event==='payment.captured'){
     const payment=event.payload?.payment?.entity;
-    if(payment?.id&&payment?.order_id){
+    if(
+      payment && typeof payment.id==='string' && payment.id.length>0 &&
+      typeof payment.order_id==='string' && payment.order_id.length>0 &&
+      payment.status==='captured' &&
+      Number.isSafeInteger(payment.amount) && payment.amount>0 &&
+      payment.currency==='INR'
+    ){
       const found=await query('SELECT * FROM orders WHERE payment_intent_id=$1',[payment.order_id]);
       const order=found.rows[0];
-      if(order&&Number(payment.amount)===Math.round(Number(order.total_amount)*100)&&payment.currency==='INR'){
+      if(order&&Number(payment.amount)===Math.round(Number(order.total_amount)*100)){
         const client=await pool.connect();
         try{
           await client.query('BEGIN');
