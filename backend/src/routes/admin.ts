@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import pool, { query } from '../db/pool';
 import { authenticate, authorize } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { fetchRazorpayPaymentRefunds } from '../services/razorpay';
 
 const router = Router();
 router.use(authenticate, authorize('admin', 'staff'));
@@ -828,48 +829,48 @@ router.get('/fit-operations', authorize('admin'), async (_req: Request, res: Res
 });
 
 
-/* Provider-confirmed full refund reconciliation. This records an externally completed refund; it does not call the payment provider. */
+/* Verify provider refund state and reconcile cumulative partial/full refunds. */
 router.post('/orders/:id/refund-confirmation', authorize('admin'), async (req: Request, res: Response) => {
   const providerRefundId = typeof req.body?.provider_refund_id === 'string' ? req.body.provider_refund_id.trim() : '';
-  if (!providerRefundId || providerRefundId.length > 255) {
-    throw new AppError('Enter the refund reference returned by the payment provider', 400);
-  }
+  if (!providerRefundId || providerRefundId.length > 255) throw new AppError('Enter the refund reference returned by Razorpay', 400);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const found = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
     const order = found.rows[0];
     if (!order) throw new AppError('Order not found', 404);
-    if (order.payment_method !== 'razorpay' || !order.razorpay_payment_id) {
-      throw new AppError('Only orders with a recorded Razorpay payment can be reconciled here', 409);
-    }
-    if (order.payment_status !== 'paid') {
-      throw new AppError('Only a currently paid order can be reconciled as refunded', 409);
-    }
-    if (!['cancelled', 'returned'].includes(order.status)) {
-      throw new AppError('A refund can only be recorded after cancellation or completion of the return workflow', 409);
-    }
+    if (order.payment_method !== 'razorpay' || !order.razorpay_payment_id) throw new AppError('Only orders with a recorded Razorpay payment can be reconciled here', 409);
+    if (!['paid', 'partially_refunded'].includes(order.payment_status)) throw new AppError('Order is not in a refundable payment state', 409);
+    if (!['cancelled', 'returned'].includes(order.status)) throw new AppError('A refund can only be recorded after cancellation or completion of the return workflow', 409);
     const returnState = await client.query('SELECT status FROM return_requests WHERE order_id=$1', [order.id]);
-    if (order.status === 'returned' && returnState.rows[0]?.status !== 'received') {
-      throw new AppError('The return must be marked received before recording its refund', 409);
+    if (order.status === 'returned' && returnState.rows[0]?.status !== 'received') throw new AppError('The return must be marked received before recording its refund', 409);
+    const providerRefunds = await fetchRazorpayPaymentRefunds(order.razorpay_payment_id);
+    const providerRefund = providerRefunds.find((item: any) => item.id === providerRefundId);
+    if (!providerRefund || providerRefund.payment_id !== order.razorpay_payment_id || providerRefund.status !== 'processed' || !Number.isSafeInteger(providerRefund.amount) || providerRefund.amount <= 0 || providerRefund.currency !== 'INR') {
+      throw new AppError('Razorpay has not confirmed this refund as processed for the recorded payment', 409);
     }
-    const amountPaise = Math.round(Number(order.total_amount) * 100);
-    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0) {
-      throw new AppError('Order amount is invalid; refund reconciliation is blocked', 409);
+    const orderAmountPaise = Math.round(Number(order.total_amount) * 100);
+    const prior = await client.query('SELECT COALESCE(SUM(amount_paise),0)::bigint AS refunded FROM payment_refund_reconciliations WHERE order_id=$1', [order.id]);
+    const alreadyRefunded = Number(prior.rows[0]?.refunded || 0);
+    const newTotal = alreadyRefunded + Number(providerRefund.amount);
+    if (!Number.isSafeInteger(orderAmountPaise) || orderAmountPaise <= 0 || !Number.isSafeInteger(newTotal) || newTotal > orderAmountPaise) {
+      throw new AppError('Refund total would exceed the captured order amount; reconciliation is blocked', 409);
     }
     await client.query(
       `INSERT INTO payment_refund_reconciliations
         (order_id, provider, provider_refund_id, provider_payment_id, amount_paise, currency, confirmed_by)
        VALUES ($1,'razorpay',$2,$3,$4,'INR',$5)`,
-      [order.id, providerRefundId, order.razorpay_payment_id, amountPaise, req.user!.userId]
+      [order.id, providerRefundId, order.razorpay_payment_id, providerRefund.amount, req.user!.userId]
     );
-    await client.query("UPDATE orders SET payment_status='refunded',status='refunded',updated_at=NOW() WHERE id=$1", [order.id]);
+    const fullyRefunded = newTotal === orderAmountPaise;
+    await client.query("UPDATE orders SET payment_status=$2, status=CASE WHEN $2='refunded' THEN 'refunded' ELSE status END, updated_at=NOW() WHERE id=$1",
+      [order.id, fullyRefunded ? 'refunded' : 'partially_refunded']);
     await client.query(
-      "INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,'refunded',$2,$3)",
-      [order.id, 'Full Razorpay refund confirmed externally; reference: ' + providerRefundId, req.user!.userId]
+      "INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)",
+      [order.id, fullyRefunded ? 'refunded' : order.status, (fullyRefunded ? 'Full' : 'Partial') + ' Razorpay refund verified via API; reference: ' + providerRefundId, req.user!.userId]
     );
     await client.query('COMMIT');
-    return res.json({ success: true, message: 'Provider-confirmed full refund recorded', data: { order_id: order.id, provider_refund_id: providerRefundId, amount_paise: amountPaise, currency: 'INR' } });
+    return res.json({ success: true, data: { order_id: order.id, provider_refund_id: providerRefundId, refund_amount_paise: Number(providerRefund.amount), cumulative_refund_paise: newTotal, remaining_refundable_paise: orderAmountPaise - newTotal, payment_status: fullyRefunded ? 'refunded' : 'partially_refunded' } });
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
