@@ -208,7 +208,14 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
       (SELECT json_agg(json_build_object('status',osh.status,'note',osh.note,'created_at',osh.created_at) ORDER BY osh.created_at)
        FROM order_status_history osh WHERE osh.order_id=o.id) AS history,
       (SELECT json_build_object('id',rr.id,'reason',rr.reason,'status',rr.status,'created_at',rr.created_at)
-       FROM return_requests rr WHERE rr.order_id=o.id) AS return_request
+       FROM return_requests rr WHERE rr.order_id=o.id) AS return_request,
+      (SELECT json_agg(json_build_object(
+        'policy_slug', opa.policy_slug,
+        'policy_title', opa.policy_title,
+        'content_sha256', opa.content_sha256,
+        'accepted_at', opa.accepted_at
+      ) ORDER BY opa.policy_slug)
+       FROM order_policy_acceptances opa WHERE opa.order_id=o.id) AS policy_acceptances
      FROM orders o WHERE o.id=$1 AND o.user_id=$2`, [req.params.id, req.user!.userId]);
   if (!result.rows[0]) throw new AppError('Order not found', 404);
   return res.json({ success: true, data: result.rows[0] });
