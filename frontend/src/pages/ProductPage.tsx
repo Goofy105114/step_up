@@ -155,7 +155,9 @@ export default function ProductPage() {
   const hasAvailableStock = product.variants?.some((variant: any) => Number(variant.stock_qty) > 0) || false;
   const basePrice = parseFloat(product.base_price);
   const salePrice = product.sale_price ? parseFloat(product.sale_price) : null;
-  const discount = salePrice ? Math.round(((basePrice - salePrice) / basePrice) * 100) : 0;
+  const prior30DayPrice = product.price_disclosure?.discount_comparison_eligible ? Number(product.price_disclosure.prior_30_day_lowest_price) : null;
+  const currentDisplayPrice = salePrice ?? basePrice;
+  const discount = prior30DayPrice && prior30DayPrice > currentDisplayPrice ? Math.round(((prior30DayPrice - currentDisplayPrice) / prior30DayPrice) * 100) : 0;
 
   const SPECS = [
     ...(product.material ? [{ icon: 'layers', title: 'Material', desc: product.material }] : []),
@@ -271,8 +273,10 @@ export default function ProductPage() {
                 <span className="text-display-hero-mobile font-bold text-primary">
                   {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(salePrice ?? basePrice)}
                 </span>
-                {salePrice !== null && <span className="text-title-md text-on-surface-variant line-through">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(basePrice)}</span>}
+                {discount > 0 && prior30DayPrice !== null && <span className="text-title-md text-on-surface-variant line-through">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(prior30DayPrice)}</span>}
                 {discount > 0 && <span className="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container px-space-sm py-0.5 rounded-full text-label-badge font-bold">-{discount}% OFF</span>}
+                {salePrice !== null && discount === 0 && <span className="text-xs text-on-surface-variant">Offer price</span>}
+                {discount > 0 && <p className="mt-1 text-xs text-on-surface-variant">Compared with the lowest price recorded during the previous 30 days.</p>}
               </div>
             </div>
 

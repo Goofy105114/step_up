@@ -59,6 +59,12 @@ export default function AdminProductForm() {
     queryFn: () => api.get(`/admin/products/${id}`).then((r) => r.data.data),
   });
 
+  const { data: priceHistoryData, isLoading: priceHistoryLoading } = useQuery({
+    queryKey: ['admin-product-price-history', id],
+    enabled: isEdit,
+    queryFn: () => api.get(`/admin/products/${id}/price-history`).then((r) => r.data.data),
+  });
+
   useEffect(() => {
     if (!productData) return;
     setForm({
@@ -298,6 +304,27 @@ export default function AdminProductForm() {
               <input type="number" min="0" step="0.01" value={form.base_price}
                 onChange={(e) => setField('base_price', e.target.value)} className="input-field" placeholder="2499.00" required />
             </div>
+            {isEdit && (
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:col-span-2">
+                <h3 className="text-sm font-bold text-gray-900">Price history & promotion evidence</h3>
+                {priceHistoryLoading ? <p className="mt-2 text-xs text-gray-500">Loading price history…</p> : priceHistoryData ? (
+                  <>
+                    <p className="mt-2 text-sm text-gray-700">{priceHistoryData.disclosure?.history_complete
+                      ? 'At least 30 days of continuous price history is recorded.'
+                      : 'A 30-day comparison is not yet available. No historical prices have been invented.'}</p>
+                    {priceHistoryData.disclosure?.prior_30_day_lowest_price !== null && priceHistoryData.disclosure?.prior_30_day_lowest_price !== undefined && (
+                      <p className="mt-1 text-xs text-gray-600">Lowest recorded price in prior 30 days: ₹{Number(priceHistoryData.disclosure.prior_30_day_lowest_price).toFixed(2)}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">{priceHistoryData.disclosure?.reason || 'This price can be compared against the previous 30-day low.'}</p>
+                    <div className="mt-3 space-y-1">
+                      {priceHistoryData.history?.slice(0, 5).map((entry: any) => (
+                        <p key={entry.valid_from} className="text-xs text-gray-500">{new Date(entry.valid_from).toLocaleString('en-IN')} · ₹{Number(entry.effective_price).toFixed(2)} · {entry.change_type.replace('_', ' ')}</p>
+                      ))}
+                    </div>
+                  </>
+                ) : <p className="mt-2 text-xs text-amber-700">Price history is unavailable. Confirm that the reviewed price-history migration has been applied before publishing promotions.</p>}
+              </div>
+            )}
             <div>
               <label className="label">Sale Price (₹)</label>
               <input type="number" min="0" step="0.01" value={form.sale_price}
