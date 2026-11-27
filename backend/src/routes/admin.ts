@@ -816,6 +816,44 @@ router.patch('/return-requests/:id', authorize('admin'), async (req: Request, re
 
 
 /* ── Legal policy drafts and publication ───────────────────────────── */
+/* ── Customer grievances ─────────────────────────────────────────────── */
+router.get('/grievances', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query(
+    `SELECT id, ticket_number, customer_name, customer_email, customer_phone, order_number,
+      subject, message, status, admin_note, acknowledged_at, resolution_due_at,
+      resolved_at, created_at, updated_at
+     FROM customer_grievances
+     ORDER BY CASE WHEN status IN ('resolved', 'rejected') THEN 1 ELSE 0 END,
+       resolution_due_at ASC, created_at ASC
+     LIMIT 200`
+  );
+  return res.json({ success: true, data: result.rows });
+});
+
+router.patch('/grievances/:id', authorize('admin'), async (req: Request, res: Response) => {
+  const { status, admin_note } = req.body || {};
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    throw new AppError('Invalid grievance reference', 400);
+  }
+  if (!['open', 'in_progress', 'resolved', 'rejected'].includes(status)) {
+    throw new AppError('Choose a valid grievance status', 400);
+  }
+  if (admin_note !== undefined && (typeof admin_note !== 'string' || admin_note.trim().length > 5000)) {
+    throw new AppError('Internal note must be 5000 characters or fewer', 400);
+  }
+  const result = await query(
+    `UPDATE customer_grievances
+     SET status=$1, admin_note=COALESCE($2, admin_note),
+         resolved_at=CASE WHEN $1='resolved' THEN COALESCE(resolved_at, NOW()) ELSE NULL END,
+         updated_by=$3, updated_at=NOW()
+     WHERE id=$4
+     RETURNING id, ticket_number, status, admin_note, acknowledged_at, resolution_due_at, resolved_at, updated_at`,
+    [status, admin_note === undefined ? null : admin_note.trim(), req.user!.userId, req.params.id]
+  );
+  if (!result.rows[0]) throw new AppError('Grievance not found', 404);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
 router.get('/legal-policies', authorize('admin'), async (_req: Request, res: Response) => {
   const result = await query("SELECT setting_value,updated_at FROM store_settings WHERE setting_key='legal_policies'");
   if (!result.rows[0]) throw new AppError('Legal policy settings are not configured. Apply the reviewed legal-policy migration first.', 503);
