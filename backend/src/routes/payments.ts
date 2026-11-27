@@ -33,11 +33,11 @@ const validateOptionalBillingAddress = (billingAddress: any) => {
   ) {
     throw new AppError('One or more billing address fields exceed the allowed length', 400);
   }
-  const phone = billingAddress.phone.replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '');
-  if (!/^[6-9]\\d{9}$/.test(phone)) {
+  const phone = billingAddress.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(phone)) {
     throw new AppError('Enter a valid Indian billing mobile number', 400);
   }
-  if (!/^\\d{6}$/.test(billingAddress.postal_code.trim())) {
+  if (!/^\d{6}$/.test(billingAddress.postal_code.trim())) {
     throw new AppError('Enter a valid 6-digit Indian billing PIN code', 400);
   }
   if (String(billingAddress.country || 'India').trim().toLowerCase() !== 'india') {
