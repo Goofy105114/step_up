@@ -4,7 +4,9 @@ import { useMutation } from '@tanstack/react-query';
 import { CheckCircle2, LifeBuoy } from 'lucide-react';
 import api from '../lib/api';
 
-type TrackingResult = { ticket_number: string; subject: string; status: string; acknowledged_at: string; resolution_due_at: string; resolved_at: string | null; created_at: string };\n\ntype GrievanceReceipt = {
+type TrackingResult = { ticket_number: string; subject: string; status: string; acknowledged_at: string; resolution_due_at: string; resolved_at: string | null; created_at: string };
+
+type GrievanceReceipt = {
   ticket_number: string;
   status: string;
   acknowledged_at: string;
@@ -31,7 +33,12 @@ export default function SupportPage() {
     subject: '',
     message: '',
   });
-  const [receipt, setReceipt] = useState<GrievanceReceipt | null>(null);\n  const [trackingTicket, setTrackingTicket] = useState('');\n  const [trackingEmail, setTrackingEmail] = useState('');\n  const track = useMutation({\n    mutationFn: () => api.post('/grievances/track', { ticket_number: trackingTicket, customer_email: trackingEmail }).then(response => response.data.data as TrackingResult),\n  });
+  const [receipt, setReceipt] = useState<GrievanceReceipt | null>(null);
+  const [trackingTicket, setTrackingTicket] = useState('');
+  const [trackingEmail, setTrackingEmail] = useState('');
+  const track = useMutation({
+    mutationFn: () => api.post('/grievances/track', { ticket_number: trackingTicket, customer_email: trackingEmail }).then(response => response.data.data as TrackingResult),
+  });
   const submit = useMutation({
     mutationFn: () => api.post('/grievances', form).then(response => response.data.data as GrievanceReceipt),
     onSuccess: data => setReceipt(data),
