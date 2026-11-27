@@ -210,12 +210,32 @@ export default function OrderDetailPage() {
                   {order.payment_status === 'paid' ? 'Paid' :
                     order.payment_status === 'failed' ? 'Failed' :
                     order.payment_status === 'refunded' ? 'Refunded' :
+                    order.payment_status === 'partially_refunded' ? 'Partially refunded' :
                     order.payment_method === 'cod' ? 'Pay on delivery' : 'Pending confirmation'}
                 </span>
               </div>
             </div>
           </div>
         </div>
+
+        {Number(order.refund_summary?.refunded_paise || 0) > 0 && (
+          <section className="mt-5 border border-gray-200 bg-white p-5" aria-labelledby="refund-status-heading">
+            <h3 id="refund-status-heading" className="text-xs font-bold uppercase tracking-widest text-gray-700">Refund status</h3>
+            <p className="mt-2 text-sm text-gray-700">
+              {order.payment_status === 'refunded' ? 'Full refund recorded' : 'Partial refund recorded'}:
+              <strong className="ml-1">{formatPrice(Number(order.refund_summary.refunded_paise) / 100)}</strong>
+            </p>
+            <ul className="mt-3 space-y-2">
+              {(order.refund_summary.refunds || []).map((refund: any, index: number) => (
+                <li key={`${refund.confirmed_at}-${index}`} className="flex flex-wrap justify-between gap-2 text-xs text-gray-500">
+                  <span>{formatDate(refund.confirmed_at)}</span>
+                  <span>{formatPrice(Number(refund.amount_paise) / 100)} confirmed</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs leading-5 text-gray-500">These amounts reflect refunds confirmed by the payment provider and recorded by STEPUP. Bank or card posting times may differ.</p>
+          </section>
+        )}
 
         {/* Tracking */}
         {order.tracking_number && (
