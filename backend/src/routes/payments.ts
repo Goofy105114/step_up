@@ -108,9 +108,10 @@ router.post('/create-order', authenticate, async (req: Request, res: Response) =
     const tax = taxableAmount * (gstRatePercent / 100);
     const total = taxableAmount + shipping + tax;
     const orderNo='ORD-'+Date.now()+'-'+randomBytes(8).toString('hex');
+    const billingAddress = req.body?.billing_address ?? address;
     const inserted=await client.query(`INSERT INTO orders (order_number,user_id,subtotal,discount_amount,shipping_amount,tax_amount,total_amount,coupon_id,shipping_address,billing_address,payment_method,payment_status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'razorpay','pending') RETURNING *`,
-      [orderNo,req.user!.userId,subtotal,discount,shipping,tax,total,couponId,JSON.stringify(address)]);
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'razorpay','pending') RETURNING *`,
+      [orderNo,req.user!.userId,subtotal,discount,shipping,tax,total,couponId,JSON.stringify(address),JSON.stringify(billingAddress)]);
     order=inserted.rows[0];
     for (const item of items.rows) {
       const stock=await client.query('UPDATE product_variants SET stock_qty=stock_qty-$1 WHERE id=$2 AND stock_qty >= $1 RETURNING id',[item.quantity,item.variant_id]);
