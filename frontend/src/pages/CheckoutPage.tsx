@@ -11,6 +11,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCartStore();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [payment, setPayment] = useState('cod');
@@ -28,6 +29,13 @@ export default function CheckoutPage() {
     queryFn: () => api.get('/users/addresses').then(r => r.data),
   });
   const savedAddresses = savedAddressesData?.data || [];
+  const { data: publishedPolicies = [], isLoading: policiesLoading } = useQuery({
+    queryKey: ['legal-policy-index'],
+    queryFn: () => api.get('/legal').then(response => response.data.data as Array<{ slug: string; title: string }>),
+    retry: false,
+  });
+  const requiredPolicySlugs = ['privacy', 'terms', 'shipping', 'returns'];
+  const checkoutPoliciesReady = requiredPolicySlugs.every(slug => publishedPolicies.some(policy => policy.slug === slug));
 
   useEffect(() => {
     if (!savedAddresses.length || addressChoiceInitialized) return;
@@ -110,6 +118,7 @@ export default function CheckoutPage() {
   };
 
   const placeOrder = async () => {
+    if (!checkoutPoliciesReady || !policyAccepted) { toast.error('Review and accept the published STEPUP policies before placing your order.'); return; }
     if (!validateAddress()) return;
     if (items.some((item: any) => item.is_active === false || Number(item.stock_qty) < 1 || Number(item.quantity) > Number(item.stock_qty))) {
       toast.error('One or more cart items are unavailable or exceed current stock. Return to your bag and review quantities.');
@@ -359,6 +368,19 @@ export default function CheckoutPage() {
                     }
                   </div>
                   {appliedCoupon && <p className="text-body-sm text-secondary font-semibold mt-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">check_circle</span>Coupon applied!</p>}
+                </div>
+
+                <div className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-4">
+                  {policiesLoading ? <p className="text-sm text-on-surface-variant">Checking current store policies…</p> : !checkoutPoliciesReady ? (
+                    <p role="alert" className="text-sm leading-6 text-on-surface-variant">Checkout is temporarily unavailable because STEPUP has not published all required customer policies. Please try again later.</p>
+                  ) : (
+                    <>
+                      <label className="flex items-start gap-3 text-sm leading-6 text-on-surface">
+                        <input type="checkbox" checked={policyAccepted} onChange={event => setPolicyAccepted(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-current" />
+                        <span>I have read and agree to the STEPUP <Link to="/policies/terms" target="_blank" rel="noreferrer" className="font-semibold underline">Terms of Use</Link>, <Link to="/policies/privacy" target="_blank" rel="noreferrer" className="font-semibold underline">Privacy Policy</Link>, <Link to="/policies/shipping" target="_blank" rel="noreferrer" className="font-semibold underline">Shipping Policy</Link> and <Link to="/policies/returns" target="_blank" rel="noreferrer" className="font-semibold underline">Returns & Refund Policy</Link>.</span>
+                      </label>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex flex-col-reverse sm:flex-row gap-space-sm">

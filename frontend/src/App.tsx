@@ -32,6 +32,8 @@ import ClinicalStudiesPage from './pages/ClinicalStudiesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage';
 import AboutPage from './pages/AboutPage';
+import LegalPolicyPage from './pages/LegalPolicyPage';
+import AdminLegalPolicies from './pages/admin/AdminLegalPolicies';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -63,6 +65,7 @@ export default function App() {
         <Route path="/find-your-fit" element={<FindYourFitPage />} />
         <Route path="/clinical-studies" element={<ClinicalStudiesPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/policies/:slug" element={<LegalPolicyPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/checkout" element={<CheckoutPage />} />
@@ -85,6 +88,7 @@ export default function App() {
           <Route path="/admin/clinical-studies" element={<AdminClinicalStudies />} />
           <Route path="/admin/lab-settings" element={<AdminLabSettings />} />
           <Route path="/admin/store-settings" element={<AdminStoreSettings />} />
+          <Route path="/admin/legal-policies" element={<AdminLegalPolicies />} />
           <Route path="/admin/patient-profiles" element={<AdminPatientProfiles />} />
           <Route path="/admin/fit-operations" element={<AdminFitOperations />} />
         </Route>

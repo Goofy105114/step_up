@@ -69,9 +69,17 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-white/45 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 border-t border-white/10 pt-6">
+          <nav aria-label="Legal policies" className="mb-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/60">
+            <Link to="/policies/privacy" className="hover:text-white">Privacy</Link>
+            <Link to="/policies/terms" className="hover:text-white">Terms</Link>
+            <Link to="/policies/shipping" className="hover:text-white">Shipping</Link>
+            <Link to="/policies/returns" className="hover:text-white">Returns & refunds</Link>
+          </nav>
+          <div className="flex flex-col gap-3 text-xs text-white/45 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} STEPUP. All rights reserved.</p>
           <p>Product information is provided for general shopping purposes and is not medical advice.</p>
+          </div>
         </div>
       </div>
     </footer>

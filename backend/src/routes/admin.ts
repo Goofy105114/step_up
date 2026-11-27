@@ -814,4 +814,40 @@ router.patch('/return-requests/:id', authorize('admin'), async (req: Request, re
   }
 });
 
+
+/* ── Legal policy drafts and publication ───────────────────────────── */
+router.get('/legal-policies', authorize('admin'), async (_req: Request, res: Response) => {
+  const result = await query("SELECT setting_value,updated_at FROM store_settings WHERE setting_key='legal_policies'");
+  if (!result.rows[0]) throw new AppError('Legal policy settings are not configured. Apply the reviewed legal-policy migration first.', 503);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
+router.put('/legal-policies', authorize('admin'), async (req: Request, res: Response) => {
+  const value = req.body?.setting_value;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.policies)) {
+    throw new AppError('Legal policy settings must include a policies array', 400);
+  }
+  const allowed = ['privacy', 'terms', 'shipping', 'returns'];
+  const seen = new Set<string>();
+  for (const policy of value.policies) {
+    if (!policy || !allowed.includes(policy.slug) || seen.has(policy.slug) ||
+        typeof policy.title !== 'string' || typeof policy.content !== 'string' ||
+        !['draft', 'published'].includes(policy.status) || policy.content.length > 30000) {
+      throw new AppError('Each policy needs a unique supported slug, title, content and valid status', 400);
+    }
+    seen.add(policy.slug);
+    if (policy.status === 'published' && /\[(COMPANY|ADD |CONFIRM|PRIVACY|LEGAL ENTITY|OFFICIAL|COMPANY MUST)/i.test(policy.content)) {
+      throw new AppError('Resolve all company-specific placeholders before publishing a policy', 400);
+    }
+  }
+  if (allowed.some(slug => !seen.has(slug))) throw new AppError('All four policy documents must be retained', 400);
+  const result = await query(
+    `UPDATE store_settings SET setting_value=$1,updated_by=$2,updated_at=NOW()
+     WHERE setting_key='legal_policies' RETURNING setting_value,updated_at`,
+    [JSON.stringify({ ...value, last_reviewed_at: new Date().toISOString() }), req.user!.userId]
+  );
+  if (!result.rows[0]) throw new AppError('Legal policy settings are not configured', 503);
+  return res.json({ success: true, data: result.rows[0] });
+});
+
 export default router;
