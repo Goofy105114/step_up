@@ -14,6 +14,7 @@ export default function OrderDetailPage() {
   const qc = useQueryClient();
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [returnReason, setReturnReason] = useState('');
+  const [returnType, setReturnType] = useState('standard');
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['order', id],
@@ -27,12 +28,13 @@ export default function OrderDetailPage() {
   });
 
   const returnMutation = useMutation({
-    mutationFn: (reason: string) => api.post(`/orders/${id}/return`, { reason }),
+    mutationFn: ({ reason, request_type }: { reason: string; request_type: string }) => api.post(`/orders/${id}/return`, { reason, request_type }),
     onSuccess: () => {
       toast.success('Return request submitted for review. No refund has been issued yet.');
       qc.invalidateQueries({ queryKey: ['order', id] });
       setShowReturnModal(false);
       setReturnReason('');
+      setReturnType('standard');
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to submit the return request'),
   });
@@ -381,27 +383,28 @@ export default function OrderDetailPage() {
                 </div>
                 <div>
                   <label className="text-xs font-bold uppercase tracking-widest text-gray-700 mb-2 block">
-                    Reason for Return *
+                    Issue category *
                   </label>
-                  <select value={returnReason} onChange={(e) => setReturnReason(e.target.value)} className="input-field mb-3">
-                    <option value="">Select a reason</option>
-                    <option>Wrong size received</option>
-                    <option>Wrong product received</option>
-                    <option>Product damaged / defective</option>
-                    <option>Product not as described</option>
-                    <option>Changed my mind</option>
-                    <option>Other</option>
+                  <select value={returnType} onChange={(e) => setReturnType(e.target.value)} className="input-field mb-3">
+                    <option value="standard">Standard return / changed my mind</option>
+                    <option value="defective">Defective product</option>
+                    <option value="damaged">Damaged in transit or on arrival</option>
+                    <option value="incorrect">Incorrect item received</option>
+                    <option value="misdescribed">Product materially not as described</option>
                   </select>
-                  <textarea rows={3} value={returnReason.startsWith('Other') ? returnReason : ''}
-                    onChange={(e) => setReturnReason('Other: ' + e.target.value)}
-                    className="input-field resize-none" placeholder="Additional details (optional)" />
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-700 mb-2 block">
+                    Details *
+                  </label>
+                  <textarea rows={4} value={returnReason} onChange={(e) => setReturnReason(e.target.value)}
+                    maxLength={1000} className="input-field resize-none"
+                    placeholder="Describe the issue (5–1000 characters)" />
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setShowReturnModal(false)} className="btn-outline flex-1 py-3">Cancel</button>
                   <button
                     type="button"
-                    disabled={!returnReason || returnMutation.isPending}
-                    onClick={() => returnMutation.mutate(returnReason)}
+                    disabled={returnReason.trim().length < 5 || returnMutation.isPending}
+                    onClick={() => returnMutation.mutate({ reason: returnReason.trim(), request_type: returnType })}
                     className="btn-primary flex-1 py-3">
                     {returnMutation.isPending ? 'Submitting…' : 'Submit Request'}
                   </button>
