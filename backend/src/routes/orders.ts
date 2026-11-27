@@ -271,7 +271,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
        FROM order_items oi WHERE oi.order_id=o.id) AS items,
       (SELECT json_agg(json_build_object('status',osh.status,'note',osh.note,'created_at',osh.created_at) ORDER BY osh.created_at)
        FROM order_status_history osh WHERE osh.order_id=o.id) AS history,
-      (SELECT json_build_object('id',rr.id,'reason',rr.reason,'status',rr.status,'created_at',rr.created_at)
+      (SELECT json_build_object('id',rr.id,'reason',rr.reason,'status',rr.status,'admin_note',rr.admin_note,'reviewed_at',rr.reviewed_at,'created_at',rr.created_at)
        FROM return_requests rr WHERE rr.order_id=o.id) AS return_request,
       (SELECT json_agg(json_build_object(
         'policy_slug', opa.policy_slug,
