@@ -156,7 +156,8 @@ export default function ProductPage() {
   const basePrice = parseFloat(product.base_price);
   const salePrice = product.sale_price ? parseFloat(product.sale_price) : null;
   const prior30DayPrice = product.price_disclosure?.discount_comparison_eligible ? Number(product.price_disclosure.prior_30_day_lowest_price) : null;
-  const discount = prior30DayPrice && salePrice !== null && prior30DayPrice > salePrice ? Math.round(((prior30DayPrice - salePrice) / prior30DayPrice) * 100) : 0;
+  const currentDisplayPrice = salePrice ?? basePrice;
+  const discount = prior30DayPrice && prior30DayPrice > currentDisplayPrice ? Math.round(((prior30DayPrice - currentDisplayPrice) / prior30DayPrice) * 100) : 0;
 
   const SPECS = [
     ...(product.material ? [{ icon: 'layers', title: 'Material', desc: product.material }] : []),
