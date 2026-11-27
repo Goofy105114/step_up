@@ -94,7 +94,7 @@ router.get('/orders/:id/fulfilment-history', authorize('admin'), async (req: Req
 });
 
 router.patch('/orders/:id/status', async (req: Request, res: Response) => {
-  const { status, note, tracking_number, tracking_url } = req.body;
+  const { status, note, tracking_number, tracking_url, tracking_carrier } = req.body;
   const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
   if (typeof status !== 'string' || !allowedStatuses.includes(status)) {
     throw new AppError('Invalid order status', 400);
@@ -109,6 +109,9 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   if (tracking_url !== undefined && tracking_url !== null && typeof tracking_url !== 'string') {
     throw new AppError('Tracking URL must be text', 400);
   }
+  if (tracking_carrier !== undefined && tracking_carrier !== null && typeof tracking_carrier !== 'string') throw new AppError('Carrier name must be text', 400);
+  const normalizedCarrier = typeof tracking_carrier === 'string' ? tracking_carrier.trim() : null;
+  if (normalizedCarrier !== null && normalizedCarrier.length > 100) throw new AppError('Carrier name cannot exceed 100 characters', 400);
   const normalizedTrackingUrl = typeof tracking_url === 'string' ? tracking_url.trim() : null;
   if (normalizedTrackingUrl && (normalizedTrackingUrl.length > 2048 || !/^https:\/\//i.test(normalizedTrackingUrl))) {
     throw new AppError('Tracking URL must be a valid HTTPS link no longer than 2048 characters', 400);
@@ -153,7 +156,7 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     if (statusChanged && status === 'cancelled' && order.payment_status === 'paid') {
       throw new AppError('Refund the payment through the payment provider before cancelling this order.', 409);
     }
-    if (!statusChanged && tracking_number === undefined && tracking_url === undefined) {
+    if (!statusChanged && tracking_number === undefined && tracking_url === undefined && tracking_carrier === undefined) {
       await client.query('COMMIT');
       return res.json({ success: true, message: 'Order is already in that status' });
     }
@@ -166,12 +169,16 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
       params.push(status);
     }
     if (tracking_number !== undefined) {
-      updates.push(`tracking_number=${pIdx++}`);
+      updates.push(`tracking_number=$${pIdx++}`);
       params.push(normalizedTracking || null);
     }
     if (tracking_url !== undefined) {
-      updates.push(`tracking_url=${pIdx++}`);
+      updates.push(`tracking_url=$${pIdx++}`);
       params.push(normalizedTrackingUrl || null);
+    }
+    if (tracking_carrier !== undefined) {
+      updates.push(`tracking_carrier=$${pIdx++}`);
+      params.push(normalizedCarrier || null);
     }
     if (statusChanged && status === 'delivered') updates.push('delivered_at=COALESCE(delivered_at,NOW())');
     params.push(req.params.id);
