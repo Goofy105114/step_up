@@ -696,14 +696,23 @@ const parseCheckoutPricing = (value: any) => {
   const free_shipping_threshold_inr = Number(value?.free_shipping_threshold_inr);
   const shipping_fee_inr = Number(value?.shipping_fee_inr);
   const gst_rate_percent = Number(value?.gst_rate_percent);
+  const tax_enabled = value?.tax_enabled === true;
+  const tax_configuration_confirmed = value?.tax_configuration_confirmed === true;
   if (
     !Number.isFinite(free_shipping_threshold_inr) || free_shipping_threshold_inr < 0 ||
     !Number.isFinite(shipping_fee_inr) || shipping_fee_inr < 0 ||
-    !Number.isFinite(gst_rate_percent) || gst_rate_percent < 0 || gst_rate_percent > 100
+    !Number.isFinite(gst_rate_percent) || gst_rate_percent < 0 || gst_rate_percent > 100 ||
+    (tax_enabled && !tax_configuration_confirmed)
   ) {
-    throw new AppError('Enter non-negative INR amounts and a GST rate between 0 and 100', 400);
+    throw new AppError('Enter valid non-negative INR amounts and confirm accountant-reviewed tax treatment before enabling tax collection', 400);
   }
-  return { free_shipping_threshold_inr, shipping_fee_inr, gst_rate_percent };
+  return {
+    free_shipping_threshold_inr,
+    shipping_fee_inr,
+    gst_rate_percent,
+    tax_enabled,
+    tax_configuration_confirmed,
+  };
 };
 
 router.get('/store-settings/checkout-pricing', authorize('admin'), async (_req: Request, res: Response) => {
@@ -718,7 +727,7 @@ router.put('/store-settings/checkout-pricing', authorize('admin'), async (req: R
   const setting_value = parseCheckoutPricing(req.body);
   const result = await query(
     `INSERT INTO store_settings (setting_key,setting_value,description,updated_by)
-     VALUES ('checkout_pricing',$1,'Checkout shipping threshold, shipping fee and GST rate. Applies to new orders.',$2)
+     VALUES ('checkout_pricing',$1,'Checkout shipping threshold, shipping fee and explicitly approved tax configuration. Applies to new orders.',$2)
      ON CONFLICT (setting_key) DO UPDATE
        SET setting_value=EXCLUDED.setting_value,updated_by=EXCLUDED.updated_by,updated_at=NOW()
      RETURNING setting_key,setting_value,description,updated_at`,
