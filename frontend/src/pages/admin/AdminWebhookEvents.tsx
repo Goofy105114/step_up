@@ -40,7 +40,7 @@ export default function AdminWebhookEvents() {
   const pagination = events.data?.pagination;
   const money = (paise: number | string | null, currency: string | null) => {
     if (paise === null || paise === undefined || !Number.isFinite(Number(paise))) return '—';
-    return formatPrice(Number(paise) / 100, currency || 'INR');
+    return formatPrice(Number(paise) / 100);
   };
 
   return (
