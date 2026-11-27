@@ -178,18 +178,23 @@ router.get('/products/:id/price-history', authorize('admin'), async (req: Reques
   if (!product.rows[0]) throw new AppError('Product not found', 404);
   const history = await query(
     `SELECT base_price,sale_price,effective_price,change_type,valid_from,valid_to
-     FROM product_price_history WHERE product_id=$1 ORDER BY valid_from DESC LIMIT 100`,
+     FROM product_price_history WHERE product_id=$1
+     ORDER BY valid_from DESC LIMIT 200`,
     [req.params.id]
   );
   const current = history.rows.find((row: any) => row.valid_to === null);
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const complete = Boolean(current && current.change_type !== 'migration_baseline' &&
-    new Date(current.valid_from).getTime() <= cutoff.getTime());
-  const previousPrices = history.rows
-    .filter((row: any) => row.valid_to && new Date(row.valid_to).getTime() > cutoff.getTime() &&
-      new Date(row.valid_from).getTime() < Date.now())
-    .map((row: any) => Number(row.effective_price));
-  const lowestPrevious = previousPrices.length ? Math.min(...previousPrices) : null;
+  const currentStart = current ? new Date(current.valid_from).getTime() : 0;
+  const cutoff = currentStart - 30 * 24 * 60 * 60 * 1000;
+  const priorRows = history.rows.filter((row: any) => row.valid_to &&
+    new Date(row.valid_to).getTime() > cutoff &&
+    new Date(row.valid_from).getTime() < currentStart);
+  const earliestPriorStart = priorRows.length
+    ? Math.min(...priorRows.map((row: any) => new Date(row.valid_from).getTime()))
+    : 0;
+  const complete = Boolean(current && earliestPriorStart > 0 && earliestPriorStart <= cutoff);
+  const lowestPrevious = priorRows.length
+    ? Math.min(...priorRows.map((row: any) => Number(row.effective_price)))
+    : null;
   const currentPrice = Number(product.rows[0].sale_price ?? product.rows[0].base_price);
   return res.json({ success: true, data: {
     history: history.rows,
@@ -199,7 +204,7 @@ router.get('/products/:id/price-history', authorize('admin'), async (req: Reques
       current_price: currentPrice,
       period_days: 30,
       history_complete: complete,
-      reason: complete ? (lowestPrevious !== null && currentPrice < lowestPrevious ? null : 'Current price is not below the lowest recorded price in the preceding 30 days') : 'At least 30 days of continuous recorded price history is required',
+      reason: complete ? (lowestPrevious !== null && currentPrice < lowestPrevious ? null : 'Current price is not below the lowest recorded price in the 30 days before this price change') : 'At least 30 days of continuous recorded price history before this price change is required',
     },
   }});
 });
