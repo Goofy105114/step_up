@@ -199,6 +199,14 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     if (!order) throw new AppError('Order not found', 404);
 
     const statusChanged = status !== order.status;
+    if (statusChanged && status === 'shipped') {
+      const effectiveTrackingNumber = tracking_number === undefined ? order.tracking_number : normalizedTracking;
+      const effectiveTrackingUrl = tracking_url === undefined ? order.tracking_url : normalizedTrackingUrl;
+      if (!(typeof effectiveTrackingNumber === 'string' && effectiveTrackingNumber.trim()) &&
+          !(typeof effectiveTrackingUrl === 'string' && effectiveTrackingUrl.trim())) {
+        throw new AppError('Add a carrier tracking number or tracking link before marking this order as shipped.', 409);
+      }
+    }
     if (statusChanged && !allowedNextStatuses[order.status]?.includes(status)) {
       if (status === 'refunded') {
         throw new AppError('Refund status must be confirmed by the payment provider integration.', 409);
