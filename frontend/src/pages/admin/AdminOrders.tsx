@@ -11,6 +11,7 @@ export default function AdminOrders() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<Record<string, string>>({});
   const [trackingDraft, setTrackingDraft] = useState<Record<string, string>>({});
+  const [trackingUrlDraft, setTrackingUrlDraft] = useState<Record<string, string>>({});
   const qc = useQueryClient();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -19,9 +20,9 @@ export default function AdminOrders() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status, tracking_number }: { id: string; status: string; tracking_number?: string | null }) =>
-      api.patch(`/admin/orders/${id}/status`, { status, ...(tracking_number !== undefined ? { tracking_number } : {}) }),
-    onSuccess: (_response, variables) => { qc.invalidateQueries({ queryKey: ['admin', 'orders'] }); toast.success(variables.tracking_number !== undefined ? 'Tracking details saved' : 'Status updated'); setUpdating(null); setPendingStatus((current) => { const next = { ...current }; delete next[variables.id]; return next; }); setTrackingDraft((current) => { const next = { ...current }; delete next[variables.id]; return next; }); },
+    mutationFn: ({ id, status, tracking_number, tracking_url }: { id: string; status: string; tracking_number?: string | null; tracking_url?: string | null }) =>
+      api.patch(`/admin/orders/${id}/status`, { status, ...(tracking_number !== undefined ? { tracking_number } : {}), ...(tracking_url !== undefined ? { tracking_url } : {}) }),
+    onSuccess: (_response, variables) => { qc.invalidateQueries({ queryKey: ['admin', 'orders'] }); toast.success(variables.tracking_number !== undefined || variables.tracking_url !== undefined ? 'Tracking details saved' : 'Status updated'); setUpdating(null); setPendingStatus((current) => { const next = { ...current }; delete next[variables.id]; return next; }); setTrackingDraft((current) => { const next = { ...current }; delete next[variables.id]; return next; }); setTrackingUrlDraft((current) => { const next = { ...current }; delete next[variables.id]; return next; }); },
     onError: (error: any, variables) => { toast.error(error.response?.data?.message || 'Unable to update order status'); setPendingStatus((current) => { const next = { ...current }; delete next[variables.id]; return next; }); },
   });
 
@@ -72,6 +73,9 @@ export default function AdminOrders() {
                         <input type="text" aria-label={`Tracking number for order ${order.order_number}`} value={trackingDraft[order.id] ?? order.tracking_number ?? ''} onChange={(e) => setTrackingDraft((current) => ({ ...current, [order.id]: e.target.value }))} placeholder="Add tracking number" className="w-40 border border-gray-200 rounded-lg px-2 py-1 text-xs" />
                         {(trackingDraft[order.id] ?? order.tracking_number ?? '') !== (order.tracking_number ?? '') && <button type="button" disabled={updateMutation.isPending} onClick={() => updateMutation.mutate({ id: order.id, status: order.status, tracking_number: (trackingDraft[order.id] ?? '').trim() || null })} className="text-left text-xs font-medium text-brand-600 hover:text-brand-800 disabled:opacity-50">Save tracking</button>}
                         {order.tracking_number && <span className="text-xs text-gray-500">Current: {order.tracking_number}</span>}
+                        <input type="url" aria-label={`Carrier tracking URL for order ${order.order_number}`} value={trackingUrlDraft[order.id] ?? order.tracking_url ?? ''} onChange={(e) => setTrackingUrlDraft((current) => ({ ...current, [order.id]: e.target.value }))} placeholder="https://carrier.example/track/…" className="w-48 border border-gray-200 rounded-lg px-2 py-1 text-xs" />
+                        {(trackingUrlDraft[order.id] ?? order.tracking_url ?? '') !== (order.tracking_url ?? '') && <button type="button" disabled={updateMutation.isPending} onClick={() => updateMutation.mutate({ id: order.id, status: order.status, tracking_url: (trackingUrlDraft[order.id] ?? '').trim() || null })} className="text-left text-xs font-medium text-brand-600 hover:text-brand-800 disabled:opacity-50">Save tracking link</button>}
+                        {order.tracking_url && <a href={order.tracking_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-700 underline">Open carrier tracking</a>}
                       </div>
                     </td>
                     <td className="px-4 py-3">
