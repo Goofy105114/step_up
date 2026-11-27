@@ -243,9 +243,9 @@ const getProductColumnNames = async () => {
 };
 
 router.post('/products', authorize('admin'), async (req: Request, res: Response) => {
-  const { name, slug, description, short_description, category_id, base_price, sale_price, sku, material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a, calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller } = req.body;
+  const { name, slug, description, short_description, category_id, base_price, sale_price, sku, material, care_instructions, arch_support_level, arch_height_mm, durometer_shore_a, calibration_reference, calibrated_at, calibration_notes, tags, is_featured, is_new_arrival, is_bestseller, generic_product_name, manufacturer_name, packer_name, importer_name, country_of_origin, consumer_care_details, mrp_inr, declarations_verified } = req.body;
   if (typeof name !== 'string' || typeof slug !== 'string') throw new AppError('Product name and slug must be text', 400);
-  const optionalTextFields = { description, short_description, sku, material, care_instructions, calibration_reference, calibration_notes };
+  const optionalTextFields = { description, short_description, sku, material, care_instructions, calibration_reference, calibration_notes, generic_product_name, manufacturer_name, packer_name, importer_name, country_of_origin, consumer_care_details };
   for (const [field, value] of Object.entries(optionalTextFields)) {
     if (value !== undefined && value !== null && typeof value !== 'string') throw new AppError(`Product ${field.replace(/_/g, ' ')} must be text`, 400);
   }
@@ -277,6 +277,10 @@ router.post('/products', authorize('admin'), async (req: Request, res: Response)
   if (arch_support_level && !['low', 'medium', 'high'].includes(arch_support_level)) throw new AppError('Invalid arch support level', 400);
   if (arch_height_mm !== undefined && arch_height_mm !== null && arch_height_mm !== '' && (!Number.isFinite(Number(arch_height_mm)) || Number(arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (durometer_shore_a !== undefined && durometer_shore_a !== null && durometer_shore_a !== '' && (!Number.isFinite(Number(durometer_shore_a)) || Number(durometer_shore_a) < 0 || Number(durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
+  if (mrp_inr !== undefined && mrp_inr !== null && mrp_inr !== '' && (!Number.isFinite(Number(mrp_inr)) || Number(mrp_inr) <= 0 || Number(mrp_inr) < (sale ?? base))) throw new AppError('MRP must be positive and at least the selling price', 400);
+  if (declarations_verified !== undefined && typeof declarations_verified !== 'boolean') throw new AppError('Declaration verification must be a boolean', 400);
+  if (declarations_verified === true && ![generic_product_name, country_of_origin, consumer_care_details].every(value => typeof value === 'string' && value.trim())) throw new AppError('Generic product name, country of origin and consumer-care details are required before verification', 400);
+  if (declarations_verified === true && ![manufacturer_name, packer_name, importer_name].some(value => typeof value === 'string' && value.trim())) throw new AppError('Provide the applicable manufacturer, packer or importer details before verification', 400);
   const payload: Record<string, unknown> = {
     name: String(name).trim(), slug: String(slug).trim(), description: description || null, short_description: short_description || null,
     category_id: category_id || null, base_price: base, sale_price: sale, sku: sku || null, material: material || null,
@@ -285,6 +289,10 @@ router.post('/products', authorize('admin'), async (req: Request, res: Response)
     arch_height_mm: arch_height_mm === '' || arch_height_mm === undefined ? null : arch_height_mm,
     durometer_shore_a: durometer_shore_a === '' || durometer_shore_a === undefined ? null : durometer_shore_a,
     calibration_reference: calibration_reference || null, calibrated_at: calibrated_at || null, calibration_notes: calibration_notes || null,
+    generic_product_name: generic_product_name || null, manufacturer_name: manufacturer_name || null, packer_name: packer_name || null,
+    importer_name: importer_name || null, country_of_origin: country_of_origin || null, consumer_care_details: consumer_care_details || null,
+    mrp_inr: mrp_inr === undefined || mrp_inr === null || mrp_inr === '' ? null : Number(mrp_inr),
+    declarations_verified: declarations_verified === true,
   };
   const available = await getProductColumnNames();
   const columns = Object.keys(payload).filter(column => available.has(column));
@@ -295,14 +303,14 @@ router.post('/products', authorize('admin'), async (req: Request, res: Response)
 });
 
 router.patch('/products/:id', authorize('admin'), async (req: Request, res: Response) => {
-  const fields = ['name','slug','description','short_description','category_id','base_price','sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags'];
-  const textFields = ['name','slug','description','short_description','sku','material','care_instructions','calibration_reference','calibration_notes'];
+  const fields = ['name','slug','description','short_description','category_id','base_price','sale_price','sku','is_active','is_featured','is_new_arrival','is_bestseller','material','care_instructions','arch_support_level','arch_height_mm','durometer_shore_a','calibration_reference','calibrated_at','calibration_notes','tags','generic_product_name','manufacturer_name','packer_name','importer_name','country_of_origin','consumer_care_details','mrp_inr','declarations_verified'];
+  const textFields = ['name','slug','description','short_description','sku','material','care_instructions','calibration_reference','calibration_notes','generic_product_name','manufacturer_name','packer_name','importer_name','country_of_origin','consumer_care_details'];
   for (const field of textFields) {
     if (req.body[field] !== undefined && req.body[field] !== null && typeof req.body[field] !== 'string') {
       throw new AppError(`Product ${field.replace(/_/g, ' ')} must be text`, 400);
     }
   }
-  for (const field of ['is_active','is_featured','is_new_arrival','is_bestseller']) {
+  for (const field of ['is_active','is_featured','is_new_arrival','is_bestseller','declarations_verified']) {
     if (req.body[field] !== undefined && typeof req.body[field] !== 'boolean') {
       throw new AppError(`${field.replace(/_/g, ' ')} must be a boolean`, 400);
     }
@@ -323,6 +331,11 @@ router.patch('/products/:id', authorize('admin'), async (req: Request, res: Resp
   if (req.body.calibrated_at !== undefined && req.body.calibrated_at !== null && typeof req.body.calibrated_at !== 'string') {
     throw new AppError('Calibration date must be text', 400);
   }
+  const declarationFields = ['generic_product_name','manufacturer_name','packer_name','importer_name','country_of_origin','consumer_care_details','mrp_inr'];
+  const declarationChanged = declarationFields.some(field => req.body[field] !== undefined);
+  if (declarationChanged && req.body.declarations_verified !== true) {
+    req.body.declarations_verified = false;
+  }
   const available = await getProductColumnNames();
   const updates: string[] = [];
   const params: unknown[] = [];
@@ -341,6 +354,19 @@ router.patch('/products/:id', authorize('admin'), async (req: Request, res: Resp
   if (req.body.arch_support_level !== undefined && req.body.arch_support_level !== null && !['low', 'medium', 'high'].includes(req.body.arch_support_level)) throw new AppError('Invalid arch support level', 400);
   if (req.body.arch_height_mm !== undefined && req.body.arch_height_mm !== null && req.body.arch_height_mm !== '' && (!Number.isFinite(Number(req.body.arch_height_mm)) || Number(req.body.arch_height_mm) <= 0)) throw new AppError('Arch height must be a positive number of millimetres', 400);
   if (req.body.durometer_shore_a !== undefined && req.body.durometer_shore_a !== null && req.body.durometer_shore_a !== '' && (!Number.isFinite(Number(req.body.durometer_shore_a)) || Number(req.body.durometer_shore_a) < 0 || Number(req.body.durometer_shore_a) > 100)) throw new AppError('Durometer must be between 0 and 100 Shore A', 400);
+  if (req.body.mrp_inr !== undefined && req.body.mrp_inr !== null && req.body.mrp_inr !== '' && (!Number.isFinite(Number(req.body.mrp_inr)) || Number(req.body.mrp_inr) <= 0)) throw new AppError('MRP must be a positive INR amount', 400);
+  if (req.body.declarations_verified === true || req.body.mrp_inr !== undefined) {
+    const current = await query('SELECT * FROM products WHERE id=$1', [req.params.id]);
+    if (!current.rows[0]) throw new AppError('Product not found', 404);
+    const merged = { ...current.rows[0], ...req.body };
+    const sellingPrice = Number(merged.sale_price ?? merged.base_price);
+    if (merged.mrp_inr !== null && merged.mrp_inr !== undefined && (!Number.isFinite(Number(merged.mrp_inr)) || Number(merged.mrp_inr) < sellingPrice)) throw new AppError('MRP must be at least the selling price', 400);
+    if (req.body.declarations_verified === true) {
+      if (!Number.isFinite(Number(merged.mrp_inr)) || Number(merged.mrp_inr) < sellingPrice) throw new AppError('A valid MRP at least equal to the selling price is required before verification', 400);
+      if (![merged.generic_product_name, merged.country_of_origin, merged.consumer_care_details].every(value => typeof value === 'string' && value.trim())) throw new AppError('Generic product name, country of origin and consumer-care details are required before verification', 400);
+      if (![merged.manufacturer_name, merged.packer_name, merged.importer_name].some(value => typeof value === 'string' && value.trim())) throw new AppError('Provide the applicable manufacturer, packer or importer details before verification', 400);
+    }
+  }
   if (!updates.length) throw new AppError('No supported product fields to update', 400);
   params.push(req.params.id);
   const result = await query(`UPDATE products SET ${updates.join(',')},updated_at=NOW() WHERE id=$${index} RETURNING *`, params);
