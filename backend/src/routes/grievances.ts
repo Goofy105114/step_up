@@ -39,7 +39,7 @@ router.post('/', grievanceLimiter, async (req: Request, res: Response) => {
     throw new AppError('Describe your concern in 10–5000 characters', 400);
   }
 
-  const ticketNumber = 'SUP-' + Date.now() + '-' + randomBytes(4).toString('hex').toUpperCase();
+  const ticketNumber = 'SUP-' + randomBytes(12).toString('hex').toUpperCase();
   const result = await query(
     `INSERT INTO customer_grievances
       (ticket_number, customer_name, customer_email, customer_phone, order_number, subject, message, status, acknowledged_at, resolution_due_at)
@@ -53,6 +53,22 @@ router.post('/', grievanceLimiter, async (req: Request, res: Response) => {
     message: 'Your complaint has been received and assigned a reference number.',
     data: result.rows[0],
   });
+});
+
+router.post('/track', grievanceLimiter, async (req: Request, res: Response) => {
+  const { ticket_number, customer_email } = req.body || {};
+  if (typeof ticket_number !== 'string' || !/^SUP-[A-F0-9]{24}$/.test(ticket_number.trim().toUpperCase()) ||
+      typeof customer_email !== 'string' || !validEmail(customer_email.trim())) {
+    throw new AppError('Enter a valid complaint reference and the email address used when submitting it', 400);
+  }
+  const result = await query(
+    `SELECT ticket_number, subject, status, acknowledged_at, resolution_due_at, resolved_at, created_at
+     FROM customer_grievances
+     WHERE ticket_number=$1 AND LOWER(customer_email)=LOWER($2)`,
+    [ticket_number.trim().toUpperCase(), customer_email.trim()]
+  );
+  if (!result.rows[0]) throw new AppError('No complaint was found for that reference and email combination', 404);
+  return res.json({ success: true, data: result.rows[0] });
 });
 
 export default router;
