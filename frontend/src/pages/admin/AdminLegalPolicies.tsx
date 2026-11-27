@@ -34,6 +34,34 @@ export default function AdminLegalPolicies() {
     ...current, policies: current.policies.map(policy => policy.slug === slug ? { ...policy, ...patch } : policy)
   }) : current);
   const placeholders = settings?.policies.some(policy => policy.status === 'published' && /\[[A-Z][A-Z _-]+\]/.test(policy.content));
+  const updateIdentity = (key: keyof BusinessIdentity, value: string | boolean) => setSettings(current => current ? ({
+    ...current, business_identity: { ...current.business_identity, [key]: value }
+  }) : current);
+  const updateOperations = (key: keyof Operations, value: string | number | null) => setSettings(current => current ? ({
+    ...current, operational_confirmation: { ...current.operational_confirmation, [key]: value }
+  }) : current);
+  const fieldClass = 'mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100';
+  const identityFields: Array<{ key: 'legal_name' | 'registered_address' | 'customer_care_email' | 'customer_care_phone' | 'grievance_officer_name' | 'grievance_officer_designation' | 'grievance_email' | 'grievance_phone'; label: string; type?: string }> = [
+    { key: 'legal_name', label: 'Registered legal business name' },
+    { key: 'registered_address', label: 'Registered / principal business address' },
+    { key: 'customer_care_email', label: 'Customer-care email', type: 'email' },
+    { key: 'customer_care_phone', label: 'Customer-care phone', type: 'tel' },
+    { key: 'grievance_officer_name', label: 'Grievance officer name' },
+    { key: 'grievance_officer_designation', label: 'Grievance officer designation' },
+    { key: 'grievance_email', label: 'Grievance contact email', type: 'email' },
+    { key: 'grievance_phone', label: 'Grievance contact phone', type: 'tel' },
+  ];
+  const operationFields: Array<{ key: keyof Operations; label: string; multiline?: boolean }> = [
+    { key: 'shipping_coverage', label: 'Serviceable locations / PIN-code coverage', multiline: true },
+    { key: 'dispatch_sla', label: 'Order processing and dispatch commitment' },
+    { key: 'delivery_estimate', label: 'Delivery estimate and exceptions' },
+    { key: 'return_conditions', label: 'Return eligibility and product-condition rules', multiline: true },
+    { key: 'return_shipping_rule', label: 'Who pays return shipping, and when' },
+    { key: 'refund_sla', label: 'Refund processing commitment' },
+    { key: 'cod_refund_method', label: 'COD refund method' },
+    { key: 'confirmed_by', label: 'Operations details confirmed by' },
+  ];
+
 
   return <div className="max-w-5xl space-y-6">
     <header>
