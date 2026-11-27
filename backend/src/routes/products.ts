@@ -166,6 +166,16 @@ router.get('/:slug', async (req: Request, res: Response) => {
   );
   if (!result.rows[0]) throw new AppError('Product not found', 404);
   const product = result.rows[0];
+  // Only expose product legal declarations after an administrator has verified the applicable source documents.
+  if (product.declarations_verified !== true) {
+    product.generic_product_name = null;
+    product.manufacturer_name = null;
+    product.packer_name = null;
+    product.importer_name = null;
+    product.country_of_origin = null;
+    product.consumer_care_details = null;
+    product.mrp_inr = null;
+  }
   const history = await query(
     `SELECT base_price,sale_price,effective_price,change_type,valid_from,valid_to
      FROM product_price_history WHERE product_id=$1
