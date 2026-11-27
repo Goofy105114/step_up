@@ -45,7 +45,7 @@ export default function AdminOrders() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>{['Order #','Customer','Date','Status','Total','Tracking','Action'].map((h) => (
+                <tr>{['Order #','Customer','Date','Status','Total','Refunds','Tracking','Action'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}</tr>
               </thead>
@@ -62,6 +62,11 @@ export default function AdminOrders() {
                       <span className={`badge ${getStatusColor(order.status)}`}>{formatOrderStatus(order.status)}</span>
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900">{formatPrice(parseFloat(order.total_amount))}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-xs font-semibold text-gray-800">{formatPrice(Number(order.refunded_paise || 0) / 100)} refunded</p>
+                      <p className="text-xs text-gray-500">{formatPrice(Number(order.remaining_refundable_paise ?? Math.round(Number(order.total_amount) * 100)) / 100)} remaining</p>
+                      <p className="text-[10px] text-gray-400">{order.payment_status || 'Payment status unavailable'}</p>
+                    </td>
                     <td className="px-4 py-3 min-w-52">
                       <div className="flex flex-col gap-1">
                         <input type="text" aria-label={`Tracking number for order ${order.order_number}`} value={trackingDraft[order.id] ?? order.tracking_number ?? ''} onChange={(e) => setTrackingDraft((current) => ({ ...current, [order.id]: e.target.value }))} placeholder="Add tracking number" className="w-40 border border-gray-200 rounded-lg px-2 py-1 text-xs" />

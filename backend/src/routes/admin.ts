@@ -60,8 +60,16 @@ router.get('/orders', async (req: Request, res: Response) => {
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   params.push(limit, offset);
   const result = await query(
-    `SELECT o.*,u.email,u.first_name,u.last_name FROM orders o
-     LEFT JOIN users u ON o.user_id=u.id ${where}
+    `SELECT o.*,u.email,u.first_name,u.last_name,
+       COALESCE(refunds.refunded_paise,0)::bigint AS refunded_paise,
+       GREATEST(ROUND(o.total_amount * 100)::bigint - COALESCE(refunds.refunded_paise,0),0)::bigint AS remaining_refundable_paise
+     FROM orders o
+     LEFT JOIN users u ON o.user_id=u.id
+     LEFT JOIN (
+       SELECT order_id,SUM(amount_paise)::bigint AS refunded_paise
+       FROM payment_refund_reconciliations GROUP BY order_id
+     ) refunds ON refunds.order_id=o.id
+     ${where}
      ORDER BY o.created_at DESC LIMIT ${params.length - 1} OFFSET ${params.length}`,
     params);
   return res.json({ success: true, data: result.rows });
