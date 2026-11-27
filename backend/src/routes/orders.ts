@@ -140,6 +140,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     const freeShippingThreshold = Number(pricing?.free_shipping_threshold_inr);
     const shippingFee = Number(pricing?.shipping_fee_inr);
     const gstRatePercent = Number(pricing?.gst_rate_percent);
+    const taxEnabled = pricing?.tax_enabled === true;
+    const taxConfigurationConfirmed = pricing?.tax_configuration_confirmed === true;
     if (
       !Number.isFinite(freeShippingThreshold) || freeShippingThreshold < 0 ||
       !Number.isFinite(shippingFee) || shippingFee < 0 ||
@@ -148,9 +150,26 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       throw new AppError('Checkout pricing is not configured correctly. Please contact support.', 503);
     }
 
+    if (taxEnabled) {
+      if (!taxConfigurationConfirmed) {
+        throw new AppError('Tax collection is not enabled until the company confirms accountant-reviewed tax treatment.', 503);
+      }
+      const identityResult = await client.query(
+        "SELECT setting_value->'business_identity' AS identity FROM store_settings WHERE setting_key='legal_policies'"
+      );
+      const identity = identityResult.rows[0]?.identity;
+      const gstin = typeof identity?.gstin === 'string' ? identity.gstin.trim().toUpperCase() : '';
+      const gstinHasValidFormat = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin);
+      if (identity?.confirmed !== true || identity.gst_status !== 'verified' || !gstinHasValidFormat) {
+        throw new AppError('Tax collection is blocked until the company confirms its seller identity and GST registration details.', 503);
+      }
+    }
+
     const taxableAmount = Math.max(0, subtotal - discountAmount);
     const shippingAmount = taxableAmount >= freeShippingThreshold ? 0 : shippingFee;
-    const taxAmount = taxableAmount * (gstRatePercent / 100);
+    // Existing settings may contain a legacy 5% value. Never collect it as tax unless
+    // the company explicitly enables tax and confirms accountant-reviewed treatment.
+    const taxAmount = taxEnabled ? taxableAmount * (gstRatePercent / 100) : 0;
     const totalAmount = taxableAmount + shippingAmount + taxAmount;
 
     const orderRes = await client.query(
