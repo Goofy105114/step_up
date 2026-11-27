@@ -58,10 +58,10 @@ router.get('/razorpay/webhook-events', authorize('admin'), async (req: Request, 
     const searchParam = params.length + 1;
     const searchCondition = '(e.event_id ILIKE $' + searchParam + ' OR e.event_type ILIKE $' + searchParam + ' OR e.razorpay_payment_id ILIKE $' + searchParam + ' OR e.razorpay_order_id ILIKE $' + searchParam + ' OR e.order_id::text ILIKE $' + searchParam + ' OR o.order_number ILIKE $' + searchParam + ')';
     conditions.push(searchCondition);
-    params.push('%' + searchValue.replace(/[\\%_]/g, '\\$&') + '%');
+    params.push('%' + searchValue.replace(/[\\%_]/g, (character) => `\\${character}`) + '%');
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const count = await query(`SELECT COUNT(*)::int AS total FROM razorpay_webhook_events e ${where}`, params);
+  const count = await query(`SELECT COUNT(*)::int AS total FROM razorpay_webhook_events e LEFT JOIN orders o ON o.id=e.order_id ${where}`, params);
   params.push(limit, (page - 1) * limit);
   const events = await query(
     `SELECT e.event_id,e.event_type,e.razorpay_payment_id,e.razorpay_order_id,
