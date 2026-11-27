@@ -346,12 +346,17 @@ router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => 
 
 
 router.post('/:id/return', authenticate, async (req: Request, res: Response) => {
+  const allowedReturnTypes = ['standard', 'defective', 'damaged', 'incorrect', 'misdescribed'];
+  const requestType = req.body?.request_type;
+  if (typeof requestType !== 'string' || !allowedReturnTypes.includes(requestType)) {
+    throw new AppError('Choose a valid return reason category', 400);
+  }
   if (typeof req.body?.reason !== 'string') {
-    throw new AppError('Please provide a return reason between 5 and 1000 characters', 400);
+    throw new AppError('Please provide return details between 5 and 1000 characters', 400);
   }
   const reason = req.body.reason.trim();
   if (reason.length < 5 || reason.length > 1000) {
-    throw new AppError('Please provide a return reason between 5 and 1000 characters', 400);
+    throw new AppError('Please provide return details between 5 and 1000 characters', 400);
   }
   const client = await pool.connect();
   try {
@@ -362,12 +367,29 @@ router.post('/:id/return', authenticate, async (req: Request, res: Response) => 
     const order = orderResult.rows[0];
     if (!order) throw new AppError('Order not found', 404);
     if (order.status !== 'delivered') throw new AppError('A return can only be requested for a delivered order', 409);
+    if (requestType === 'standard') {
+      const policy = await client.query(
+        "SELECT setting_value->'operational_confirmation' AS operations FROM store_settings WHERE setting_key='legal_policies'"
+      );
+      const operations = policy.rows[0]?.operations;
+      const windowDays = Number.isInteger(operations?.return_window_days) ? operations.return_window_days : null;
+      if (windowDays === null || !order.delivered_at) {
+        throw new AppError('Standard returns are not currently available because the company has not confirmed its return window. If the item is defective, damaged, incorrect or misdescribed, select the relevant issue category or contact support.', 409);
+      }
+      const withinWindow = await client.query(
+        "SELECT NOW() <= ($1::timestamptz + ($2::int * INTERVAL '1 day')) AS eligible",
+        [order.delivered_at, windowDays]
+      );
+      if (!withinWindow.rows[0]?.eligible) {
+        throw new AppError('The configured standard return window has passed. If the item is defective, damaged, incorrect or misdescribed, submit that issue category or contact support so it can be reviewed separately.', 409);
+      }
+    }
     const existing = await client.query('SELECT id FROM return_requests WHERE order_id=$1', [order.id]);
     if (existing.rows[0]) throw new AppError('A return request already exists for this order', 409);
     const inserted = await client.query(
-      `INSERT INTO return_requests (order_id,user_id,reason,status)
-       VALUES ($1,$2,$3,'requested') RETURNING id,reason,status,created_at`,
-      [order.id, req.user!.userId, reason]);
+      `INSERT INTO return_requests (order_id,user_id,reason,status,request_type)
+       VALUES ($1,$2,$3,'requested',$4) RETURNING id,reason,status,request_type,created_at`,
+      [order.id, req.user!.userId, reason, requestType]);
     await client.query(
       'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
       [order.id, order.status, 'Customer submitted a return request for review', req.user!.userId]);
