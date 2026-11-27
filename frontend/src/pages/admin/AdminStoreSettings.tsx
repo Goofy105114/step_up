@@ -130,10 +130,10 @@ export default function AdminStoreSettings() {
           </div>
 
           <div>
-            <label htmlFor="gst-rate" className="label">GST rate (%) *</label>
+            <label htmlFor="gst-rate" className="label">Tax rate (%) *</label>
             <input id="gst-rate" type="number" min="0" max="100" step="0.01" inputMode="decimal" required
               value={form.gst_rate_percent} onChange={event => update('gst_rate_percent', event.target.value)}
-              className="input-field" placeholder="Enter GST percentage" />
+              className="input-field" placeholder="Enter configured tax percentage" />
           </div>
 
           <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
@@ -141,7 +141,7 @@ export default function AdminStoreSettings() {
               <Save size={15} />
               {saveMutation.isPending ? 'Saving…' : 'Save store settings'}
             </button>
-            <span className="text-xs text-gray-500">Saved settings are used by the checkout API.</span>
+            <span className="text-xs text-gray-500">The configured rate is applied to new order totals. Confirm the applicable tax treatment and rate with your accountant before enabling it. This setting does not verify GST registration or create a GST tax invoice.</span>
           </div>
         </form>
       )}

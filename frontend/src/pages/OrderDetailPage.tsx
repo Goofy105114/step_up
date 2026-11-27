@@ -74,7 +74,7 @@ export default function OrderDetailPage() {
             <p className="text-sm text-gray-500 mt-1">Placed on {formatDate(order.created_at)}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <button type="button" onClick={() => window.print()} className="text-xs text-gray-700 hover:text-gray-900 font-semibold uppercase tracking-wider border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"><Printer size={13} /> Print / Save invoice</button>
+            <button type="button" onClick={() => window.print()} className="text-xs text-gray-700 hover:text-gray-900 font-semibold uppercase tracking-wider border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"><Printer size={13} /> Print / Save order summary</button>
             <span className={`text-xs px-3 py-1.5 font-bold uppercase tracking-widest ${getStatusColor(order.status)}`}>
               {formatOrderStatus(order.status)}
             </span>
@@ -193,7 +193,7 @@ export default function OrderDetailPage() {
                 <span>{parseFloat(order.shipping_amount) === 0 ? 'Free' : formatPrice(parseFloat(order.shipping_amount))}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>GST (5%)</span><span>{formatPrice(parseFloat(order.tax_amount))}</span>
+                <span>Tax</span><span>{formatPrice(parseFloat(order.tax_amount))}</span>
               </div>
               <div className="flex justify-between font-bold text-gray-900 border-t border-gray-100 pt-2">
                 <span>Total</span><span>{formatPrice(parseFloat(order.total_amount))}</span>
@@ -279,14 +279,14 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      <section className="invoice-print" aria-label="STEPUP order invoice">
+      <section className="invoice-print" aria-label="STEPUP order summary">
         <header className="flex items-start justify-between border-b-2 border-gray-900 pb-5 mb-6">
           <div>
             <h1 className="text-3xl font-extrabold tracking-[0.18em] text-gray-900">STEPUP</h1>
-            <p className="mt-1 text-sm text-gray-600">Order invoice</p>
+            <p className="mt-1 text-sm text-gray-600">Order summary</p>
           </div>
           <div className="text-right text-sm text-gray-700">
-            <p className="font-bold">Invoice / Order No.</p>
+            <p className="font-bold">Order number</p>
             <p>{order.order_number}</p>
             <p className="mt-1">{formatDate(order.created_at)}</p>
           </div>
@@ -328,7 +328,7 @@ export default function OrderDetailPage() {
           <div className="flex justify-between border-t-2 border-gray-900 pt-3 font-bold text-base"><span>Total (INR)</span><span>{formatPrice(Number(order.total_amount))}</span></div>
         </div>
         <footer className="mt-12 border-t border-gray-300 pt-4 text-xs text-gray-600">
-          <p>This document is an order invoice summary generated from STEPUP order records.</p>
+          <p>This is an order summary generated from STEPUP order records. It is not a GST tax invoice or a substitute for a legally compliant tax invoice.</p>
           <p className="mt-1">For support, contact STEPUP through the official support channel shown on the website.</p>
         </footer>
       </section>
