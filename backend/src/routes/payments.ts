@@ -268,8 +268,8 @@ router.post('/webhook',async(req:Request,res:Response)=>{
       const processingStatus=amountMatches && paymentIdMatches ? 'processed' : 'unmatched';
       const inserted=await client.query(
         `INSERT INTO razorpay_webhook_events
-          (event_id,event_type,razorpay_payment_id,razorpay_order_id,order_id,amount_paise,currency,processing_status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          (event_id,event_type,razorpay_payment_id,razorpay_order_id,order_id,amount_paise,currency,processing_status,processed_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CASE WHEN $8='processed' THEN NOW() ELSE NULL END)
          ON CONFLICT (event_id) DO NOTHING
          RETURNING event_id`,
         [eventId,event.event,payment.id,payment.order_id,current?.id || null,payment.amount,payment.currency,processingStatus]
