@@ -75,6 +75,24 @@ router.get('/orders', async (req: Request, res: Response) => {
   return res.json({ success: true, data: result.rows });
 });
 
+/* Read-only order fulfilment timeline using recorded status-history events. */
+router.get('/orders/:id/fulfilment-history', authorize('admin'), async (req: Request, res: Response) => {
+  const order = await query(
+    'SELECT id,order_number,status,tracking_number,created_at,updated_at,delivered_at FROM orders WHERE id=$1',
+    [req.params.id]
+  );
+  if (!order.rows[0]) throw new AppError('Order not found', 404);
+  const history = await query(
+    `SELECT h.status,h.note,h.created_at,u.email AS updated_by_email
+     FROM order_status_history h
+     LEFT JOIN users u ON u.id=h.created_by
+     WHERE h.order_id=$1
+     ORDER BY h.created_at ASC,h.id ASC`,
+    [req.params.id]
+  );
+  return res.json({ success: true, data: { order: order.rows[0], events: history.rows } });
+});
+
 router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   const { status, note, tracking_number } = req.body;
   const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
