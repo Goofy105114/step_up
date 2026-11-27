@@ -8,18 +8,24 @@ type CheckoutPricing = {
   free_shipping_threshold_inr: number;
   shipping_fee_inr: number;
   gst_rate_percent: number;
+  tax_enabled: boolean;
+  tax_configuration_confirmed: boolean;
 };
 
 type PricingForm = {
   free_shipping_threshold_inr: string;
   shipping_fee_inr: string;
   gst_rate_percent: string;
+  tax_enabled: boolean;
+  tax_configuration_confirmed: boolean;
 };
 
 const emptyForm: PricingForm = {
   free_shipping_threshold_inr: '',
   shipping_fee_inr: '',
   gst_rate_percent: '',
+  tax_enabled: false,
+  tax_configuration_confirmed: false,
 };
 
 export default function AdminStoreSettings() {
@@ -38,6 +44,8 @@ export default function AdminStoreSettings() {
       free_shipping_threshold_inr: String(value.free_shipping_threshold_inr ?? ''),
       shipping_fee_inr: String(value.shipping_fee_inr ?? ''),
       gst_rate_percent: String(value.gst_rate_percent ?? ''),
+      tax_enabled: value.tax_enabled === true,
+      tax_configuration_confirmed: value.tax_configuration_confirmed === true,
     });
   }, [data]);
 
@@ -49,6 +57,8 @@ export default function AdminStoreSettings() {
         free_shipping_threshold_inr: String(value.free_shipping_threshold_inr),
         shipping_fee_inr: String(value.shipping_fee_inr),
         gst_rate_percent: String(value.gst_rate_percent),
+        tax_enabled: value.tax_enabled === true,
+        tax_configuration_confirmed: value.tax_configuration_confirmed === true,
       });
       await queryClient.invalidateQueries({ queryKey: ['admin', 'store-settings', 'checkout-pricing'] });
       toast.success('Store pricing settings saved');
@@ -60,7 +70,7 @@ export default function AdminStoreSettings() {
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (Object.values(form).some(value => !value.trim())) {
+    if ([form.free_shipping_threshold_inr, form.shipping_fee_inr, form.gst_rate_percent].some(value => !value.trim())) {
       toast.error('Complete all pricing fields');
       return;
     }
@@ -68,13 +78,16 @@ export default function AdminStoreSettings() {
       free_shipping_threshold_inr: Number(form.free_shipping_threshold_inr),
       shipping_fee_inr: Number(form.shipping_fee_inr),
       gst_rate_percent: Number(form.gst_rate_percent),
+      tax_enabled: form.tax_enabled,
+      tax_configuration_confirmed: form.tax_configuration_confirmed,
     };
     if (
       !Number.isFinite(payload.free_shipping_threshold_inr) || payload.free_shipping_threshold_inr < 0 ||
       !Number.isFinite(payload.shipping_fee_inr) || payload.shipping_fee_inr < 0 ||
-      !Number.isFinite(payload.gst_rate_percent) || payload.gst_rate_percent < 0 || payload.gst_rate_percent > 100
+      !Number.isFinite(payload.gst_rate_percent) || payload.gst_rate_percent < 0 || payload.gst_rate_percent > 100 ||
+      (payload.tax_enabled && !payload.tax_configuration_confirmed)
     ) {
-      toast.error('Enter non-negative INR amounts and a GST rate between 0 and 100');
+      toast.error('Enter valid pricing and confirm accountant-reviewed tax treatment before enabling tax collection');
       return;
     }
     saveMutation.mutate(payload);
@@ -134,6 +147,20 @@ export default function AdminStoreSettings() {
             <input id="gst-rate" type="number" min="0" max="100" step="0.01" inputMode="decimal" required
               value={form.gst_rate_percent} onChange={event => update('gst_rate_percent', event.target.value)}
               className="input-field" placeholder="Enter configured tax percentage" />
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <h3 className="text-sm font-bold text-amber-950">Tax collection controls</h3>
+            <p className="text-xs leading-5 text-amber-900">Tax collection is disabled by default. A legacy rate stored in the database is not enough to charge tax. Enable it only after the company accountant confirms registration, applicable rate, product classification and tax treatment.</p>
+            <label className="flex items-start gap-3 text-sm text-gray-800">
+              <input type="checkbox" checked={form.tax_configuration_confirmed} onChange={event => update('tax_configuration_confirmed', event.target.checked as any)} className="mt-1 h-4 w-4" />
+              <span>I confirm the tax treatment and rate have been reviewed and approved by the company accountant.</span>
+            </label>
+            <label className="flex items-start gap-3 text-sm text-gray-800">
+              <input type="checkbox" checked={form.tax_enabled} onChange={event => update('tax_enabled', event.target.checked as any)} className="mt-1 h-4 w-4" />
+              <span>Enable tax collection on new orders (requires confirmed seller identity and company-confirmed GST registration).</span>
+            </label>
+            <p className="text-xs text-amber-900">When enabled, checkout also checks the legal business identity and GSTIN format. This format check is not official GST verification and does not make the order summary a GST tax invoice.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
