@@ -169,17 +169,19 @@ router.get('/:slug', async (req: Request, res: Response) => {
   const history = await query(
     `SELECT base_price,sale_price,effective_price,change_type,valid_from,valid_to
      FROM product_price_history WHERE product_id=$1
-     AND valid_from >= NOW() - INTERVAL '31 days'
-     ORDER BY valid_from DESC`,
+     ORDER BY valid_from DESC LIMIT 200`,
     [product.id]
   );
   const current = history.rows.find((row: any) => row.valid_to === null);
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const historyComplete = Boolean(current && current.change_type !== 'migration_baseline' &&
-    new Date(current.valid_from).getTime() <= cutoff);
+  const currentStart = current ? new Date(current.valid_from).getTime() : 0;
+  const cutoff = currentStart - 30 * 24 * 60 * 60 * 1000;
   const priorRows = history.rows.filter((row: any) => row.valid_to &&
     new Date(row.valid_to).getTime() > cutoff &&
-    new Date(row.valid_from).getTime() < Date.now());
+    new Date(row.valid_from).getTime() < currentStart);
+  const earliestPriorStart = priorRows.length
+    ? Math.min(...priorRows.map((row: any) => new Date(row.valid_from).getTime()))
+    : 0;
+  const historyComplete = Boolean(current && earliestPriorStart > 0 && earliestPriorStart <= cutoff);
   const lowestPriorPrice = priorRows.length ? Math.min(...priorRows.map((row: any) => Number(row.effective_price))) : null;
   const currentPrice = Number(product.sale_price ?? product.base_price);
   product.price_disclosure = {
