@@ -4,7 +4,7 @@ import api from '../../lib/api';
 import { formatPrice, formatDate, formatOrderStatus, getStatusColor } from '../../lib/formatters';
 import toast from 'react-hot-toast';
 
-const ORDER_STATUSES = ['pending','confirmed','processing','shipped','out_for_delivery','delivered','cancelled'];
+const ORDER_STATUSES = ['pending','confirmed','processing','shipped','out_for_delivery','delivery_failed','return_to_origin','delivered','cancelled'];
 
 export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState('');
