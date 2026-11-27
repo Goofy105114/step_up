@@ -291,6 +291,25 @@ export default function OrderDetailPage() {
             <p className="mt-1">{formatDate(order.created_at)}</p>
           </div>
         </header>
+        {order.seller_snapshot ? (
+          <section className="mb-8 border-b border-gray-300 pb-5 text-sm">
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wider">Seller details recorded for this order</h2>
+            <p className="font-semibold">{order.seller_snapshot.legal_name}</p>
+            <p>{order.seller_snapshot.registered_address}</p>
+            <p>Customer care: {order.seller_snapshot.customer_care_email} · {order.seller_snapshot.customer_care_phone}</p>
+            <p>Grievance officer: {order.seller_snapshot.grievance_officer_name}, {order.seller_snapshot.grievance_officer_designation}</p>
+            <p>Grievance contact: {order.seller_snapshot.grievance_email} · {order.seller_snapshot.grievance_phone}</p>
+            {order.seller_snapshot.gst_status === 'company_confirmed_registered' && order.seller_snapshot.gstin && (
+              <p>GSTIN (company-confirmed; not independently verified by this document): {order.seller_snapshot.gstin}</p>
+            )}
+            {order.seller_snapshot.gst_status === 'not_registered' && <p>GST registration: Seller has stated it is not registered</p>}
+            {order.seller_snapshot.gst_status === 'unverified' && <p>GST registration details were not verified when this order was placed</p>}
+          </section>
+        ) : (
+          <p className="mb-8 border-b border-gray-300 pb-5 text-xs text-gray-600">
+            Seller identity snapshot was not available for this order. Contact STEPUP through the official support channel for seller details.
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
           <div>
             <h2 className="font-bold uppercase tracking-wider text-xs mb-2">Billed / Delivered to</h2>
