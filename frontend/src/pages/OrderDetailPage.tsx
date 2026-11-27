@@ -237,6 +237,27 @@ export default function OrderDetailPage() {
           </section>
         )}
 
+        {Array.isArray(order.history) && order.history.length > 0 && (
+          <section className="mt-5 border border-gray-200 bg-white p-5" aria-labelledby="order-history-heading">
+            <h2 id="order-history-heading" className="text-xs font-bold uppercase tracking-widest text-gray-700">Order updates</h2>
+            <ol className="mt-4 space-y-4">
+              {[...order.history].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((event: any, index: number) => (
+                <li key={`${event.created_at}-${index}`} className="relative flex gap-3">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="text-sm font-semibold capitalize text-gray-900">{String(event.status || 'update').replace(/_/g, ' ')}</p>
+                      <time className="text-xs text-gray-400" dateTime={event.created_at}>{formatDate(event.created_at)}</time>
+                    </div>
+                    {event.note && <p className="mt-1 text-sm leading-5 text-gray-600">{event.note}</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-xs text-gray-500">These are order updates recorded by STEPUP. Courier scan events appear only when supplied by the carrier.</p>
+          </section>
+        )}
+
         {/* Tracking */}
         {(order.tracking_number || order.tracking_url) && (
           <div className="bg-brand-50 border border-brand-100 p-4">
