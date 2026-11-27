@@ -374,6 +374,20 @@ export default function ProductPage() {
               </div>
             </div>
 
+            {/* Verified legal product declarations */}
+            {product.declarations_verified === true && (
+              <section className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-4 space-y-2">
+                <h3 className="text-label-md font-semibold uppercase tracking-wide text-on-surface">Product & package declarations</h3>
+                {product.generic_product_name && <p className="text-sm text-on-surface-variant"><strong>Product:</strong> {product.generic_product_name}</p>}
+                {product.mrp_inr !== null && product.mrp_inr !== undefined && <p className="text-sm text-on-surface-variant"><strong>MRP:</strong> {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(product.mrp_inr))}</p>}
+                {product.country_of_origin && <p className="text-sm text-on-surface-variant"><strong>Country of origin:</strong> {product.country_of_origin}</p>}
+                {product.manufacturer_name && <p className="text-sm text-on-surface-variant"><strong>Manufacturer:</strong> {product.manufacturer_name}</p>}
+                {product.packer_name && <p className="text-sm text-on-surface-variant"><strong>Packer:</strong> {product.packer_name}</p>}
+                {product.importer_name && <p className="text-sm text-on-surface-variant"><strong>Importer:</strong> {product.importer_name}</p>}
+                {product.consumer_care_details && <p className="text-sm text-on-surface-variant whitespace-pre-line"><strong>Consumer care:</strong> {product.consumer_care_details}</p>}
+              </section>
+            )}
+
             {/* Description */}
             {product.description && (
               <div className="bg-surface-container-low rounded-DEFAULT p-space-md">

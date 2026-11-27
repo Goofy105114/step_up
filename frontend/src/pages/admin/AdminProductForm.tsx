@@ -12,6 +12,8 @@ interface ProductForm {
   arch_support_level: string; arch_height_mm: string; durometer_shore_a: string;
   calibration_reference: string; calibrated_at: string; calibration_notes: string;
   is_featured: boolean; is_new_arrival: boolean; is_bestseller: boolean; is_active: boolean;
+  generic_product_name: string; manufacturer_name: string; packer_name: string; importer_name: string;
+  country_of_origin: string; consumer_care_details: string; mrp_inr: string; declarations_verified: boolean;
 }
 
 interface Variant {
@@ -28,6 +30,8 @@ const emptyForm: ProductForm = {
   arch_support_level: '', arch_height_mm: '', durometer_shore_a: '',
   calibration_reference: '', calibrated_at: '', calibration_notes: '',
   is_featured: false, is_new_arrival: false, is_bestseller: false, is_active: true,
+  generic_product_name: '', manufacturer_name: '', packer_name: '', importer_name: '',
+  country_of_origin: '', consumer_care_details: '', mrp_inr: '', declarations_verified: false,
 };
 
 const emptyVariant: Variant = { size: '', color: '', color_hex: '#000000', stock_qty: 0, price_adj: 0, sku: '' };
@@ -89,6 +93,14 @@ export default function AdminProductForm() {
       is_new_arrival: productData.is_new_arrival ?? false,
       is_bestseller: productData.is_bestseller ?? false,
       is_active: productData.is_active ?? true,
+      generic_product_name: productData.generic_product_name || '',
+      manufacturer_name: productData.manufacturer_name || '',
+      packer_name: productData.packer_name || '',
+      importer_name: productData.importer_name || '',
+      country_of_origin: productData.country_of_origin || '',
+      consumer_care_details: productData.consumer_care_details || '',
+      mrp_inr: productData.mrp_inr ?? '',
+      declarations_verified: productData.declarations_verified === true,
     });
     setVariants(productData.variants || []);
     setImages(productData.images || []);
@@ -238,6 +250,14 @@ export default function AdminProductForm() {
       calibration_notes: form.calibration_notes.trim() || null,
       base_price: basePrice,
       sale_price: salePrice,
+      generic_product_name: form.generic_product_name.trim() || null,
+      manufacturer_name: form.manufacturer_name.trim() || null,
+      packer_name: form.packer_name.trim() || null,
+      importer_name: form.importer_name.trim() || null,
+      country_of_origin: form.country_of_origin.trim() || null,
+      consumer_care_details: form.consumer_care_details.trim() || null,
+      mrp_inr: form.mrp_inr === '' ? null : Number(form.mrp_inr),
+      declarations_verified: form.declarations_verified,
       tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
     });
   };
@@ -396,6 +416,28 @@ export default function AdminProductForm() {
             <label className="label">Calibration Notes</label>
             <textarea rows={3} value={form.calibration_notes} onChange={(e) => setField('calibration_notes', e.target.value)} className="input-field resize-y" placeholder="Optional notes from the verified measurement record" />
           </div>
+        </div>
+
+        {/* Legal / packaged commodity declarations */}
+        <div className="bg-white border border-gray-200 p-6 space-y-4">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-700 pb-3 border-b border-gray-100">Product Legal Declarations</h2>
+            <p className="mt-2 text-xs leading-5 text-gray-500">Enter details exactly as supported by the product label, packaging and supplier records. Applicability depends on the product and seller role. Unverified details are not displayed publicly.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div><label className="label">Generic / common product name</label><input value={form.generic_product_name} onChange={e => setField('generic_product_name', e.target.value)} className="input-field" maxLength={255} /></div>
+            <div><label className="label">Country of origin</label><input value={form.country_of_origin} onChange={e => setField('country_of_origin', e.target.value)} className="input-field" maxLength={120} placeholder="As stated on the product/package" /></div>
+            <div><label className="label">Manufacturer name</label><input value={form.manufacturer_name} onChange={e => setField('manufacturer_name', e.target.value)} className="input-field" maxLength={255} /></div>
+            <div><label className="label">Packer name (if applicable)</label><input value={form.packer_name} onChange={e => setField('packer_name', e.target.value)} className="input-field" maxLength={255} /></div>
+            <div><label className="label">Importer name (if applicable)</label><input value={form.importer_name} onChange={e => setField('importer_name', e.target.value)} className="input-field" maxLength={255} /></div>
+            <div><label className="label">MRP (₹)</label><input type="number" min="0.01" step="0.01" value={form.mrp_inr} onChange={e => setField('mrp_inr', e.target.value)} className="input-field" placeholder="As printed on package" /></div>
+          </div>
+          <div><label className="label">Consumer care contact / address as declared on package</label><textarea rows={2} value={form.consumer_care_details} onChange={e => setField('consumer_care_details', e.target.value)} className="input-field resize-y" maxLength={2000} /></div>
+          <label className="flex items-start gap-3 text-xs text-gray-700">
+            <input type="checkbox" checked={form.declarations_verified} onChange={e => setField('declarations_verified', e.target.checked)} className="mt-0.5 h-4 w-4" />
+            <span><strong>Verify these declarations for public display.</strong> I have checked the applicable fields against authentic packaging/supplier records and confirmed which manufacturer, packer or importer details apply.</span>
+          </label>
+          <p className="text-xs text-amber-700">Changing any declaration field resets verification. Do not mark verified based on assumptions or catalogue copy.</p>
         </div>
 
         {/* Flags */}
