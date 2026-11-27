@@ -52,6 +52,16 @@ router.get('/razorpay/webhook-events', authorize('admin'), async (req: Request, 
   const conditions: string[] = [];
   const params: unknown[] = [];
   if (status) { conditions.push(`e.processing_status=${params.length + 1}`); params.push(status); }
+  const searchValue = req.query.q === undefined ? '' : String(req.query.q).trim();
+  if (searchValue.length > 120) throw new AppError('Search query cannot exceed 120 characters', 400);
+  if (searchValue) {
+    const searchParam = params.length + 1;
+    conditions.push(`(e.event_id ILIKE ${searchParam} OR e.event_type ILIKE ${searchParam} OR e.razorpay_payment_id ILIKE ${searchParam} OR e.razorpay_order_id ILIKE ${searchParam} OR e.order_id::text ILIKE ${searchParam} OR o.order_number ILIKE ${searchParam})`);
+    params.push(`%${searchValue.replace(/[\\\\%_]/g, '\\\\  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (status) { conditions.push(`e.processing_status=${params.length + 1}`); params.push(status); }
+')}%`);
+  }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const count = await query(`SELECT COUNT(*)::int AS total FROM razorpay_webhook_events e ${where}`, params);
   params.push(limit, (page - 1) * limit);
