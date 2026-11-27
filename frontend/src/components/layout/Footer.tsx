@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 
+type BusinessDisclosures = { legal_name: string; registered_address: string; customer_care_email: string; customer_care_phone: string; grievance_officer_name: string; grievance_officer_designation: string; grievance_email: string; grievance_phone: string; gstin: string | null };
+
 type Category = {
   id: string;
   name: string;
@@ -14,6 +16,11 @@ export default function Footer() {
     queryFn: () => api.get('/categories').then(response => response.data),
   });
   const categories: Category[] = categoriesData?.data || [];
+  const { data: disclosures } = useQuery({
+    queryKey: ['legal-business-disclosures'],
+    queryFn: () => api.get('/legal/business-disclosures').then(response => response.data.data as BusinessDisclosures | null),
+    retry: false,
+  });
 
   return (
     <footer className="bg-inverse-surface text-inverse-on-surface">
@@ -76,6 +83,14 @@ export default function Footer() {
             <Link to="/policies/shipping" className="hover:text-white">Shipping</Link>
             <Link to="/policies/returns" className="hover:text-white">Returns & refunds</Link>
           </nav>
+          {disclosures && <div className="mb-5 grid gap-2 text-xs leading-5 text-white/60 sm:grid-cols-2">
+            <div><p className="font-semibold text-white/80">{disclosures.legal_name}</p><p>{disclosures.registered_address}</p></div>
+            <div><p>Customer care: <a href={`mailto:${disclosures.customer_care_email}`} className="underline hover:text-white">{disclosures.customer_care_email}</a> · {disclosures.customer_care_phone}</p>
+              <p>Grievance officer: {disclosures.grievance_officer_name} ({disclosures.grievance_officer_designation})</p>
+              <p>Grievance contact: <a href={`mailto:${disclosures.grievance_email}`} className="underline hover:text-white">{disclosures.grievance_email}</a> · {disclosures.grievance_phone}</p>
+              {disclosures.gstin && <p>GSTIN: {disclosures.gstin}</p>}
+            </div>
+          </div>}
           <div className="flex flex-col gap-3 text-xs text-white/45 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} STEPUP. All rights reserved.</p>
           <p>Product information is provided for general shopping purposes and is not medical advice.</p>
