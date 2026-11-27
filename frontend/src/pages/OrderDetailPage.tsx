@@ -238,11 +238,11 @@ export default function OrderDetailPage() {
         )}
 
         {/* Tracking */}
-        {order.tracking_number && (
+        {(order.tracking_number || order.tracking_url) && (
           <div className="bg-brand-50 border border-brand-100 p-4">
-            <p className="text-sm text-brand-700">
-              Tracking: <strong className="font-mono">{order.tracking_number}</strong>
-            </p>
+            {order.tracking_number && <p className="text-sm text-brand-700">Tracking: <strong className="font-mono">{order.tracking_number}</strong></p>}
+            {order.tracking_url && <a href={order.tracking_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-semibold text-brand-700 underline">Open carrier tracking page <span aria-hidden="true">↗</span></a>}
+            <p className="mt-2 text-xs text-gray-500">Tracking information is provided by the seller. Live courier updates are available only if the carrier's tracking page provides them.</p>
           </div>
         )}
 
