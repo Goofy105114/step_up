@@ -1,6 +1,5 @@
 import { createHash } from 'crypto';
 import { PoolClient } from 'pg';
-import { Request } from 'express';
 import { AppError } from '../middleware/errorHandler';
 
 const REQUIRED_POLICY_SLUGS = ['privacy', 'terms', 'shipping', 'returns'] as const;
