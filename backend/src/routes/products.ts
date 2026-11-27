@@ -165,7 +165,30 @@ router.get('/:slug', async (req: Request, res: Response) => {
     [req.params.slug]
   );
   if (!result.rows[0]) throw new AppError('Product not found', 404);
-  return res.json({ success: true, data: result.rows[0] });
+  const product = result.rows[0];
+  const history = await query(
+    `SELECT base_price,sale_price,effective_price,change_type,valid_from,valid_to
+     FROM product_price_history WHERE product_id=$1
+     AND valid_from >= NOW() - INTERVAL '31 days'
+     ORDER BY valid_from DESC`,
+    [product.id]
+  );
+  const current = history.rows.find((row: any) => row.valid_to === null);
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const historyComplete = Boolean(current && current.change_type !== 'migration_baseline' &&
+    new Date(current.valid_from).getTime() <= cutoff);
+  const priorRows = history.rows.filter((row: any) => row.valid_to &&
+    new Date(row.valid_to).getTime() > cutoff &&
+    new Date(row.valid_from).getTime() < Date.now());
+  const lowestPriorPrice = priorRows.length ? Math.min(...priorRows.map((row: any) => Number(row.effective_price))) : null;
+  const currentPrice = Number(product.sale_price ?? product.base_price);
+  product.price_disclosure = {
+    prior_30_day_lowest_price: historyComplete ? lowestPriorPrice : null,
+    discount_comparison_eligible: historyComplete && lowestPriorPrice !== null && currentPrice < lowestPriorPrice,
+    history_complete: historyComplete,
+    period_days: 30,
+  };
+  return res.json({ success: true, data: product });
 });
 
 export default router;
