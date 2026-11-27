@@ -8,7 +8,7 @@ type Policy = { slug: string; title: string; status: 'draft' | 'published'; cont
 type BusinessIdentity = {
   legal_name: string; registered_address: string; customer_care_email: string; customer_care_phone: string;
   grievance_officer_name: string; grievance_officer_designation: string; grievance_email: string; grievance_phone: string;
-  gstin: string; gst_status: 'unverified' | 'verified' | 'not_registered';
+  gstin: string; gst_status: 'unverified' | 'verified' | 'not_registered'; confirmed: boolean;
 };
 type Operations = {
   shipping_coverage: string; dispatch_sla: string; delivery_estimate: string; return_window_days: number | null;
@@ -64,12 +64,17 @@ export default function AdminLegalPolicies() {
           {identityFields.map(field => <label key={field.key} className="block text-sm font-medium text-gray-700">{field.label}<input type={field.type || 'text'} value={settings.business_identity[field.key] || ''} onChange={e => updateIdentity(field.key, e.target.value)} className={fieldClass} /></label>)}
           <label className="block text-sm font-medium text-gray-700">GST registration status
             <select value={settings.business_identity.gst_status || 'unverified'} onChange={e => updateIdentity('gst_status', e.target.value)} className={fieldClass}>
-              <option value="unverified">Not verified yet</option><option value="verified">Verified by company / tax professional</option><option value="not_registered">Company confirms not registered</option>
+              <option value="unverified">Not verified yet</option><option value="verified">Company confirms GST registration and supporting proof</option><option value="not_registered">Company confirms not registered</option>
             </select>
           </label>
           <label className="block text-sm font-medium text-gray-700">GSTIN (leave blank if not applicable)<input value={settings.business_identity.gstin || ''} onChange={e => updateIdentity('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="15-character GSTIN" className={fieldClass} /></label>
         </div>
         <p className="mt-3 text-xs leading-5 text-amber-700">A GSTIN format check cannot verify registration. Confirm status against official GST records before selecting “Verified”. Never enter a guessed GSTIN.</p>
+        <label className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+          <input type="checkbox" checked={!!settings.business_identity.confirmed} onChange={e => updateIdentity('confirmed', e.target.checked)} className="mt-1 h-4 w-4" />
+          <span><strong>I confirm these business identity and grievance details are accurate</strong><br/>Only select this after checking company records and verifying the contact channels work.</span>
+        </label>
+
       </section>
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">Shipping, returns & refunds operations</h2>
