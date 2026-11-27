@@ -161,6 +161,51 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
        JSON.stringify(shipping_address), JSON.stringify(billing_address || shipping_address),
        payment_method, couponId]);
     const order = orderRes.rows[0];
+    // Preserve the seller identity that was confirmed when this order was placed.
+    // This is optional until the additive migration is applied; it never blocks checkout.
+    const snapshotTable = await client.query(
+      "SELECT to_regclass('public.order_seller_snapshots') IS NOT NULL AS available"
+    );
+    if (snapshotTable.rows[0]?.available) {
+      const identityResult = await client.query(
+        "SELECT setting_value->'business_identity' AS identity FROM store_settings WHERE setting_key='legal_policies'"
+      );
+      const identity = identityResult.rows[0]?.identity;
+      const identityFields = [
+        'legal_name', 'registered_address', 'customer_care_email', 'customer_care_phone',
+        'grievance_officer_name', 'grievance_officer_designation', 'grievance_email', 'grievance_phone',
+      ];
+      const validEmail = (value: unknown) =>
+        typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      if (identity?.confirmed === true &&
+          identityFields.every(field => typeof identity[field] === 'string' && identity[field].trim()) &&
+          validEmail(identity.customer_care_email) && validEmail(identity.grievance_email)) {
+        const gstin = typeof identity.gstin === 'string' ? identity.gstin.trim().toUpperCase() : '';
+        const gstinHasValidFormat = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin);
+        const gstStatus = identity.gst_status === 'not_registered'
+          ? 'not_registered'
+          : identity.gst_status === 'verified' && gstinHasValidFormat
+            ? 'company_confirmed_registered'
+            : 'unverified';
+        const sellerSnapshot = {
+          legal_name: identity.legal_name.trim(),
+          registered_address: identity.registered_address.trim(),
+          customer_care_email: identity.customer_care_email.trim(),
+          customer_care_phone: identity.customer_care_phone.trim(),
+          grievance_officer_name: identity.grievance_officer_name.trim(),
+          grievance_officer_designation: identity.grievance_officer_designation.trim(),
+          grievance_email: identity.grievance_email.trim(),
+          grievance_phone: identity.grievance_phone.trim(),
+          gst_status: gstStatus,
+          gstin: gstStatus === 'company_confirmed_registered' ? gstin : null,
+        };
+        await client.query(
+          'INSERT INTO order_seller_snapshots (order_id, seller_identity) VALUES ($1,$2) ON CONFLICT (order_id) DO NOTHING',
+          [order.id, JSON.stringify(sellerSnapshot)]
+        );
+      }
+    }
+
     await recordPolicyConsent(client, order.id, req.user!.userId, policy_acceptances);
 
     for (const item of itemsRes.rows) {
@@ -218,7 +263,20 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
        FROM order_policy_acceptances opa WHERE opa.order_id=o.id) AS policy_acceptances
      FROM orders o WHERE o.id=$1 AND o.user_id=$2`, [req.params.id, req.user!.userId]);
   if (!result.rows[0]) throw new AppError('Order not found', 404);
-  return res.json({ success: true, data: result.rows[0] });
+  const snapshotTable = await query(
+    "SELECT to_regclass('public.order_seller_snapshots') IS NOT NULL AS available"
+  );
+  let sellerSnapshot = null;
+  if (snapshotTable.rows[0]?.available) {
+    const snapshot = await query(
+      'SELECT seller_identity, captured_at FROM order_seller_snapshots WHERE order_id=$1',
+      [req.params.id]
+    );
+    if (snapshot.rows[0]) {
+      sellerSnapshot = { ...snapshot.rows[0].seller_identity, captured_at: snapshot.rows[0].captured_at };
+    }
+  }
+  return res.json({ success: true, data: { ...result.rows[0], seller_snapshot: sellerSnapshot } });
 });
 
 router.post('/:id/cancel', authenticate, async (req: Request, res: Response) => {
