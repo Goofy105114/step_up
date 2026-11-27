@@ -66,7 +66,7 @@ export default function AdminStoreSettings() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to save store settings'),
   });
 
-  const update = (key: keyof PricingForm, value: string) => setForm(current => ({ ...current, [key]: value }));
+  const update = (key: keyof PricingForm, value: string | boolean) => setForm(current => ({ ...current, [key]: value } as PricingForm));
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -153,7 +153,7 @@ export default function AdminStoreSettings() {
             <h3 className="text-sm font-bold text-amber-950">Tax collection controls</h3>
             <p className="text-xs leading-5 text-amber-900">Tax collection is disabled by default. A legacy rate stored in the database is not enough to charge tax. Enable it only after the company accountant confirms registration, applicable rate, product classification and tax treatment.</p>
             <label className="flex items-start gap-3 text-sm text-gray-800">
-              <input type="checkbox" checked={form.tax_configuration_confirmed} onChange={event => update('tax_configuration_confirmed', event.target.checked as any)} className="mt-1 h-4 w-4" />
+              <input type="checkbox" checked={form.tax_configuration_confirmed} onChange={event => update('tax_configuration_confirmed', event.target.checked)} className="mt-1 h-4 w-4" />
               <span>I confirm the tax treatment and rate have been reviewed and approved by the company accountant.</span>
             </label>
             <label className="flex items-start gap-3 text-sm text-gray-800">
