@@ -441,10 +441,10 @@ const cloudinaryPublicIdFromUrl = (value: string) => {
   const segments = parsed.pathname.split('/').filter(Boolean);
   const uploadIndex = segments.indexOf('upload');
   if (uploadIndex < 0) return null;
-  const assetSegments = segments.slice(uploadIndex + 1).filter(segment => !/^v\\d+$/.test(segment));
+  const assetSegments = segments.slice(uploadIndex + 1).filter(segment => !/^v\d+$/.test(segment));
   if (!assetSegments.length) return null;
   const last = assetSegments[assetSegments.length - 1];
-  assetSegments[assetSegments.length - 1] = last.replace(/\\.[a-z0-9]+$/i, '');
+  assetSegments[assetSegments.length - 1] = last.replace(/\.[a-z0-9]+$/i, '');
   return assetSegments.join('/');
 };
 
@@ -900,7 +900,7 @@ router.put('/legal-policies', authorize('admin'), async (req: Request, res: Resp
     throw new AppError('Choose a valid GST registration status', 400);
   }
   const gstin = String(business.gstin || '').trim().toUpperCase();
-  if (business.gst_status === 'verified' && !/^\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) {
+  if (business.gst_status === 'verified' && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) {
     throw new AppError('A GSTIN in the expected 15-character format is required for company-confirmed GST registration', 400);
   }
   if (business.gst_status === 'not_registered' && gstin) {
@@ -908,6 +908,14 @@ router.put('/legal-policies', authorize('admin'), async (req: Request, res: Resp
   }
   if (business.confirmed !== undefined && typeof business.confirmed !== 'boolean') {
     throw new AppError('Business identity confirmation must be a boolean', 400);
+  }
+
+  if (business.confirmed === true &&
+      (textFields.some(field => !String(business[field] || '').trim()) ||
+       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(business.customer_care_email)) ||
+       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(business.grievance_email)) ||
+       business.gst_status === 'unverified')) {
+    throw new AppError('Complete and validate every business disclosure field and confirm GST status before making disclosures public', 400);
   }
 
   const operationTextFields = [
@@ -927,8 +935,8 @@ router.put('/legal-policies', authorize('admin'), async (req: Request, res: Resp
   if (value.policies.some((policy: any) => policy.status === 'published')) {
     const requiredIdentity = [...textFields];
     if (requiredIdentity.some(field => !String(business[field] || '').trim()) ||
-        !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(business.customer_care_email)) ||
-        !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(business.grievance_email)) ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(business.customer_care_email)) ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(business.grievance_email)) ||
         !business.confirmed || business.gst_status === 'unverified') {
       throw new AppError('Confirm the complete legal business identity, customer-care and grievance contacts, and GST registration status before publishing policies', 400);
     }
