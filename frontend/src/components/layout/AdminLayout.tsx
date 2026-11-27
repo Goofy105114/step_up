@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, RotateCcw, Users, ArrowLeft, ShieldCheck,
-  FileText, FlaskConical, Activity, Menu, X,
+  FileText, FlaskConical, Activity, Menu, X, MessageSquareText,
   Search, Store, LogOut, PanelLeftClose, PanelLeftOpen, SlidersHorizontal
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -13,6 +13,7 @@ const nav = [
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart, group: 'Store management' },
   { to: '/admin/store-settings', label: 'Store settings', icon: SlidersHorizontal, group: 'Store management' },
   { to: '/admin/legal-policies', label: 'Legal policies', icon: ShieldCheck, group: 'Store management' },
+  { to: '/admin/grievances', label: 'Complaints', icon: MessageSquareText, group: 'Store management' },
   { to: '/admin/returns', label: 'Returns', icon: RotateCcw, group: 'Store management' },
   { to: '/admin/users', label: 'Customers', icon: Users, group: 'Store management' },
   { to: '/admin/clinical-studies', label: 'Research library', icon: FileText, group: 'Fit & research' },
