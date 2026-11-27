@@ -37,11 +37,11 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     ) {
       throw new AppError('One or more billing address fields exceed the allowed length', 400);
     }
-    const billingPhone = billing_address.phone.replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '');
-    if (!/^[6-9]\\d{9}$/.test(billingPhone)) {
+    const billingPhone = billing_address.phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    if (!/^[6-9]\d{9}$/.test(billingPhone)) {
       throw new AppError('Enter a valid Indian billing mobile number', 400);
     }
-    if (!/^\\d{6}$/.test(billing_address.postal_code.trim())) {
+    if (!/^\d{6}$/.test(billing_address.postal_code.trim())) {
       throw new AppError('Enter a valid 6-digit Indian billing PIN code', 400);
     }
     if (String(billing_address.country || 'India').trim().toLowerCase() !== 'india') {
