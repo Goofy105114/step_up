@@ -828,6 +828,56 @@ router.get('/fit-operations', authorize('admin'), async (_req: Request, res: Res
 });
 
 
+/* Provider-confirmed full refund reconciliation. This records an externally completed refund; it does not call the payment provider. */
+router.post('/orders/:id/refund-confirmation', authorize('admin'), async (req: Request, res: Response) => {
+  const providerRefundId = typeof req.body?.provider_refund_id === 'string' ? req.body.provider_refund_id.trim() : '';
+  if (!providerRefundId || providerRefundId.length > 255) {
+    throw new AppError('Enter the refund reference returned by the payment provider', 400);
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const found = await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE', [req.params.id]);
+    const order = found.rows[0];
+    if (!order) throw new AppError('Order not found', 404);
+    if (order.payment_method !== 'razorpay' || !order.razorpay_payment_id) {
+      throw new AppError('Only orders with a recorded Razorpay payment can be reconciled here', 409);
+    }
+    if (order.payment_status !== 'paid') {
+      throw new AppError('Only a currently paid order can be reconciled as refunded', 409);
+    }
+    if (!['cancelled', 'returned'].includes(order.status)) {
+      throw new AppError('A refund can only be recorded after cancellation or completion of the return workflow', 409);
+    }
+    const returnState = await client.query('SELECT status FROM return_requests WHERE order_id=$1', [order.id]);
+    if (order.status === 'returned' && returnState.rows[0]?.status !== 'received') {
+      throw new AppError('The return must be marked received before recording its refund', 409);
+    }
+    const amountPaise = Math.round(Number(order.total_amount) * 100);
+    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0) {
+      throw new AppError('Order amount is invalid; refund reconciliation is blocked', 409);
+    }
+    await client.query(
+      `INSERT INTO payment_refund_reconciliations
+        (order_id, provider, provider_refund_id, provider_payment_id, amount_paise, currency, confirmed_by)
+       VALUES ($1,'razorpay',$2,$3,$4,'INR',$5)`,
+      [order.id, providerRefundId, order.razorpay_payment_id, amountPaise, req.user!.userId]
+    );
+    await client.query("UPDATE orders SET payment_status='refunded',status='refunded',updated_at=NOW() WHERE id=$1", [order.id]);
+    await client.query(
+      "INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,'refunded',$2,$3)",
+      [order.id, 'Full Razorpay refund confirmed externally; reference: ' + providerRefundId, req.user!.userId]
+    );
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Provider-confirmed full refund recorded', data: { order_id: order.id, provider_refund_id: providerRefundId, amount_paise: amountPaise, currency: 'INR' } });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
 router.get('/return-requests', async (_req: Request, res: Response) => {
   const result = await query(
     `SELECT rr.*,o.order_number,o.total_amount,o.status AS order_status,
