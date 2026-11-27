@@ -232,6 +232,13 @@ export default function OrderDetailPage() {
               <span className="text-xs text-gray-400">Requested {formatDate(order.return_request.created_at)}</span>
             </div>
             <p className="mt-2 text-sm leading-6 text-gray-600">{order.return_request.reason}</p>
+            {order.return_request.admin_note && (
+              <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3" aria-label="STEPUP return review note">
+                <p className="text-xs font-semibold text-blue-900">Update from STEPUP</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-blue-900">{order.return_request.admin_note}</p>
+                {order.return_request.reviewed_at && <p className="mt-1 text-xs text-blue-700">Updated {formatDate(order.return_request.reviewed_at)}</p>}
+              </div>
+            )}
             <p className="mt-3 border-t border-gray-100 pt-3 text-xs leading-5 text-gray-500">
               {order.return_request.status === 'requested' && 'Your request is waiting for review by the STEPUP team.'}
               {order.return_request.status === 'approved' && 'Your return has been approved. Follow the instructions provided by the STEPUP team to send the item back.'}
