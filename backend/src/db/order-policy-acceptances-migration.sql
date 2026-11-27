@@ -5,7 +5,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.order_policy_acceptances (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+  user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   policy_slug VARCHAR(40) NOT NULL CHECK (policy_slug IN ('privacy', 'terms', 'shipping', 'returns')),
   policy_title VARCHAR(160) NOT NULL,
   content_sha256 CHAR(64) NOT NULL CHECK (content_sha256 ~ '^[a-f0-9]{64}$'),
