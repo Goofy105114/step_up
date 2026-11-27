@@ -7,8 +7,47 @@ import { createRazorpayOrder, fetchRazorpayPayment, fetchRazorpayOrderPayments, 
 
 const router = Router();
 
+const validateOptionalBillingAddress = (billingAddress: any) => {
+  if (billingAddress === undefined || billingAddress === null) return;
+  if (typeof billingAddress !== 'object' || Array.isArray(billingAddress)) {
+    throw new AppError('Billing address must be a valid address object', 400);
+  }
+  const requiredFields = ['full_name', 'phone', 'line1', 'city', 'state', 'postal_code'];
+  if (requiredFields.some(field =>
+    typeof billingAddress[field] !== 'string' || !billingAddress[field].trim()
+  )) {
+    throw new AppError('Complete all required billing address fields', 400);
+  }
+  if (
+    billingAddress.full_name.trim().length > 200 ||
+    billingAddress.phone.trim().length > 20 ||
+    billingAddress.line1.trim().length > 255 ||
+    (billingAddress.line2 !== undefined && billingAddress.line2 !== null &&
+      (typeof billingAddress.line2 !== 'string' || billingAddress.line2.trim().length > 255)) ||
+    billingAddress.city.trim().length > 100 ||
+    billingAddress.state.trim().length > 100 ||
+    (billingAddress.country !== undefined &&
+      (typeof billingAddress.country !== 'string' || billingAddress.country.trim().length > 100)) ||
+    (billingAddress.email !== undefined &&
+      (typeof billingAddress.email !== 'string' || billingAddress.email.trim().length > 255))
+  ) {
+    throw new AppError('One or more billing address fields exceed the allowed length', 400);
+  }
+  const phone = billingAddress.phone.replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '');
+  if (!/^[6-9]\\d{9}$/.test(phone)) {
+    throw new AppError('Enter a valid Indian billing mobile number', 400);
+  }
+  if (!/^\\d{6}$/.test(billingAddress.postal_code.trim())) {
+    throw new AppError('Enter a valid 6-digit Indian billing PIN code', 400);
+  }
+  if (String(billingAddress.country || 'India').trim().toLowerCase() !== 'india') {
+    throw new AppError('STEPUP currently accepts billing addresses within India only', 400);
+  }
+};
+
 router.post('/create-order', authenticate, async (req: Request, res: Response) => {
   const address = req.body?.shipping_address;
+  validateOptionalBillingAddress(req.body?.billing_address);
   const required = ['full_name','phone','line1','city','state','postal_code'];
   if (!address || required.some((key) => !String(address[key] || '').trim()) ||
       !/^[6-9]\d{9}$/.test(String(address.phone).replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'')) ||
