@@ -157,8 +157,19 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   const normalizedCarrier = typeof tracking_carrier === 'string' ? tracking_carrier.trim() : null;
   if (normalizedCarrier !== null && normalizedCarrier.length > 100) throw new AppError('Carrier name cannot exceed 100 characters', 400);
   const normalizedTrackingUrl = typeof tracking_url === 'string' ? tracking_url.trim() : null;
-  if (normalizedTrackingUrl && (normalizedTrackingUrl.length > 2048 || !/^https:\/\//i.test(normalizedTrackingUrl))) {
-    throw new AppError('Tracking URL must be a valid HTTPS link no longer than 2048 characters', 400);
+  if (normalizedTrackingUrl) {
+    if (normalizedTrackingUrl.length > 2048) {
+      throw new AppError('Tracking URL must be a valid HTTPS link no longer than 2048 characters', 400);
+    }
+    try {
+      const parsedTrackingUrl = new URL(normalizedTrackingUrl);
+      if (parsedTrackingUrl.protocol !== 'https:' || !parsedTrackingUrl.hostname ||
+          parsedTrackingUrl.username || parsedTrackingUrl.password) {
+        throw new Error('Invalid tracking URL');
+      }
+    } catch {
+      throw new AppError('Tracking URL must be a valid HTTPS link without embedded credentials', 400);
+    }
   }
   if (note !== undefined && note !== null && typeof note !== 'string') {
     throw new AppError('Order status note must be text', 400);
