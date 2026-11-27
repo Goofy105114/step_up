@@ -27,10 +27,11 @@ type WebhookResponse = {
 export default function AdminWebhookEvents() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('all');
+  const [search, setSearch] = useState('');
   const events = useQuery<WebhookResponse>({
-    queryKey: ['admin', 'razorpay-webhook-events', page, status],
+    queryKey: ['admin', 'razorpay-webhook-events', page, status, search],
     queryFn: () => api.get('/admin/razorpay/webhook-events', {
-      params: { page, limit: 25, ...(status === 'all' ? {} : { processing_status: status }) },
+      params: { page, limit: 25, ...(status === 'all' ? {} : { processing_status: status }), ...(search.trim() ? { q: search.trim() } : {}) },
     }).then((response) => response.data),
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
@@ -61,11 +62,16 @@ export default function AdminWebhookEvents() {
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-sm font-extrabold">Event log</h2><p className="mt-1 text-xs text-gray-500">Newest received events appear first. Refreshes every 30 seconds.</p></div>
+          <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">Search events
+            <input type="search" value={search} maxLength={120} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Event, payment or order ID" className="w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800" />
+          </label>
           <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">Processing status
             <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800">
               <option value="all">All events</option><option value="processed">Processed</option><option value="unmatched">Unmatched</option>
             </select>
           </label>
+          </div>
         </div>
 
         {events.isLoading ? <div className="space-y-3 py-8">{[1,2,3,4].map((item) => <div key={item} className="h-12 animate-pulse rounded-lg bg-gray-100" />)}</div>
