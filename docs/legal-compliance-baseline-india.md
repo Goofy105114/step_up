@@ -31,7 +31,7 @@
 3. Public endpoints return only policies explicitly marked published.
 4. Admin endpoints require the admin role; the UI warns against publishing incomplete policies, and the API rejects common company-specific placeholders.
 5. Checkout requires explicit, unticked acknowledgement of the four published policies. If required documents are not published, checkout is blocked rather than taking payment under missing terms.
-6. The grievance intake workflow creates a ticket reference, records receipt acknowledgement and a one-month resolution target, and gives admins an overdue-aware queue. It does not yet send an email/SMS acknowledgement or customer status updates; the on-screen reference is the receipt confirmation.
+6. The grievance intake workflow creates a high-entropy ticket reference, records receipt acknowledgement and a one-month resolution target, lets customers retrieve status using the ticket reference plus their submission email, and gives admins an overdue-aware queue. It does not yet send an email/SMS acknowledgement or customer status updates; the on-screen reference is the receipt confirmation.
 7. No migration has been run against production, no deployment has been made, and no company details/GSTIN/delivery promises/return window have been invented.
 
 ## 4. Company facts that must be supplied before publication
