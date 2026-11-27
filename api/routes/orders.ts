@@ -12,6 +12,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   if (!shipping_address || typeof shipping_address !== 'object' || Array.isArray(shipping_address)) {
     throw new AppError('Shipping address required', 400);
   }
+  const requiredAddressFields = ['full_name', 'phone', 'line1', 'city', 'state', 'postal_code'];
   if (billing_address !== undefined && billing_address !== null) {
     if (typeof billing_address !== 'object' || Array.isArray(billing_address)) {
       throw new AppError('Billing address must be a valid address object', 400);
@@ -47,7 +48,6 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       throw new AppError('STEPUP currently accepts billing addresses within India only', 400);
     }
   }
-  const requiredAddressFields = ['full_name', 'phone', 'line1', 'city', 'state', 'postal_code'];
   if (requiredAddressFields.some(field => typeof shipping_address[field] !== 'string' || !shipping_address[field].trim())) {
     throw new AppError('Complete all required shipping address fields', 400);
   }
