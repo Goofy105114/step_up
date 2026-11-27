@@ -14,7 +14,8 @@
 | Product package/listing disclosures | Legal Metrology (Packaged Commodities) Rules, 2011, including Rule 6 and applicable amendments | Product catalogue must support accurate manufacturer/packer/importer details, country of origin where applicable, generic product name, MRP inclusive of taxes, consumer-care details and other applicable declarations. Applicability and exact fields must be confirmed per product/package. |
 | Personal-data notice, purpose limitation, consent and grievance mechanism | Digital Personal Data Protection Act, 2023 and DPDP Rules, 2025, including staged commencement notifications | Explain the data collected and purpose, provide usable privacy/contact channels, restrict access, set retention and deletion processes, and separate optional marketing consent from order processing. Review staged commencement dates; do not assume every provision is already in force. |
 | Fit/comfort profile safeguards | Conservative privacy-by-design practices informed by the DPDP framework and health-information principles | Treat foot measurements, arch preferences and comfort responses as sensitive in practice: collect only what the fit feature needs, make the feature optional, explain its purpose, restrict admin access, avoid exposing individual profiles, and provide correction/deletion workflows. Do not present the tool as diagnosis or treatment. |
-| Health claims and product descriptions | Consumer Protection Act, 2019 and CCPA misleading-advertisement/endorsement guidance | Do not claim a shoe cures, prevents or treats a condition without substantiation and applicable approvals. Do not fabricate clinical endorsements, test results or research. Clearly state that fit guidance is not medical advice. |
+| Health claims and product descriptions | Consumer Protection Act, 2019 and CCPA Guidelines for Prevention of Misleading Advertisements and Endorsements for Misleading Advertisements, 2022 | Do not claim a shoe cures, prevents or treats a condition without reliable substantiation and any approvals required for the product/claim. Do not fabricate clinical endorsements, test results or research. Clearly state that fit guidance is not medical advice. |
+| Health-platform-inspired privacy safeguards (not a claim that STEPUP is a healthcare provider) | DPDP principles plus conservative privacy-by-design practices; CCPA misleading-claim guidance for public product/comfort statements | Make fit/comfort questions optional, ask only what is needed, explain why it is collected, restrict staff access, avoid unnecessary free-text health details, and provide a correction/deletion contact. Do not collect medical records or present the service as diagnosis, treatment, telemedicine or clinical care. These are prudent design controls, not a substitute for sector-specific obligations if STEPUP later becomes a regulated healthcare service or sells a regulated medical device. |
 
 ## 2. Current legal timing that matters
 
@@ -30,7 +31,8 @@
 3. Public endpoints return only policies explicitly marked published.
 4. Admin endpoints require the admin role; the UI warns against publishing incomplete policies, and the API rejects common company-specific placeholders.
 5. Checkout requires explicit, unticked acknowledgement of the four published policies. If required documents are not published, checkout is blocked rather than taking payment under missing terms.
-6. No migration has been run against production, no deployment has been made, and no company details/GSTIN/delivery promises/return window have been invented.
+6. The grievance intake workflow creates a ticket reference, records receipt acknowledgement and a one-month resolution target, and gives admins an overdue-aware queue. It does not yet send an email/SMS acknowledgement or customer status updates; the on-screen reference is the receipt confirmation.
+7. No migration has been run against production, no deployment has been made, and no company details/GSTIN/delivery promises/return window have been invented.
 
 ## 4. Company facts that must be supplied before publication
 
@@ -52,5 +54,7 @@
 5. [Digital Personal Data Protection Act, 2023 — MeitY official PDF](https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf)
 6. [Digital Personal Data Protection Rules, 2025 — Gazette of India PDF](https://egazette.gov.in/WriteReadData/2025/267650.pdf)
 7. [DPDP Act commencement notification, G.S.R. 843(E), 13 November 2025](https://egazette.gov.in/WriteReadData/2025/267649.pdf)
+8. [CCPA Guidelines for Prevention of Misleading Advertisements and Endorsements for Misleading Advertisements, 2022 — official notification](https://consumeraffairs.nic.in/sites/default/files/CCPA_Notification.pdf)
+9. [Department of Consumer Affairs — Legal Metrology package declaration guidance](https://consumeraffairs.gov.in/pages/legal-metrology-overview)
 
 Check the latest Gazette corrigenda, commencement notifications, state-specific requirements and product-specific rules before launch.
