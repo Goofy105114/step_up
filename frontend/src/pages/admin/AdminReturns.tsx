@@ -29,7 +29,7 @@ export default function AdminReturns() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/admin/return-requests/${id}`, { status, admin_note: notes[id]?.trim() || null }),
     onSuccess: (_response, variables) => {
-      toast.success('Return request updated');
+      toast.success('Return request updated. The customer can now see your review note in their order history.');
       qc.invalidateQueries({ queryKey: ['admin', 'return-requests'] });
       setNotes((current) => { const next = { ...current }; delete next[variables.id]; return next; });
     },
