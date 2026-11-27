@@ -25,6 +25,7 @@ import clinicalStudiesRoutes from './routes/clinical-studies';
 import patientProfileRoutes from './routes/patient-profile';
 import pincodeRoutes from './routes/pincode';
 import legalRoutes from './routes/legal';
+import grievanceRoutes from './routes/grievances';
 
 dotenv.config();
 
@@ -95,6 +96,7 @@ app.use('/api/clinical-studies', clinicalStudiesRoutes);
 app.use('/api/patient-profile', patientProfileRoutes);
 app.use('/api/pincode', pincodeRoutes);
 app.use('/api/legal', legalRoutes);
+app.use('/api/grievances', grievanceRoutes);
 
 // Error Handling
 app.use(notFound);
