@@ -203,7 +203,7 @@ router.post('/verify', authenticate, async (req: Request,res: Response) => {
   const found=await query('SELECT * FROM orders WHERE payment_intent_id=$1 AND user_id=$2',[razorpay_order_id,req.user!.userId]);
   const order=found.rows[0];
   if(!order) throw new AppError('Payment order not found',404);
-  if(order.payment_status==='paid') return res.json({success:true,data:{order_number:order.order_number,payment_status:'paid'}});
+  if(order.payment_status==='paid' && order.razorpay_payment_id && order.razorpay_payment_id!==razorpay_payment_id) throw new AppError('This order is already linked to a different Razorpay payment',409);
   if(!verifyCheckoutSignature(razorpay_order_id,razorpay_payment_id,razorpay_signature)) throw new AppError('Payment signature verification failed',400);
   const payment=await fetchRazorpayPayment(razorpay_payment_id);
   if(payment.order_id!==razorpay_order_id||payment.status!=='captured'||Number(payment.amount)!==Math.round(Number(order.total_amount)*100)||payment.currency!=='INR') throw new AppError('Payment is not captured for the expected order amount',409);
@@ -212,15 +212,19 @@ router.post('/verify', authenticate, async (req: Request,res: Response) => {
     await client.query('BEGIN');
     const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
     const current=locked.rows[0];
+    if(!current) throw new AppError('Payment order not found',404);
+    if(current.razorpay_payment_id && current.razorpay_payment_id!==razorpay_payment_id) throw new AppError('This order is already linked to a different Razorpay payment',409);
     if(current.payment_status!=='paid'){
       if(current.status==='cancelled'){
-        await client.query("UPDATE orders SET payment_status='paid',updated_at=NOW() WHERE id=$1",[order.id]);
+        await client.query("UPDATE orders SET payment_status='paid',razorpay_payment_id=$2,updated_at=NOW() WHERE id=$1",[order.id,razorpay_payment_id]);
         await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Payment was captured after the order was cancelled. Manual refund review is required; fulfilment remains cancelled.']);
       } else {
-        await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
+        await client.query("UPDATE orders SET payment_status='paid',status='confirmed',razorpay_payment_id=$2,updated_at=NOW() WHERE id=$1",[order.id,razorpay_payment_id]);
         await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured and verified']);
         await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[req.user!.userId]);
       }
+    } else if (!current.razorpay_payment_id) {
+      await client.query('UPDATE orders SET razorpay_payment_id=$2,updated_at=NOW() WHERE id=$1',[order.id,razorpay_payment_id]);
     }
     await client.query('COMMIT');
   } catch(error){await client.query('ROLLBACK');throw error;} finally{client.release();}
@@ -236,37 +240,60 @@ router.post('/webhook',async(req:Request,res:Response)=>{
   } catch {
     return res.status(400).json({error:'Invalid webhook payload'});
   }
+
   if(event?.event==='payment.captured'){
+    const eventId=req.get('x-razorpay-event-id')?.trim();
     const payment=event.payload?.payment?.entity;
+    if(!eventId || eventId.length>255) return res.status(400).json({error:'Missing or invalid Razorpay event ID'});
     if(
-      payment && typeof payment.id==='string' && payment.id.length>0 &&
-      typeof payment.order_id==='string' && payment.order_id.length>0 &&
-      payment.status==='captured' &&
-      Number.isSafeInteger(payment.amount) && payment.amount>0 &&
-      payment.currency==='INR'
-    ){
-      const found=await query('SELECT * FROM orders WHERE payment_intent_id=$1',[payment.order_id]);
-      const order=found.rows[0];
-      if(order&&Number(payment.amount)===Math.round(Number(order.total_amount)*100)){
-        const client=await pool.connect();
-        try{
-          await client.query('BEGIN');
-          const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
-          const current=locked.rows[0];
-          if(current && current.payment_status!=='paid'){
-            if(current.status==='cancelled'){
-              await client.query("UPDATE orders SET payment_status='paid',updated_at=NOW() WHERE id=$1",[order.id]);
-              await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'cancelled','Razorpay captured payment after order cancellation. Manual refund review is required; fulfilment remains cancelled.']);
-            } else {
-              await client.query("UPDATE orders SET payment_status='paid',status='confirmed',updated_at=NOW() WHERE id=$1",[order.id]);
-              await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[order.id,'confirmed','Razorpay payment captured via verified webhook']);
-              await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[order.user_id]);
-            }
-          }
-          await client.query('COMMIT');
-        }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+      !payment || typeof payment.id!=='string' || !payment.id.trim() || payment.id.length>255 ||
+      typeof payment.order_id!=='string' || !payment.order_id.trim() || payment.order_id.length>255 ||
+      payment.status!=='captured' ||
+      !Number.isSafeInteger(payment.amount) || payment.amount<=0 ||
+      payment.currency!=='INR'
+    ) return res.status(400).json({error:'Invalid captured payment payload'});
+
+    const found=await query('SELECT * FROM orders WHERE payment_intent_id=$1',[payment.order_id]);
+    const order=found.rows[0] || null;
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      let current:any=null;
+      if(order){
+        const locked=await client.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[order.id]);
+        current=locked.rows[0] || null;
       }
-    }
+      const amountMatches=!!current && Number(payment.amount)===Math.round(Number(current.total_amount)*100);
+      const paymentIdMatches=!current || !current.razorpay_payment_id || current.razorpay_payment_id===payment.id;
+      const processingStatus=amountMatches && paymentIdMatches ? 'processed' : 'unmatched';
+      const inserted=await client.query(
+        `INSERT INTO razorpay_webhook_events
+          (event_id,event_type,razorpay_payment_id,razorpay_order_id,order_id,amount_paise,currency,processing_status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT (event_id) DO NOTHING
+         RETURNING event_id`,
+        [eventId,event.event,payment.id,payment.order_id,current?.id || null,payment.amount,payment.currency,processingStatus]
+      );
+      if(inserted.rowCount!==1){
+        await client.query('COMMIT');
+        return res.json({received:true,duplicate:true});
+      }
+      if(amountMatches && paymentIdMatches && current){
+        if(current.payment_status!=='paid'){
+          if(current.status==='cancelled'){
+            await client.query("UPDATE orders SET payment_status='paid',razorpay_payment_id=$2,updated_at=NOW() WHERE id=$1",[current.id,payment.id]);
+            await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[current.id,'cancelled','Razorpay captured payment after order cancellation. Manual refund review is required; fulfilment remains cancelled.']);
+          } else {
+            await client.query("UPDATE orders SET payment_status='paid',status='confirmed',razorpay_payment_id=$2,updated_at=NOW() WHERE id=$1",[current.id,payment.id]);
+            await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',[current.id,'confirmed','Razorpay payment captured via verified webhook']);
+            await client.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id=$1)',[current.user_id]);
+          }
+        } else if(!current.razorpay_payment_id){
+          await client.query('UPDATE orders SET razorpay_payment_id=$2,updated_at=NOW() WHERE id=$1',[current.id,payment.id]);
+        }
+      }
+      await client.query('COMMIT');
+    }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
   }
   return res.json({received:true});
 });
