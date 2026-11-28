@@ -4,6 +4,7 @@ import pool, { query } from '../db/pool';
 import { authenticate, authorize } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { fetchRazorpayPaymentRefunds } from '../services/razorpay';
+import { enqueueTransactionalEmail } from '../services/emailOutbox';
 
 const router = Router();
 router.use(authenticate, authorize('admin', 'staff'));
@@ -253,8 +254,36 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
     await client.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$${pIdx}`, params);
 
     if (statusChanged) {
-      await client.query('INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
-        [req.params.id, status, normalizedNote, req.user!.userId]);
+      const historyResult = await client.query(
+        'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4) RETURNING id',
+        [req.params.id, status, normalizedNote, req.user!.userId]
+      );
+
+      const emailEvent = status === 'shipped' ? 'order_shipped'
+        : status === 'delivered' ? 'order_delivered'
+          : status === 'cancelled' ? 'order_cancelled' : null;
+      if (emailEvent) {
+        const recipientResult = await client.query(
+          'SELECT email FROM users WHERE id=$1',
+          [order.user_id]
+        );
+        const recipient = recipientResult.rows[0]?.email;
+        if (typeof recipient === 'string' && recipient.trim()) {
+          await enqueueTransactionalEmail(
+            client,
+            `order:${order.id}:status-history:${historyResult.rows[0].id}`,
+            emailEvent,
+            recipient,
+            {
+              orderNumber: order.order_number,
+              carrier: normalizedCarrier ?? order.tracking_carrier,
+              trackingNumber: normalizedTracking ?? order.tracking_number,
+              trackingUrl: normalizedTrackingUrl ?? order.tracking_url,
+              note: normalizedNote,
+            },
+          );
+        }
+      }
     }
 
     // Restore stock only on the single, locked transition into cancelled.
