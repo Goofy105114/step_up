@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { randomBytes } from 'crypto';
 import { recordPolicyConsent } from '../services/legal-policy-consent';
+import { enqueueTransactionalEmail } from '../services/emailOutbox';
 
 const router = Router();
 const genOrderNo = () => 'ORD-' + Date.now() + '-' + randomBytes(8).toString('hex');
@@ -242,6 +243,20 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
     await client.query('INSERT INTO order_status_history (order_id,status,note) VALUES ($1,$2,$3)',
       [order.id, 'pending', 'Order placed']);
+
+    // Queue the order receipt in the same transaction as the order. A missing
+    // account email must not block checkout; duplicate event keys are ignored.
+    const customerEmailResult = await client.query('SELECT email FROM users WHERE id=$1', [req.user!.userId]);
+    const customerEmail = customerEmailResult.rows[0]?.email;
+    if (typeof customerEmail === 'string' && customerEmail.trim()) {
+      await enqueueTransactionalEmail(
+        client,
+        `order:${order.id}:created`,
+        'order_confirmation',
+        customerEmail,
+        { orderNumber: order.order_number },
+      );
+    }
     await client.query('DELETE FROM cart_items WHERE cart_id=$1', [cartId]);
     if (couponId) await client.query('UPDATE coupons SET used_count=used_count+1 WHERE id=$1', [couponId]);
 
