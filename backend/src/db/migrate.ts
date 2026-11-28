@@ -5,6 +5,9 @@ import pool from './pool';
 const migrations = [
   { id: '2026-01-stepup-fit-research', file: 'stepup-fit-research-migration.sql' },
   { id: '2026-02-razorpay-checkout', file: 'razorpay-checkout-migration.sql' },
+  { id: '2026-03-razorpay-webhook-audit', file: 'razorpay-webhook-audit-migration.sql' },
+  { id: '2026-04-payment-refund-reconciliation', file: 'payment-refund-reconciliation-migration.sql' },
+  { id: '2026-05-partial-refund-reconciliation', file: 'partial-refund-reconciliation-migration.sql' },
   { id: '2026-11-store-settings', file: 'store-settings-migration.sql' },
   { id: '2026-11-supabase-public-privileges', file: 'supabase-public-privileges-migration.sql' },
   { id: '2026-11-transactional-email-outbox', file: 'transactional-email-outbox-migration.sql' },
