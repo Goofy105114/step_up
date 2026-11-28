@@ -12,7 +12,7 @@ const migrations = [
   { id: '2026-07-order-tracking-url', file: 'order-tracking-url-migration.sql' },
   { id: '2026-08-product-legal-declarations', file: 'product-legal-declarations-migration.sql' },
   { id: '2026-09-product-price-history', file: 'product-price-history-migration.sql' },
-  { id: '2026-10-return-request-classification', file: 'return-request-classification-migration.sql' }
+  { id: '2026-10-return-request-classification', file: 'return-request-classification-migration.sql' },
   { id: '2026-02-razorpay-checkout', file: 'razorpay-checkout-migration.sql' },
   { id: '2026-03-razorpay-webhook-audit', file: 'razorpay-webhook-audit-migration.sql' },
   { id: '2026-04-payment-refund-reconciliation', file: 'payment-refund-reconciliation-migration.sql' },
