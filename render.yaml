@@ -29,3 +29,13 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      # Transactional email (Resend); set only after verifying the sending domain.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      # OTP delivery (MSG91); use the production widget credentials from the company account.
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_WIDGET_ID
+        sync: false
