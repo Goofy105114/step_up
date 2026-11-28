@@ -4,6 +4,7 @@
 
 - Checkout queues an order-received email in the same database transaction as the order.
 - Admin transitions to shipped, delivered, and cancelled queue a matching email in the same transaction as the status-history record.
+- Customer return requests, admin return decisions, and provider-verified Razorpay refunds are also queued in their respective database transactions.
 - Stable event keys prevent the same source event from being enqueued twice.
 - A separate Render background worker claims jobs with `FOR UPDATE SKIP LOCKED`, sends through the shared Resend service, and records provider message IDs.
 - Failed jobs retry with exponential backoff, up to eight attempts, then move to `dead` for operator review.
