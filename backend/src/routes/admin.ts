@@ -139,7 +139,7 @@ router.get('/orders/:id/fulfilment-history', authorize('admin'), async (req: Req
 
 router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   const { status, note, tracking_number, tracking_url, tracking_carrier } = req.body;
-  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned'];
+  const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivery_failed', 'return_to_origin', 'delivered', 'cancelled', 'refunded', 'returned'];
   if (typeof status !== 'string' || !allowedStatuses.includes(status)) {
     throw new AppError('Invalid order status', 400);
   }
