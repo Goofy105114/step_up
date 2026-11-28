@@ -1035,6 +1035,21 @@ router.post('/orders/:id/refund-confirmation', authorize('admin'), async (req: R
       "INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)",
       [order.id, fullyRefunded ? 'refunded' : order.status, (fullyRefunded ? 'Full' : 'Partial') + ' Razorpay refund verified via API; reference: ' + providerRefundId, req.user!.userId]
     );
+    const refundRecipient = await client.query('SELECT email FROM users WHERE id=$1', [order.user_id]);
+    const refundEmail = refundRecipient.rows[0]?.email;
+    if (typeof refundEmail === 'string' && refundEmail.trim()) {
+      await enqueueTransactionalEmail(
+        client,
+        `refund:${providerRefundId}:confirmed`,
+        'refund_confirmed',
+        refundEmail,
+        {
+          orderNumber: order.order_number,
+          refundAmount: '₹' + (Number(providerRefund.amount) / 100).toFixed(2),
+          note: fullyRefunded ? 'Full refund confirmed by Razorpay' : 'Partial refund confirmed by Razorpay',
+        },
+      );
+    }
     await client.query('COMMIT');
     return res.json({ success: true, data: { order_id: order.id, provider_refund_id: providerRefundId, refund_amount_paise: Number(providerRefund.amount), cumulative_refund_paise: newTotal, remaining_refundable_paise: orderAmountPaise - newTotal, payment_status: fullyRefunded ? 'refunded' : 'partially_refunded' } });
   } catch (error) {
@@ -1082,7 +1097,7 @@ router.patch('/return-requests/:id', authorize('admin'), async (req: Request, re
     if (!transitions[request.status]?.includes(status)) {
       throw new AppError('This return request cannot move to that status', 409);
     }
-    const order = await client.query('SELECT status FROM orders WHERE id=$1 FOR UPDATE', [request.order_id]);
+    const order = await client.query('SELECT status,order_number,user_id FROM orders WHERE id=$1 FOR UPDATE', [request.order_id]);
     if (!order.rows[0]) throw new AppError('Associated order not found', 404);
     const note = `Return request ${status}: ${String(admin_note || 'No additional note').slice(0, 1000)}`;
     const updated = await client.query(
@@ -1093,6 +1108,17 @@ router.patch('/return-requests/:id', authorize('admin'), async (req: Request, re
     await client.query(
       'INSERT INTO order_status_history (order_id,status,note,created_by) VALUES ($1,$2,$3,$4)',
       [request.order_id, order.rows[0].status, note, req.user!.userId]);
+    const returnRecipient = await client.query('SELECT email FROM users WHERE id=$1', [order.rows[0].user_id]);
+    const returnEmail = returnRecipient.rows[0]?.email;
+    if (typeof returnEmail === 'string' && returnEmail.trim()) {
+      await enqueueTransactionalEmail(
+        client,
+        `return:${request.id}:decision:${status}`,
+        'return_decision',
+        returnEmail,
+        { orderNumber: order.rows[0].order_number, returnStatus: status, note: admin_note || '' },
+      );
+    }
     await client.query('COMMIT');
     return res.json({ success: true, data: updated.rows[0] });
   } catch (error) {
