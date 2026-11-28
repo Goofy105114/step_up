@@ -102,6 +102,19 @@ export default function OrderDetailPage() {
           </div>
         )}
 
+        {order.status === 'delivery_failed' && (
+          <div role="status" className="mb-6 border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">Delivery attempt was unsuccessful</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">The delivery team has recorded an unsuccessful attempt. Please check the tracking details above when available or contact STEPUP support for assistance. A new delivery attempt is not confirmed until the order status is updated.</p>
+          </div>
+        )}
+        {order.status === 'return_to_origin' && (
+          <div role="status" className="mb-6 border border-orange-200 bg-orange-50 p-4">
+            <p className="text-sm font-semibold text-orange-900">Shipment is being returned to the seller</p>
+            <p className="mt-1 text-xs leading-5 text-orange-800">The order has been marked as return-to-origin. STEPUP will update you after the returned shipment is received and reviewed. This status does not itself confirm receipt or issue a refund.</p>
+          </div>
+        )}
+
         {/* Progress tracker */}
         {!['cancelled', 'refunded', 'returned'].includes(order.status) && (
           <div className="border border-gray-200 bg-white p-6 mb-6">
