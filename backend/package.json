@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "db:migrate": "npm run build && node dist/db/migrate.js",
     "db:seed": "npm run build && node dist/db/seed.js",
-    "db:verify": "npm run build && node dist/db/verify.js"
+    "db:verify": "npm run build && node dist/db/verify.js",
+    "start:email-worker": "node dist/workers/emailOutbox.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

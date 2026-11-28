@@ -39,3 +39,20 @@ services:
         sync: false
       - key: MSG91_WIDGET_ID
         sync: false
+
+  - type: worker
+    name: stepup-email-worker
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:email-worker
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false

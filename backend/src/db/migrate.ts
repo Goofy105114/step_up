@@ -7,6 +7,7 @@ const migrations = [
   { id: '2026-02-razorpay-checkout', file: 'razorpay-checkout-migration.sql' },
   { id: '2026-11-store-settings', file: 'store-settings-migration.sql' },
   { id: '2026-11-supabase-public-privileges', file: 'supabase-public-privileges-migration.sql' },
+  { id: '2026-11-transactional-email-outbox', file: 'transactional-email-outbox-migration.sql' },
 ];
 
 async function main() {
