@@ -36,8 +36,9 @@ The worker sends sequentially within each claimed batch. It is intentionally sep
 | Shipped | Admin status transition |
 | Delivered | Admin status transition |
 | Cancelled | Admin status transition |
-| Return received / decision | Not connected yet |
-| Refund confirmed | Not connected yet |
+| Return received | Customer return-request transaction |
+| Return decision | Admin return-decision transaction |
+| Refund confirmed | Admin reconciliation after Razorpay reports processed |
 
 The current checkout flow only permits COD, so the order-received email is not proof of payment. The email template correctly says the order was received, not that payment was captured.
 
