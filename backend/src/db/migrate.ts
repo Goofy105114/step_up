@@ -4,11 +4,21 @@ import pool from './pool';
 
 const migrations = [
   { id: '2026-01-stepup-fit-research', file: 'stepup-fit-research-migration.sql' },
+  { id: '2026-02-auth-otp-reset', file: 'auth-otp-reset-migration.sql' },
+  { id: '2026-03-customer-grievances', file: 'customer-grievances-migration.sql' },
+  { id: '2026-04-order-seller-snapshots', file: 'order-seller-snapshots-migration.sql' },
+  { id: '2026-05-order-policy-acceptances', file: 'order-policy-acceptances-migration.sql' },
+  { id: '2026-06-order-tracking-carrier', file: 'order-tracking-carrier-migration.sql' },
+  { id: '2026-07-order-tracking-url', file: 'order-tracking-url-migration.sql' },
+  { id: '2026-08-product-legal-declarations', file: 'product-legal-declarations-migration.sql' },
+  { id: '2026-09-product-price-history', file: 'product-price-history-migration.sql' },
+  { id: '2026-10-return-request-classification', file: 'return-request-classification-migration.sql' }
   { id: '2026-02-razorpay-checkout', file: 'razorpay-checkout-migration.sql' },
   { id: '2026-03-razorpay-webhook-audit', file: 'razorpay-webhook-audit-migration.sql' },
   { id: '2026-04-payment-refund-reconciliation', file: 'payment-refund-reconciliation-migration.sql' },
   { id: '2026-05-partial-refund-reconciliation', file: 'partial-refund-reconciliation-migration.sql' },
   { id: '2026-11-store-settings', file: 'store-settings-migration.sql' },
+  { id: '2026-12-legal-policy-framework', file: 'legal-policy-framework-migration.sql' },
   { id: '2026-11-supabase-public-privileges', file: 'supabase-public-privileges-migration.sql' },
   { id: '2026-11-transactional-email-outbox', file: 'transactional-email-outbox-migration.sql' },
 ];
