@@ -152,6 +152,7 @@ export async function sendTransactionalEmail(
       text: message.text,
       html: message.html,
     }),
+    signal: AbortSignal.timeout(15000),
   });
 
   let payload: ResendResponse = {};
